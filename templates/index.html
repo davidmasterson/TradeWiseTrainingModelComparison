@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction</title>
+    <style>
+        .progress {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+        .symbol-input {
+            margin-bottom: 5px;
+        }
+        .symbol-input input {
+            width: calc(100% - 80px); /* Adjust the width based on your design */
+            margin-right: 5px;
+            box-sizing: border-box;
+            width: 300px;
+        }
+        .symbol-input button {
+            width: 70px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Market Prediction</h1>
+    <form id="prediction-form">
+        <div id="symbol-inputs">
+            <div class="symbol-input">
+                <input type="text" name="symbols" placeholder="Enter stock symbol" required>
+                <button type="button" onclick="removeSymbolInput(this)">Remove</button>
+            </div>
+            <br>
+        </div>
+        <button type="button" onclick="addSymbolInput()">Add another symbol</button>
+        <button type="submit">Predict</button>
+    </form>
+    <div id="results"></div>
+    <div class="progress">
+        <div id="progress-bar" class="progress-bar">0%</div>
+    </div>
+    <script>
+        function addSymbolInput() {
+            const symbolInputs = document.getElementById('symbol-inputs');
+            const inputDiv = document.createElement('div');
+            inputDiv.className = 'symbol-input';
+
+            const inputField = document.createElement('input');
+            inputField.type = 'text';
+            inputField.name = 'symbols';
+            inputField.placeholder = 'Enter stock symbol';
+            inputField.required = true;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.innerText = 'Remove';
+            removeButton.onclick = function() {
+                removeSymbolInput(this);
+            };
+
+            inputDiv.appendChild(inputField);
+            inputDiv.appendChild(removeButton);
+            symbolInputs.appendChild(inputDiv);
+        }
+
+        function removeSymbolInput(button) {
+            button.parentElement.remove();
+        }
+
+        document.querySelector('#prediction-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+
+            // Clear previous results
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+
+            // Reset progress bar
+            const progressBar = document.getElementById('progress-bar');
+            progressBar.style.width = '0%';
+            progressBar.innerText = '0%';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.status !== 202) {
+                    resultsDiv.innerText = 'Error: ' + result.error;
+                    return;
+                }
+
+                const pollProgress = async () => {
+                    const progressResponse = await fetch('/progress');
+                    const progressData = await progressResponse.json();
+                    progressBar.style.width = progressData.progress + '%';
+                    progressBar.innerText = progressData.progress + '%';
+
+                    if (progressData.progress < 100) {
+                        setTimeout(pollProgress, 500);
+                    } else {
+                        // Fetch the final predictions after progress reaches 100%
+                        const finalResponse = await fetch('/predictions');
+                        const finalPredictions = await finalResponse.json();
+
+                        finalPredictions.forEach(prediction => {
+                            for (const [symbol, prices] of Object.entries(prediction)) {
+                                const symbolElement = document.createElement('h2');
+                                symbolElement.textContent = symbol;
+                                resultsDiv.appendChild(symbolElement);
+
+                                const olElement = document.createElement('ol');
+                                prices.forEach(price => {
+                                    const liElement = document.createElement('li');
+                                    liElement.textContent = price.toFixed(2);
+                                    olElement.appendChild(liElement);
+                                });
+                                resultsDiv.appendChild(olElement);
+                            }
+                        });
+                    }
+                };
+
+                pollProgress();
+
+            } catch (error) {
+                resultsDiv.innerText = 'Error: ' + error.message;
+            }
+        };
+    </script>
+</body>
+</html>
