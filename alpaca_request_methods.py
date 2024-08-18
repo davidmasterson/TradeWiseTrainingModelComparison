@@ -7,6 +7,7 @@ from database import transactions_DAOIMPL
 
 
 
+
 load_dotenv()
 # Function to return api connection object
 def get_alpaca_connection():
@@ -36,12 +37,6 @@ def fetch_stock_data(years=5):
             'take_profit_price':[],
             'stop_out_price':[],
             'hit_take_profit': [],
-            # 'slope5': [],
-            # 'slope20': [],
-            # 'slope200': [],
-            # 'sma5': [],
-            # 'sma20': [],
-            # 'sma200': []
         }
     
 
@@ -86,14 +81,12 @@ def fetch_stock_data(years=5):
         df_data['take_profit_price'].append(take_profit)
         df_data['stop_out_price'].append(stop_price)
         df_data['hit_take_profit'].append(hit_take_profit)
-
-        # print(df)
-        # df.sort_values(by='date', ascending=False, inplace=True)
-        # print(df)
-        # all_data.append(df)
         connection.close()
     
     df = pd.DataFrame(df_data)
     df.to_csv('stock_trans_data.csv', index=False)
     return df_data
+
+if __name__ == "__main__":
+    fetch_stock_data()
 

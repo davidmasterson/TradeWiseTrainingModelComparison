@@ -1,5 +1,4 @@
-import alpaca_request_methods
-from database import transactions_DAOIMPL
+import model_trainer_predictor_methods
 
-trans = alpaca_request_methods.fetch_stock_data()
-print(trans)
+probs = model_trainer_predictor_methods.stock_predictor_using_pretrained_model()
+print(probs)
