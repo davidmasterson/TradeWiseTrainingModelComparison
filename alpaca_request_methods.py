@@ -87,6 +87,4 @@ def fetch_stock_data(years=5):
     df.to_csv('stock_trans_data.csv', index=False)
     return df_data
 
-if __name__ == "__main__":
-    fetch_stock_data()
 
