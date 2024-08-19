@@ -35,16 +35,15 @@
 </head>
 <body>
     <h1>Create Trained Random Forest Model</h1>
-    <form id="prediction-form">
+    <form id="prediction-form" action="create_rf_model", method="GET">
         <div id="symbol-inputs">
-            <div class="symbol-input">
-                <input type="text" name="symbols" placeholder="Enter stock symbol" required>
-                <button type="button" onclick="removeSymbolInput(this)">Remove</button>
-            </div>
-            <br>
         </div>
-        <button type="button" onclick="create_rf_model()">Create Model</button>
-        <button type="submit">Create Model</button>
+        <button type="submit">Create</button>
+    </form>
+    <form id="prediction-form" action="predict", method="GET">
+        <div id="symbol-inputs">
+        </div>
+        <button type="submit">Predict</button>
     </form>
 </body>
 </html>
