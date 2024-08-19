@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Prediction</title>
+    <style>
+        .progress {
+            width: 100%;
+            background-color: #f3f3f3;
+            border: 1px solid #ccc;
+            margin-top: 10px;
+        }
+        .progress-bar {
+            width: 0;
+            height: 30px;
+            background-color: #4caf50;
+            text-align: center;
+            line-height: 30px;
+            color: white;
+        }
+        .symbol-input {
+            margin-bottom: 5px;
+        }
+        .symbol-input input {
+            width: calc(100% - 80px); /* Adjust the width based on your design */
+            margin-right: 5px;
+            box-sizing: border-box;
+            width: 300px;
+        }
+        .symbol-input button {
+            width: 70px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Predictions</h1>
+    <table>
+        <th>Stock Symbol</th>
+        <th>Prediction Result</th>
+        <tbody>
+            <tr>
+            {% for prob in probs %}
+                <td>{{prob[0]}}</td>
+                {% if prob[1] == 1 %}
+                    <td>Buy</td>
+                {% elif prob[1] == 0 %}
+                    <td>Don't Buy</td>
+                {% else %}
+                    <td>Unable to Determine</td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+            </tbody>
+    </table>
+</body>
+</html>
