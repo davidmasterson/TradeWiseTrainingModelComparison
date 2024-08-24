@@ -1,49 +1,165 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Prediction</title>
+{% extends "base.html" %}
+
+{% block title %}Model Training and Predictions{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <h1 class="text-center">Model Operations Dashboard</h1>
+        
+        <!-- Train Random Forest Model Section -->
+        <div class="card">
+            <div class="card-body text-center">
+                <h2 class="card-title">Train Random Forest Model</h2>
+                <form id="trainer-form" method="POST" action="/create_rf_model">
+                    <div class="d-flex justify-content-center align-items-center flex-column">
+                        <div class="progress w-100">
+                            <div id="model-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" aria-valuenow="" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">0%</div>
+                        </div>
+                        <button id="create-model-button" type="submit" class="btn btn-success mt-3">Create Model</button>
+                        {% if status == 'DONE' %}
+                        <h3 style="color: green;">DONE TRAINING</h3>
+                        {% endif %}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Run Predictions Section -->
+        <div class="card">
+            <div class="card-body text-center">
+                <h2 class="card-title">Run Predictions Against Already Open Positions</h2>
+                <form id="predictor-form" method="POST" action="/predict">
+                    <div class="d-flex justify-content-center align-items-center flex-column">
+                        <div class="progress w-100">
+                            <div id="prediction-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" aria-valuenow="" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">0%</div>
+                        </div>
+                        <button id="run-prediction-button" type="submit" class="btn btn-primary mt-3">Predict Buy</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- New Section for User to Input Multiple Symbols -->
+        <div class="card mt-4">
+            <div class="card-body text-center">
+                <h2 class="card-title">Input Stock Symbols</h2>
+                <form id="symbol-form" method="POST" action="/process_symbols">
+                    <div id="symbol-inputs">
+                        <div class="symbol-input mb-3">
+                            <input type="text" name="symbols[]" class="form-control" placeholder="Enter stock symbol" required>
+                        </div>
+                    </div>
+                    <button type="button" id="add-symbol-button" class="btn btn-secondary mb-3">Add Another Symbol</button>
+                    <button type="submit" class="btn btn-primary">Submit Symbols</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for socket.io and dynamic symbol input -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script type="text/javascript">
+        window.onload = function () {
+            const socket = io();
+            socket.on("connect", function () {
+                console.log('Connected');
+            });
+
+            socket.on("update progress", function (data) {
+                console.log('Received Data: ', data);
+                const progressBar = document.querySelector(data.type === 'model' ? '#model-progress-bar' : '#prediction-progress-bar');
+                progressBar.style.width = data.percent + '%';
+                progressBar.setAttribute('aria-valuenow', data.percent);
+
+                // Check if the progress is complete and re-enable the button
+                if (data.percent === 100 && data.type === 'model') {
+                    createModelButton.disabled = false;
+                }
+            });
+
+            const trainerForm = document.getElementById('trainer-form');
+            const predictorForm = document.getElementById('predictor-form');
+            
+
+            trainerForm.onsubmit = function(event) {
+                event.preventDefault();
+                fetch('/create_rf_model', {
+                    method: "POST"
+                });
+            };
+
+            predictorForm.onsubmit = function(event) {
+                event.preventDefault();
+                fetch('/predict', {
+                    method: "POST"
+                })
+                .then(response => response.text())
+                .then(html => {
+                    document.open();
+                    document.write(html);
+                    document.close();
+                })
+                .catch(error => console.error('Error:', error));
+            };
+
+            
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('add-symbol-button').addEventListener('click', function() {
+                var newInputDiv = document.createElement('div');
+                newInputDiv.classList.add('symbol-input', 'mb-3');
+                newInputDiv.innerHTML = '<input type="text" name="symbols[]" class="form-control" placeholder="Enter stock symbol" required>';
+                document.getElementById('symbol-inputs').appendChild(newInputDiv);
+            });
+        });
+    </script>
+
+    <!-- CSS for styling -->
     <style>
+        body {
+            background-color: #f4f6f9;
+            font-family: 'Arial', sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+        }
+        .card {
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border: none;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
         .progress {
-            width: 100%;
-            background-color: #f3f3f3;
-            border: 1px solid #ccc;
-            margin-top: 10px;
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-bottom: 15px;
         }
         .progress-bar {
-            width: 0;
-            height: 30px;
-            background-color: #4caf50;
-            text-align: center;
-            line-height: 30px;
-            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .symbol-input {
-            margin-bottom: 5px;
+        .btn-primary, .btn-success {
+            width: 180px;
+            padding: 10px;
+            font-size: 16px;
         }
-        .symbol-input input {
-            width: calc(100% - 80px); /* Adjust the width based on your design */
-            margin-right: 5px;
-            box-sizing: border-box;
-            width: 300px;
+        h1 {
+            color: #343a40;
+            font-weight: 700;
+            margin-bottom: 40px;
         }
-        .symbol-input button {
-            width: 70px;
+        h2 {
+            color: #495057;
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .card-body {
+            padding: 30px;
         }
     </style>
-</head>
-<body>
-    <h1>Create Trained Random Forest Model</h1>
-    <form id="prediction-form" action="create_rf_model", method="GET">
-        <div id="symbol-inputs">
-        </div>
-        <button type="submit">Create</button>
-    </form>
-    <form id="prediction-form" action="predict", method="GET">
-        <div id="symbol-inputs">
-        </div>
-        <button type="submit">Predict</button>
-    </form>
-</body>
-</html>
+{% endblock %}

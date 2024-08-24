@@ -1,0 +1,4 @@
+transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,stop_loss_price,tp1,tp2,sop
+0,AAPL,2024-08-23,227.1631,1,227.1631,,N/A,N/A,N/A,N/A,6.814893,3.0,N/A,0.0,233.977993,238.521255,224.89146899999997
+1,NFLX,2024-08-23,686.6835,1,686.6835,,N/A,N/A,N/A,N/A,20.600505,3.0,N/A,0.0,707.284005,721.0176749999999,679.816665
+2,GOOG,2024-08-23,167.4293,1,167.4293,,N/A,N/A,N/A,N/A,5.0228790000000005,3.0,N/A,0.0,172.452179,175.800765,165.755007

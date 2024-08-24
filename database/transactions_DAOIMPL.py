@@ -1,6 +1,48 @@
-from datetime import date
+from datetime import date, datetime
+from database import database_connection_utility as dcu
+
+
+import csv
+
+
+def get_transactions_from_db():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions'''
+    
+    try:
+        cur.execute(sql)
+        trans = cur.fetchall()
+        
+        if trans:
+            # Fetch column names from the cursor
+            column_names = [i[0] for i in cur.description]
+            
+            # Write data to CSV
+            with open('Model_Training/transactions.csv', 'w', newline='') as csvfile:
+                csvwriter = csv.writer(csvfile)
+                
+                # Write the header (column names)
+                csvwriter.writerow(column_names)
+                
+                # Write the transaction data
+                csvwriter.writerows(trans)
+                
+            print("Transactions have been exported to 'transactions.csv'.")
+        else:
+            print("No transactions found.")
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        
+    finally:
+        cur.close()
+        conn.close()
+
 
 def read_in_transactions(file):
+    global progress
+    get_transactions_from_db()
     path = '/home/david/StockPricePredictorUsingLSTM'
     filepath = path+file
     with open(filepath, 'r') as trans_reader:
@@ -30,3 +72,66 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
         count += 1
     reader.close()
     return trans_df_initial_data
+
+
+def insert_transactions(transactions):
+    for transaction in transactions:
+        insert_transaction(transaction)
+
+
+def insert_transaction(transaction):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            INSERT INTO transactions
+            (
+            symbol,
+            date_purchased,
+            purchased_pps,
+            qty,
+            total_buy_price,
+            purchase_string,
+            date_sold,
+            sold_pps,
+            total_sell_price,
+            sell_string,
+            expected_return,
+            percentage_roi,
+            actual_return,
+            stop_loss_price,
+            tp1,
+            tp2,
+            sop
+            ) VALUES (
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s
+            )
+            '''
+    vals = [transaction.symbol,
+            transaction.date_purchased,
+            transaction.purchased_pps,
+            transaction.qty,
+            transaction.total_buy_price,
+            transaction.purchase_string,
+            transaction.date_sold,
+            transaction.sold_pps,
+            transaction.total_sell_price,
+            transaction.sell_string,
+            transaction.expected_return,
+            transaction.percentage_roi,
+            transaction.actual_return,
+            transaction.stop_loss_price,
+            transaction.tp1,
+            transaction.tp2,
+            transaction.sop]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        print(f"{datetime.now()}:{cur.rowcount}, record inserted")
+    except Exception as e:
+        return e
+    finally:
+        cur.close()
+        conn.close()

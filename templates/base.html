@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}My Application{% endblock %}</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+         /* Custom CSS for the sidebar */
+         .sidebar {
+            height: 100vh; /* Full height */
+            position: fixed; /* Fixed Sidebar (stay in place) */
+            top: 0;
+            left: 0;
+            width: 250px; /* Sidebar width */
+            background-color: #343a40; /* Dark background */
+            padding-top: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            text-align: center;
+        }
+        .sidebar a {
+            padding: 15px 10px;
+            text-decoration: none;
+            font-size: 18px;
+            color: white;
+            display: block;
+        }
+        .sidebar a:hover {
+            background-color: #575d63;
+        }
+        .content {
+            margin-left: 250px; /* Same width as the sidebar */
+            padding: 20px;
+        }
+        /* Add your specific table styles here to override Bootstrap */
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .content table tbody tr:nth-child(even) {
+            background-color: #d3cfcf !important;
+        }
+        .content table tbody tr:nth-child(odd) {
+            background-color: #ffffff !important;
+        }
+        .content table tbody tr:hover {
+            background-color: #9b9898 !important;
+        }
+        .content table th {
+            background-color: lightblue;
+        }
+        .content table tr {
+            text-align: center;
+        }
+        .copyright {
+            padding: 10px;
+            color: #ccc;
+            font-size: 14px;
+            text-align: center;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    {% if request.path != '/index' %}
+    <a href="/">Home</a>
+    {% endif %}
+    <a href="/logout">Log Out</a>
+    <!-- Copyright notice -->
+    <div class="copyright">
+        © MasterTradeTools, Inc. 2024
+    </div>
+</div>
+
+<div class="content">
+    {% block content %}
+    {% endblock %}
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

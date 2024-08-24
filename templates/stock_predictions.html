@@ -1,57 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Prediction</title>
-    <style>
-        .progress {
-            width: 100%;
-            background-color: #f3f3f3;
-            border: 1px solid #ccc;
-            margin-top: 10px;
-        }
-        .progress-bar {
-            width: 0;
-            height: 30px;
-            background-color: #4caf50;
-            text-align: center;
-            line-height: 30px;
-            color: white;
-        }
-        .symbol-input {
-            margin-bottom: 5px;
-        }
-        .symbol-input input {
-            width: calc(100% - 80px); /* Adjust the width based on your design */
-            margin-right: 5px;
-            box-sizing: border-box;
-            width: 300px;
-        }
-        .symbol-input button {
-            width: 70px;
-        }
-    </style>
-</head>
-<body>
-    <h1>Stock Predictions</h1>
-    <table>
-        <th>Stock Symbol</th>
-        <th>Prediction Result</th>
-        <tbody>
+{% extends 'base.html' %}
+{% block title %}Stock Predictions{% endblock %}
+{% block content %}
+
+    <h1 style="text-align: center;">Stock Predictions</h1>
+    <div class="d-flex justify-content-end mb-3">
+        <button id="export-button" class="btn btn-primary">Export to CSV</button>
+    </div>
+    <table id="stock-predictions-table">
+        <thead>
             <tr>
-            {% for prob in probs %}
-                <td>{{prob[0]}}</td>
-                {% if prob[1] == 1 %}
-                    <td>Buy</td>
-                {% elif prob[1] == 0 %}
-                    <td>Don't Buy</td>
-                {% else %}
-                    <td>Unable to Determine</td>
-                {% endif %}
+                <th>Symbol</th>
+                <th>Purchase Date</th>
+                <th>Purchase Price</th>
+                <th>Take Profit Price</th>
+                <th>Stop Out Price</th>
+                <th>Sector</th>
+                <th>SMA5 Prob</th>
+                <th>SMA20 Prob</th>
+                <th>SMA5 Slope Prob</th>
+                <th>SMA20 Slope Prob</th>
+                <th>Open Mean</th>
+                <th>Open Std</th>
+                <th>Close Mean</th>
+                <th>Close Std</th>
+                <th>SMA5 Last</th>
+                <th>SMA20 Last</th>
+                <th>SMA5 Slope Last</th>
+                <th>SMA20 Slope Last</th>
+                <th>Symbol Encoded</th>
+                <th>Purchase Date Encoded</th>
+                <th>Prediction</th>
             </tr>
-            {% endfor %}
-            </tbody>
+        </thead>
+        <tbody>
+            {% for prob in probs %}
+            <tr>
+                    <td>{{prob[0]}}</td>
+                    <td>{{prob[1]}}</td>
+                    <td>{{prob[2]}}</td>
+                    <td>{{prob[6]}}</td>
+                    <td>{{prob[7]}}</td>
+                    <td>{{prob[9]}}</td>
+                    <td>{{prob[10]}}</td>
+                    <td>{{prob[11]}}</td>
+                    <td>{{prob[12]}}</td>
+                    <td>{{prob[13]}}</td>
+                    <td>{{prob[14]}}</td>
+                    <td>{{prob[15]}}</td>
+                    <td>{{prob[16]}}</td>
+                    <td>{{prob[17]}}</td>
+                    <td>{{prob[18]}}</td>
+                    <td>{{prob[19]}}</td>
+                    <td>{{prob[20]}}</td>
+                    <td>{{prob[21]}}</td>
+                    <td>{{prob[22]}}</td>
+                    <td>{{prob[24]}}</td>
+                    {% if prob[25] == 1 %}
+                        <td style="color: green;">Buy</td>
+                    {% elif prob[25] == 0 %}
+                        <td style="color: red;">Don't Buy</td>
+                    {% else %}
+                        <td>Unable to Determine</td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+        </tbody>
     </table>
-</body>
-</html>
+    
+
+<script>
+    document.getElementById('export-button').addEventListener('click', function() {
+        var table = document.getElementById('stock-predictions-table');
+        var rows = table.querySelectorAll('tr');
+        var csv = [];
+        
+        rows.forEach(function(row) {
+            var cols = row.querySelectorAll('td, th');
+            var rowData = [];
+            
+            cols.forEach(function(col) {
+                rowData.push(col.innerText);
+            });
+            
+            csv.push(rowData.join(','));
+        });
+        
+        var csvString = csv.join('\n');
+        var blob = new Blob([csvString], { type: 'text/csv' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'stock_predictions.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+</script>  
+{% endblock %}
