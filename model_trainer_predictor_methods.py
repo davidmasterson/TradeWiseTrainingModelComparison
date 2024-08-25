@@ -76,14 +76,22 @@ def stock_predictor_using_pretrained_model():
                 symbol_encoded = int(line[22])
                 purchase_date_encoded = int(line[23])
                 sell_date_encoded = int(line[24])
-                hit_take_profit_predicted = line[25].split('\n')
+                purchase_day = int(line[25])
+                purchase_month = int(line[26])
+                purchase_year = int(line[27])
+                sell_day = int(line[28]) if sell_date != '' else 'N/A'
+                sell_month = int(line[29]) if sell_date != '' else 'N/A'
+                sell_year = int(line[30]) if sell_date != '' else 'N/A'
+                hit_take_profit_predicted = line[31].split('\n')
                 hit_take_profit_predicted = int(hit_take_profit_predicted[0])
                 probs.append([symbol,purchase_date,purchase_price,sell_date,sell_price,
                               days_to_sell,take_profit_price,stop_out_price,
                               hit_take_profit,sector,SMA5_prob,SMA20_prob,SMA5_Slope_prob,
                               SMA20_Slope_prob,open_mean,open_std,close_mean,close_std,SMA5_last,
                               SMA20_last,SMA5_Slope_last,SMA20_Slope_last,symbol_encoded,
-                              purchase_date_encoded,sell_date_encoded,hit_take_profit_predicted])
+                              purchase_date_encoded,sell_date_encoded,purchase_day,
+                              purchase_month,purchase_year,sell_day,sell_month,sell_year,
+                              hit_take_profit_predicted])
             
             percent = 50 + int((count / total_lines) * 50)
             if sio is not None:

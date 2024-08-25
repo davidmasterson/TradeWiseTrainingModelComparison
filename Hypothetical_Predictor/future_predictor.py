@@ -18,6 +18,7 @@ except:
 # In[209]:
 future_df = pd.read_csv('Hypothetical_Predictor/pre_future_predictions.csv')
 
+
 X_future = future_df.drop(['hit_take_profit', 'symbol', 'purchase_date', 'sell_date'], axis=1)
 future_predictions = rf_model.predict(X_future)
 

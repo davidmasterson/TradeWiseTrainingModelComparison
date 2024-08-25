@@ -67,10 +67,7 @@ async def progress():
 def dashboard():
     return render_template('dashboard.html')
 
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('index'))
+
     
 
 

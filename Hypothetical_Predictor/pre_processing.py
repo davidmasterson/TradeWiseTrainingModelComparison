@@ -137,7 +137,6 @@ old_columns = ['SMA5', 'SMA20', 'SMA5_Slope', 'SMA20_Slope']
 for name in old_columns:
     get_increase_probability_and_create_new_column(name, name+'_prob')
     
-# Calculate summary statistics for 'open' and 'close' prices
 df['open_mean'] = df['open'].apply(lambda x: np.mean(eval(x)))
 df['open_std'] = df['open'].apply(lambda x: np.std(eval(x)))
 df['close_mean'] = df['close'].apply(lambda x: np.mean(eval(x)))
@@ -173,7 +172,15 @@ df['sector'] = label_encoder.fit_transform(df['sector'])
 
 df
 
-
+# Convert date to a datetime object and then create seperate columns for day, month, year, day as Monday, Friday ....
+df['purchase_date'] = pd.to_datetime(df['purchase_date'])
+df['purchase_day'] = df['purchase_date'].dt.day
+df['purchase_month'] = df['purchase_date'].dt.month
+df['purchase_year'] = df['purchase_date'].dt.year
+df['sell_date'] = pd.to_datetime(df['sell_date'])
+df['sell_day'] = df['sell_date'].dt.day
+df['sell_month'] = df['sell_date'].dt.month
+df['sell_year'] = df['sell_date'].dt.year
 # In[208]:
 
 
@@ -184,6 +191,9 @@ future_df = future_df.copy()
 # drop the open positions from the training and test data
 df = df.dropna(subset=['sell_price'])
 
+
+
+# Calculate summary statistics for 'open' and 'close' prices
 
 # Now you have the last 5 open and close prices as features for your model create model used for testing future data
 

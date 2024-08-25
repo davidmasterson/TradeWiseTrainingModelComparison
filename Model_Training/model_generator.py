@@ -175,7 +175,15 @@ df['sector'] = label_encoder.fit_transform(df['sector'])
 # inspect the dataframe in its current state
 df
 
-
+# Convert date to a datetime object and then create seperate columns for day, month, year, day as Monday, Friday ....
+df['purchase_date'] = pd.to_datetime(df['purchase_date'])
+df['purchase_day'] = df['purchase_date'].dt.day
+df['purchase_month'] = df['purchase_date'].dt.month
+df['purchase_year'] = df['purchase_date'].dt.year
+df['sell_date'] = pd.to_datetime(df['sell_date'])
+df['sell_day'] = df['sell_date'].dt.day
+df['sell_month'] = df['sell_date'].dt.month
+df['sell_year'] = df['sell_date'].dt.year
 # In[208]:
 
 
@@ -185,6 +193,8 @@ future_df = future_df.copy()
 
 # drop the open positions from the training and test data
 df = df.dropna(subset=['sell_price'])
+
+
 
 
 # Now you have the last 5 open and close prices as features for your model create model used for testing future data

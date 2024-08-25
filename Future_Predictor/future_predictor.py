@@ -14,6 +14,7 @@ with open(model_pkl_file, 'rb') as file:
 # In[209]:
 future_df = pd.read_csv('Model_Training/pre_future_predictions.csv')
 
+
 X_future = future_df.drop(['hit_take_profit', 'symbol', 'purchase_date', 'sell_date'], axis=1)
 future_predictions = rf_model.predict(X_future)
 

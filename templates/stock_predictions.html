@@ -29,6 +29,9 @@
                 <th>SMA20 Slope Last</th>
                 <th>Symbol Encoded</th>
                 <th>Purchase Date Encoded</th>
+                <th>p day</th>
+                <th>p month</th>
+                <th>p year</th>
                 <th>Prediction</th>
             </tr>
         </thead>
@@ -55,9 +58,12 @@
                     <td>{{prob[21]}}</td>
                     <td>{{prob[22]}}</td>
                     <td>{{prob[24]}}</td>
-                    {% if prob[25] == 1 %}
+                    <td>{{prob[25]}}</td>
+                    <td>{{prob[26]}}</td>
+                    <td>{{prob[27]}}</td>
+                    {% if prob[31] == 1 %}
                         <td style="color: green;">Buy</td>
-                    {% elif prob[25] == 0 %}
+                    {% elif prob[31] == 0 %}
                         <td style="color: red;">Don't Buy</td>
                     {% else %}
                         <td>Unable to Determine</td>
