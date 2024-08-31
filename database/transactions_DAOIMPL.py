@@ -135,3 +135,39 @@ def insert_transaction(transaction):
     finally:
         cur.close()
         conn.close()
+
+def update_transaction(transaction_id, values):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            UPDATE transactions
+            SET
+            date_sold = %s,
+            sold_pps = %s,
+            total_sell_price = %s,
+            sell_string = %s,
+            percentage_roi = %s,
+            actual_return = %s
+            WHERE
+            transaction_id = %s
+        '''
+    vals = [values[0],
+            values[1],
+            values[2],
+            values[3],
+            values[4],
+            values[5],
+            transaction_id
+            ]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            print(f"{cur.rowcount}, record(s) affected updated transaction {datetime.now()}id:{transaction_id}")
+        else:
+            print(f"{datetime.now()}:No record {transaction_id} has not been updated.")
+    except Exception as e:
+        return e
+    finally:
+        cur.close()
+        conn.close()

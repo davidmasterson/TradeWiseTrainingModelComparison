@@ -201,15 +201,36 @@ df = df.dropna(subset=['sell_price'])
 X = df.drop(['hit_take_profit', 'symbol', 'purchase_date', 'sell_date'], axis=1)
 y = df['hit_take_profit']
 
+# Base hyperparameters for the initial Random Forest model
+rf_base = RandomForestClassifier(
+    n_estimators=100,          # Number of trees
+    max_depth=None,            # Maximum depth of the tree
+    min_samples_split=2,       # Minimum samples required to split a node
+    min_samples_leaf=1,        # Minimum samples required at a leaf node
+    max_features='auto',       # Number of features to consider for best split
+    bootstrap=True,            # Whether bootstrap samples are used
+    random_state=42            # Seed for reproducibility
+)
+
+param_grid = {
+    'n_estimators': [100, 200, 300],
+    'max_depth': [None, 10, 20, 30],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4],
+    'max_features': ['auto', 'sqrt', 'log2']
+}
+
+
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
+                           cv=5, n_jobs=-1, scoring='accuracy', verbose=2)
 # Train the Random Forest model
-rf_model = RandomForestClassifier(random_state=42)
-rf_model.fit(X_train, y_train)
+grid_search.fit(X_train,y_train)
 
 # Make predictions and evaluate the model
-y_pred = rf_model.predict(X_test)
+y_pred = grid_search.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 classification_rep = classification_report(y_test, y_pred)
 
@@ -224,7 +245,7 @@ model_pkl_file = "Model_Training/RandomForestModel.pkl"
 
 
 with open(model_pkl_file, 'wb') as file:  
-    pickle.dump(rf_model, file)
+    pickle.dump(grid_search, file)
 
 
 
