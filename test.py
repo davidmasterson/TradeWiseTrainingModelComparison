@@ -5,7 +5,7 @@ import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
 from Models import transaction
 
-# with open('transactions.csv', 'r') as trans_reader:
+# with open('080724-transactiondata.csv', 'r') as trans_reader:
 #     lines = trans_reader.readlines()
 #     transactions = []
 #     count = 0
@@ -34,7 +34,7 @@ from Models import transaction
 #             transactions.append(new_trans)
 #         count += 1
     
-    # transactions_DAOIMPL.insert_transactions(transactions)
+#     transactions_DAOIMPL.insert_transactions(transactions)
 
     # UPDATE TRANSACTION
 # transactions_DAOIMPL.update_transaction(302,['2024-08-27',63.32,4424.72,'2024/08/27 09:31-71-65.38-buy-VKTX',-4.63,'-214.43'])
