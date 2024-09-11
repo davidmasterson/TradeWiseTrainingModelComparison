@@ -3,12 +3,20 @@
 
 # In[200]:
 
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report
+from datetime import date
+from Models.metric import calculate_daily_metrics_values
+from Models.manual_metrics import calculate_manual_metrics
+from database import manual_metrics_DAOIMPL, metrics_DAOIMPL
+
+import json
 
 
 # In[201]:
@@ -172,6 +180,13 @@ df['sell_date_encoded'] = label_encoder.fit_transform(df['sell_date'])
 # Fit and transform the 'sector' column
 df['sector'] = label_encoder.fit_transform(df['sector'])
 
+sector_mapping = dict(zip(label_encoder.classes_, label_encoder.transform(label_encoder.classes_)))
+with open('sector_encoding.txt', 'w') as sector_writer:
+    sector_writer.write(str(sector_mapping))
+    sector_writer.close()
+
+
+
 # inspect the dataframe in its current state
 df
 
@@ -232,10 +247,21 @@ grid_search.fit(X_train,y_train)
 # Make predictions and evaluate the model
 y_pred = grid_search.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
-classification_rep = classification_report(y_test, y_pred)
+classification_rep = classification_report(y_test, y_pred, output_dict=True)
 
 print(f"Accuracy: {accuracy}")
 print("Classification Report:\n", classification_rep)
+
+# calculate and insert or update model metrics
+today = date.today().strftime('%Y-%m-%d')
+metric = calculate_daily_metrics_values(classification_rep,future_df)
+metric_exists = metrics_DAOIMPL.get_metric_by_date(today)
+metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
+# calculate and insert or update manual metrics
+manual_metric = calculate_manual_metrics(metric.sector_breakdown)
+manual_metric_exists = manual_metrics_DAOIMPL.get_metric_by_date(today)
+manual_metrics_DAOIMPL.update_metric(manual_metric, manual_metric_exists[0]) if manual_metric_exists else manual_metrics_DAOIMPL.insert_metric(metric)
+
 
 future_df.to_csv('Model_Training/pre_future_predictions.csv', index=False)
 

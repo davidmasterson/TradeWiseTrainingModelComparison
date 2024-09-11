@@ -73,6 +73,323 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
     reader.close()
     return trans_df_initial_data
 
+def calculate_average_days_to_close():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
+                FROM transactions
+                WHERE date_sold IS NOT NULL
+                AND prediction  = result'''
+    try:
+        cur.execute(sql)
+        avg = cur.fetchone()
+        if avg:
+            return avg[0]
+        return None
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        conn.close()
+        cur.close()
+
+def calculate_cumulative_profit():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT sum(actual_return) from transactions WHERE actual_return > 0 and prediction = 1 and result = 1'
+    try:
+        cur.execute(sql)
+        profit = cur.fetchone()
+        if profit:
+            return profit[0]
+        return 0.00
+    except Exception as e:
+        print(e)
+        return 0.00
+    finally:
+        conn.close()
+        cur.close()
+
+def calculate_cumulative_loss():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT sum(actual_return) from transactions WHERE actual_return < 0 and prediction = 1 AND result = 0'
+    try:
+        cur.execute(sql)
+        loss = cur.fetchone()
+        if loss:
+            return loss[0]
+        return 0.00
+    except Exception as e:
+        print(e)
+        return 0.00
+    finally:
+        conn.close()
+        cur.close()
+
+def calculate_correct_predictions():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT COUNT(*) FROM transactions WHERE prediction = result'
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        conn.close()
+        cur.close()
+
+def calculate_incorrect_predictions():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT COUNT(*) FROM transactions WHERE prediction != result'
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        conn.close()
+        cur.close()
+
+# Sector breakdown aggregations
+def select_model_sector_profits_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE actual_return > 0 and prediction = 1 and result = 1'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchall()
+        if symbols:
+            return symbols
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def select_model_sector_loss_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE actual_return < 0 and prediction = 1 and result = 0'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchone()
+        if symbols:
+            return symbols
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def select_model_sector_recommended_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE prediction = 1'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchone()
+        if symbols:
+            return symbols[0]
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def select_model_sector_not_recommended_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE prediction = 0'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchone()
+        if symbols:
+            return symbols[0]
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+# Manual sector breakdowns
+def select_manual_sector_profits_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE actual_return > 0 and prediction IS NOT NULL'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchall()
+        if symbols:
+            return symbols
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def select_manual_sector_loss_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE actual_return < 0 and prediction IS NOT NULL'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchone()
+        if symbols:
+            return symbols
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def select_manual_sector_recommended_symbols():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT symbol from transactions WHERE prediction IS NOT NULL'
+    try:
+        cur.execute(sql)
+        symbols = cur.fetchone()
+        if symbols:
+            return symbols[0]
+        return []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+# Manual Algo Calculations
+def calculate_manual_algo_correct():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT count(*) from transactions WHERE prediction IS NOT NULL AND actual_return > 0.00'''
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        cur.close()
+        conn.close()
+
+def calculate_manual_algo_incorrect():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT count(*) from transactions WHERE prediction IS NOT NULL AND actual_return < 0.00'''
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        cur.close()
+        conn.close()
+
+def calculate_manual_algo_time_to_close_correct_pred():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
+                FROM transactions
+                WHERE date_sold IS NOT NULL
+                AND actual_return > 0
+                AND prediction IS NOT NULL'''
+    try:
+        cur.execute(sql)
+        avg = cur.fetchone()
+        if avg:
+            return avg[0]
+        return None
+    except Exception as e:
+        print(e)
+        return None
+    finally:
+        conn.close()
+        cur.close()
+
+def calculate_manual_algo_cumulative_profit():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT sum(actual_return) from transactions WHERE prediction IS NOT NULL AND actual_return > 0.00'''
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        cur.close()
+        conn.close()
+
+def calculate_manual_algo_cumulative_loss():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT sum(actual_return) from transactions WHERE prediction IS NOT NULL AND actual_return < 0.00'''
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        cur.close()
+        conn.close()
+
+def get_todays_manual_algo_buys(date):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT count(*) from transactions WHERE STR_TO_DATE(date_purchased, "%Y-%m-%d") = %s'''
+    vals = [date]
+    try:
+        cur.execute(sql,vals)
+        count = cur.fetchone()
+        if count:
+            return count[0]
+        return 0
+    except Exception as e:
+        print(e)
+        return 0
+    finally:
+        cur.close()
+        conn.close()
+
 
 def insert_transactions(transactions):
     for transaction in transactions:

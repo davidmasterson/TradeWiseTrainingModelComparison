@@ -1,3 +1,4 @@
+import sector_finder
 
 class transaction:
 
@@ -21,3 +22,16 @@ class transaction:
         self.tp1 = tp1
         self.tp2 = tp2
         self.sop = sop
+
+    def aggregate_sectors_for_stock_symbols(symbols):
+        sectors = {}
+        for symbol in symbols:
+            sector = sector_finder.get_stock_sector(symbol[0])
+            print(sector, symbol)
+            # Aggregate the sectors by counting occurrences
+            if sector in sectors:
+                sectors[sector] += 1  # Increment the count if the sector already exists
+            else:
+                sectors[sector] = 1  # Initialize the sector count if it doesn't exist yet
+        
+        return sectors  # Return the aggregated sector counts

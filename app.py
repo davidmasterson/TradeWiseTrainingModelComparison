@@ -10,6 +10,8 @@ import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL
+from Models import plotters, metric, manual_metrics
 
 
 app = Flask(__name__)
@@ -34,6 +36,7 @@ def create_rf_model():
     global sio
     # Run the model trainer function directly
     model_trainer_predictor_methods.model_trainer()
+
     # Emit progress update (this should be done within the model_trainer if real-time updates are needed)
     percent = 100
     socketio.emit('update progress', {'percent': percent, 'type': 'model'})
@@ -66,6 +69,12 @@ async def progress():
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
+
+@app.route('/metrics_plots', methods=['GET'])
+def plot_metrics():
+    metric.Metric.plot_model_metrics()
+    manual_metrics.Manual_metrics.plot_manual_metrics() 
+    return render_template('metrics_plots.html')
 
 
     

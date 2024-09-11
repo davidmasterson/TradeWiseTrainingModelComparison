@@ -1,5 +1,5 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL
+from database import transactions_DAOIMPL, metrics_DAOIMPL
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
@@ -37,11 +37,16 @@ from Models import transaction
 #     transactions_DAOIMPL.insert_transactions(transactions)
 
     # UPDATE TRANSACTION
-# transactions_DAOIMPL.update_transaction(302,['2024-08-27',63.32,4424.72,'2024/08/27 09:31-71-65.38-buy-VKTX',-4.63,'-214.43'])
+# transactions_DAOIMPL.update_transaction(313,['2024-09-10',51.04,2245.76,'2024/09/09 12:30-44-51.91-buy-CPB ~sell(1)',-1.68,'-38.28'])
+# transactions_DAOIMPL.update_transaction(315,['2024-09-10',51.04,51.04,'2024/09/10 09:31-1-51.79-buy-CPB ~sell(1)',-1.45,'-0.75'])
+# transactions_DAOIMPL.update_transaction(311,['2024-09-10',154.38,7101.48,'2024/09/05 12:30-46-142.06-buy-ORCL ~sell(1)',8.67,'566.71'])
     # INSERT TRANSACTION
-# trans1 = transaction.transaction('VKTX','2024-08-27',65.34,71,4631.14,'2024/08/27 09:31-71-65.38-buy-VKTX',expected_return=109.92,stop_loss_price=0.0,tp1=66.8882,tp2=68.187,sop=62.67)
-# trans2 = transaction.transaction('CLX','2024-08-27',154.90,30,4647.0,'2024/08/27 09:31-30-154.91-buy-CLX',expected_return=129.98,stop_loss_price=0.0,tp1=159.23,tp2=162.32,sop=150.26)
-# trans3 = transaction.transaction('CL','2024-08-27',105.69,44,4650.35,'2024/08/27 12:30-44-105.71-buy-CL',expected_return=138.61,stop_loss_price=0.00,tp1=108.84,tp2=110.95,sop=103.88)
+# trans1 = transaction.transaction('CPB','2024-09-10',51.79,1,51.79,'2024/09/10 09:31-1-51.79-buy-CPB',expected_return=1.47,stop_loss_price=0.0,tp1=53.2613,tp2=54.2955,sop=51.06)
+# trans2 = transaction.transaction('CMS','2024-09-10',69.55,180,12519.00,'2024/09/10 12:30-180-69.55-buy-CMS',expected_return=373.71,stop_loss_price=0.0,tp1=71.6262,tp2=73.0170,sop=67.64)
+# trans3 = transaction.transaction('MCD','2024-09-10',291.62,43,12539.66,'2024/09/10 12:30-43-291.62-buy-MCD',expected_return=378.18,stop_loss_price=0.00,tp1=300.4149,tp2=306.24825,sop=287.21)
 
 # transactions_DAOIMPL.insert_transactions([trans1,trans2,trans3])
 
+# avg = metrics_DAOIMPL.get_last_sector_breakdown()
+# accuracy_values = [int(acc[0]) for acc in avg]
+# print(avg[0])
