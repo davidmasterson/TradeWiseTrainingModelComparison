@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container text-center" style="padding-top: 150px;">
+    <!-- Company Logo in the Center -->
+    <img src="/static/company_logo.png" alt="Company Logo" style="width: 200px; height: auto; margin-bottom: 30px;">
+
+    <!-- Welcome Message -->
+    <h1>Welcome to MasterTradeTools</h1>
+    <p>Your ultimate stock market tool for predictions and portfolio management.</p>
+
+    <!-- Sign In and Sign Up Buttons -->
+    <div style="margin-top: 50px;">
+        <a href="{{ url_for('login') }}" class="btn btn-primary" style="width: 150px; margin-right: 20px;">Sign In</a>
+        <a href="{{ url_for('signup') }}" class="btn btn-success" style="width: 150px;">Sign Up</a>
+    </div>
+</div>
+
+<!-- Custom Styling -->
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f5f7;
+        margin: 0;
+        padding: 0;
+    }
+
+    .container {
+        margin-top: 100px;
+    }
+
+    img {
+        width: 200px;
+        height: auto;
+        margin-bottom: 20px;
+    }
+
+    h1 {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 20px;
+    }
+
+    p {
+        font-size: 1.25em;
+        color: #6c757d;
+        margin-bottom: 40px;
+    }
+
+    .btn-primary, .btn-success {
+        padding: 10px 20px;
+        font-size: 18px;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        border-color: #28a745;
+    }
+
+    .btn-primary:hover, .btn-success:hover {
+        opacity: 0.9;
+    }
+</style>
+{% endblock %}

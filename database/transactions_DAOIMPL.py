@@ -55,6 +55,7 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
     for line in lines:
         seperated_line = line.split(',')
         if count != 0:
+            print(line)
             symbol = seperated_line[1]
             purchase_date_string = seperated_line[2].split('-')
             purchase_price = float(seperated_line[3])
@@ -78,8 +79,8 @@ def calculate_average_days_to_close():
     cur = conn.cursor()
     sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
-                WHERE date_sold IS NOT NULL
-                AND prediction  = result'''
+                WHERE sell_string !='N/A'
+                AND prediction = result'''
     try:
         cur.execute(sql)
         avg = cur.fetchone()
@@ -322,7 +323,7 @@ def calculate_manual_algo_time_to_close_correct_pred():
     cur = conn.cursor()
     sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
-                WHERE date_sold IS NOT NULL
+                WHERE sell_string != "N/A"
                 AND actual_return > 0
                 AND prediction IS NOT NULL'''
     try:
@@ -372,24 +373,6 @@ def calculate_manual_algo_cumulative_loss():
         cur.close()
         conn.close()
 
-def get_todays_manual_algo_buys(date):
-    conn = dcu.get_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT count(*) from transactions WHERE STR_TO_DATE(date_purchased, "%Y-%m-%d") = %s'''
-    vals = [date]
-    try:
-        cur.execute(sql,vals)
-        count = cur.fetchone()
-        if count:
-            return count[0]
-        return 0
-    except Exception as e:
-        print(e)
-        return 0
-    finally:
-        cur.close()
-        conn.close()
-
 
 def insert_transactions(transactions):
     for transaction in transactions:
@@ -418,12 +401,13 @@ def insert_transaction(transaction):
             stop_loss_price,
             tp1,
             tp2,
-            sop
+            sop,
+            prediction
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s
+            %s,%s,%s
             )
             '''
     vals = [transaction.symbol,
@@ -442,7 +426,8 @@ def insert_transaction(transaction):
             transaction.stop_loss_price,
             transaction.tp1,
             transaction.tp2,
-            transaction.sop]
+            transaction.sop,
+            transaction.prediction]
     try:
         cur.execute(sql,vals)
         conn.commit()

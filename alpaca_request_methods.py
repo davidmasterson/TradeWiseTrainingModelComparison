@@ -23,7 +23,6 @@ def get_alpaca_connection():
     ALPACA_API_KEY = os.getenv('ALPACA_API_KEY')
     ALPACA_SECRET_KEY = os.getenv('ALPACA_SECRET_KEY')
     BASE_URL = os.getenv('BASE_URL')
-    print(ALPACA_API_KEY)
 
     api = tradeapi.REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, BASE_URL, api_version='v2')
     return api

@@ -4,7 +4,7 @@ class transaction:
 
     def __init__(self,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,
                  date_sold = 'N/A',sold_pps = 'N/A',total_sell_price = 'N/A',sell_string = 'N/A',expected_return = 0.00,percentage_roi =0.0,
-                 actual_return = 'N/A',stop_loss_price = 0.00,tp1 = 0.00,tp2 = 0.00,sop = 0.00):
+                 actual_return = 'N/A',stop_loss_price = 0.00,tp1 = 0.00,tp2 = 0.00,sop = 0.00,prediction=1):
         self.symbol = symbol
         self.date_purchased = date_purchased
         self.purchased_pps = purchased_pps
@@ -22,6 +22,7 @@ class transaction:
         self.tp1 = tp1
         self.tp2 = tp2
         self.sop = sop
+        self.prediction = prediction
 
     def aggregate_sectors_for_stock_symbols(symbols):
         sectors = {}

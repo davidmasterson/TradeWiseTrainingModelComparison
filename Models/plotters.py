@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import json
 
 def plot_accuracy(accuracy_values, time_periods):
     # Convert datetime.date objects to strings in 'YYYY-MM-DD' format
@@ -72,6 +73,7 @@ def plot_cumulative_loss(loss_values, time_periods):
     plt.savefig('static/plots/model_cumulative_loss.png')
 
 def plot_model_sector_breakdown_profits(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -81,6 +83,7 @@ def plot_model_sector_breakdown_profits(sector_data):
     plt.savefig('static/plots/model_sector_breakdown_profits.png')
 
 def plot_model_sector_breakdown_loss(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -90,6 +93,7 @@ def plot_model_sector_breakdown_loss(sector_data):
     plt.savefig('static/plots/model_sector_breakdown_loss.png')
 
 def plot_model_sector_breakdown_recommend(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -99,6 +103,7 @@ def plot_model_sector_breakdown_recommend(sector_data):
     plt.savefig('static/plots/model_sector_breakdown_recommend.png')
 
 def plot_model_sector_breakdown_not_recommend(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -181,6 +186,7 @@ def plot_manual_cumulative_loss(loss_values, time_periods):
     plt.savefig('static/plots/manual_model_cumulative_loss.png')
 
 def plot_manual_sector_breakdown_profits(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -190,6 +196,7 @@ def plot_manual_sector_breakdown_profits(sector_data):
     plt.savefig('static/plots/manual_sector_breakdown_profits.png')
 
 def plot_manual_sector_breakdown_loss(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))
@@ -199,6 +206,7 @@ def plot_manual_sector_breakdown_loss(sector_data):
     plt.savefig('static/plots/manual_sector_breakdown_loss.png')
 
 def plot_manual_sector_breakdown_recommend(sector_data):
+    sector_data = json.loads(sector_data)
     sectors = list(sector_data.keys())
     counts = list(sector_data.values())
     plt.figure(figsize=(8,5))

@@ -36,23 +36,6 @@ def get_metrics_dates():
         conn.close()
         cur.close()
 
-def get_last_sector_breakdown():
-    conn = dcu.get_db_connection()
-    cur = conn.cursor()
-    sql = "SELECT sector_breakdown FROM manual_metrics ORDER BY id DESC limit 1 "
-    try:
-        cur.execute(sql)
-        metrics = cur.fetchone()
-        if metrics:
-            return metrics
-        return {}
-    except Exception as e:
-        print(e)
-        return {}
-    finally:
-        cur.close()
-        conn.close()
-
 def get_manual_metrics_accuracies():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -117,10 +100,10 @@ def get_manual_metrics_cumlative_incorrect_predictions():
         dates = cur.fetchall()
         if dates:
             return dates
-        return 0
+        return []
     except Exception as e:
         print(e)
-        return 0
+        return []
     finally:
         conn.close()
         cur.close()
@@ -197,6 +180,82 @@ def get_metric_by_date(date):
         cur.close()
         conn.close()
 
+def get_last_sector_breakdown_profit():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = "SELECT sector_breakdown_profit FROM manual_metrics ORDER BY id DESC limit 1 "
+    try:
+        cur.execute(sql)
+        metrics = cur.fetchone()
+        if metrics:
+            return metrics
+        return {}
+    except Exception as e:
+        print(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_last_sector_breakdown_loss():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = "SELECT sector_breakdown_loss FROM manual_metrics ORDER BY id DESC limit 1 "
+    try:
+        cur.execute(sql)
+        metrics = cur.fetchone()
+        if metrics:
+            return metrics
+        return {}
+    except Exception as e:
+        print(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_last_sector_breakdown_rec():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = "SELECT sector_breakdown_rec FROM manual_metrics ORDER BY id DESC limit 1 "
+    try:
+        cur.execute(sql)
+        metrics = cur.fetchone()
+        if metrics:
+            return metrics
+        return {}
+    except Exception as e:
+        print(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_all_last_sector_breakdowns():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT 
+            sector_breakdown_profit,
+            sector_breakdown_loss,
+            sector_breakdown_rec
+            FROM manual_metrics 
+            ORDER BY id 
+            DESC 
+            limit 1 
+            '''
+    try:
+        cur.execute(sql)
+        metrics = cur.fetchone()
+        if metrics:
+            return metrics
+        return [{},{},{},{}]
+    except Exception as e:
+        print(e)
+        return [{},{},{},{}]
+    finally:
+        cur.close()
+        conn.close()
+
 def insert_metric(metric):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -206,25 +265,27 @@ def insert_metric(metric):
                 error_rate,
                 cumulative_correct_predictions,
                 cumulative_incorrect_predictions,
-                todays_buys,
                 time_to_close_correct_predictions,
                 cumulative_profit,
                 cumulative_loss,
-                sector_breakdown,
+                sector_breakdown_profit,
+                sector_breakdown_loss,
+                sector_breakdown_rec,
                 date) VALUES (
                 %s,%s,%s,%s,
                 %s,%s,%s,%s,
-                %s,%s)
+                %s,%s,%s)
                 '''
     vals = [metric.accuracy,
             metric.error_rate,
             metric.cumulative_correct_predictions,
             metric.cumulative_incorrect_predictions,
-            metric.todays_buys,
             metric.time_to_close_correct_predictions,
             metric.cumulative_profit,
             metric.cumulative_loss,
-            metric.sector_breakdown,
+            metric.sector_breakdown_profit,
+            metric.sector_breakdown_loss,
+            metric.sector_breakdown_rec,
             metric.date]
     try:
         cur.execute(sql,vals)
@@ -248,11 +309,12 @@ def update_metric(metric, id):
                 error_rate = %s,
                 cumulative_correct_predictions = %s,
                 cumulative_incorrect_predictions = %s,
-                todays_buys = %s,
                 time_to_close_correct_predictions = %s,
                 cumulative_profit = %s,
                 cumulative_loss = %s,
-                sector_breakdown = %s,
+                sector_breakdown_profit = %s,
+                sector_breakdown_loss = %s,
+                sector_breakdown_rec = %s,
                 date = %s
                 WHERE
                 id = %s'''
@@ -260,11 +322,12 @@ def update_metric(metric, id):
             metric.error_rate,
             metric.cumulative_correct_predictions,
             metric.cumulative_incorrect_predictions,
-            metric.todays_buys,
             metric.time_to_close_correct_predictions,
             metric.cumulative_profit,
             metric.cumulative_loss,
-            metric.sector_breakdown,
+            metric.sector_breakdown_profit,
+            metric.sector_breakdown_loss,
+            metric.sector_breakdown_rec,
             metric.date,
             id[0]]
     try:

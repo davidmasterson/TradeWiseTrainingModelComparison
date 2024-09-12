@@ -1,0 +1,199 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <!-- Profile Content -->
+    <div class="profile-content">
+        <!-- Profile Header -->
+        <div class="profile-header">
+            <img src="profile-picture.jpg" alt="User Profile Picture">
+            <div>
+                <h1>John Doe</h1>
+                <h2>@johndoe</h2>
+            </div>
+        </div>
+
+        <!-- Account Overview -->
+        <div class="account-overview">
+            <h3>Account Overview</h3>
+            <p><strong>Total Portfolio Value:</strong> $150,000</p>
+            <p><strong>Total Profit/Loss:</strong> +$20,000</p>
+            <h3>Recent Transactions</h3>
+            <table class="transactions-table">
+                <tr>
+                    <th>Date</th>
+                    <th>Stock</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Price</th>
+                </tr>
+                <tr>
+                    <td>01/12/2024</td>
+                    <td>AAPL</td>
+                    <td>Buy</td>
+                    <td>50</td>
+                    <td>$135</td>
+                </tr>
+                <tr>
+                    <td>01/10/2024</td>
+                    <td>TSLA</td>
+                    <td>Sell</td>
+                    <td>10</td>
+                    <td>$750</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Account Details -->
+        <div class="account-details">
+            <h3>Account Details</h3>
+            <p><strong>Account Balance:</strong> $50,000</p>
+            <p><strong>Available Margin:</strong> $25,000</p>
+            <p><strong>Linked Bank Accounts:</strong> Bank of America (****1234)</p>
+            <button class="btn blue">Deposit Funds</button>
+            <button class="btn red">Withdraw Funds</button>
+        </div>
+
+        <!-- Investment Preferences -->
+        <div class="preferences">
+            <h3>Investment Preferences</h3>
+            <p><strong>Risk Tolerance:</strong> Medium</p>
+            <p><strong>Trading Style:</strong> Long-term</p>
+        </div>
+
+        <!-- Security & Notifications -->
+        <div class="security-notifications">
+            <h3>Security & Notifications</h3>
+            <p><strong>Two-Factor Authentication:</strong> Enabled</p>
+            <p><strong>Notification Preferences:</strong> Price alerts, Trade execution alerts</p>
+        </div>
+
+        <!-- Investment Limits -->
+        <div class="investment-limits">
+            <h3>Investment Limits</h3>
+            <form>
+                <label for="min-investment">Minimum Investment per Symbol:</label>
+                <input type="number" id="min-investment" name="min-investment" min="0" placeholder="$500"><br>
+
+                <label for="max-investment">Maximum Investment per Symbol:</label>
+                <input type="number" id="max-investment" name="max-investment" min="0" placeholder="$5000"><br>
+
+                <label for="min-price">Minimum Price per Share:</label>
+                <input type="number" id="min-price" name="min-price" min="0" placeholder="$20"><br>
+
+                <label for="max-price">Maximum Price per Share:</label>
+                <input type="number" id="max-price" name="max-price" min="0" placeholder="$500"><br>
+
+                <button class="btn" type="submit">Save Limits</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Profile Page Styles -->
+    <style>
+        /* Profile Section */
+        .profile-content {
+            flex-grow: 1;
+            padding: 40px;
+            background-color: #f4f5f7;
+            margin-left: 250px; /* Adjust margin to match sidebar width */
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-header img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin-right: 20px;
+        }
+
+        .profile-header h1 {
+            font-size: 24px;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .profile-header h2 {
+            font-size: 18px;
+            color: #6c757d;
+        }
+
+        /* Account Overview, Details, etc. */
+        .account-overview, .account-details, .preferences, .security-notifications, .investment-limits {
+            background-color: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .account-overview h3, .account-details h3, .preferences h3, .security-notifications h3, .investment-limits h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .account-overview p, .investment-limits p {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            color: white;
+            background-color: #28a745;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .btn.blue {
+            background-color: #007bff;
+        }
+
+        .btn.red {
+            background-color: #dc3545;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Recent Transactions */
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .transactions-table th, .transactions-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .transactions-table th {
+            background-color: #f2f2f2;
+            font-size: 16px;
+        }
+
+        /* Investment Limits */
+        .investment-limits input {
+            width: 200px;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .investment-limits label {
+            font-size: 18px;
+            margin-right: 10px;
+        }
+
+    </style>
+{% endblock %}

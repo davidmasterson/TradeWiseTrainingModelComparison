@@ -1,3 +1,12 @@
 venv/*
 __pycache__
 .env
+Hypothetical_Predictor/future_predictions.csv
+Hypothetical_Predictor/pre_future_predictions.csv
+Hypothetical_Predictor/stock_trans_data.csv
+Hypothetical_Predictor/transactions.csv
+Model_Training/future_predictions.csv
+Model_Training/pre_future_predictions.csv
+Model_Training/stock_trans_data.csv
+Model_Training/transactions.csv
+final_list

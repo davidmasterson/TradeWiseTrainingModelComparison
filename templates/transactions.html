@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction History{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1 class="text-center">Transaction History</h1>
+    
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th scope="col">Symbol</th>
+                            <th scope="col">Purchase Date</th>
+                            <th scope="col">Price Per Share</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Total Purchase</th>
+                            <th scope="col">Purchase String</th>
+                            <th scope="col">Sale Date</th>
+                            <th scope="col">Sale Price Per Share</th>
+                            <th scope="col">Total Sale</th>
+                            <th scope="col">Sell String</th>
+                            <th scope="col">Expected Return</th>
+                            <th scope="col">Percentage ROI</th>
+                            <th scope="col">Actual Return</th>
+                            <th scope="col">Stop Loss</th>
+                            <th scope="col">Take Profit 1</th>
+                            <th scope="col">Take Profit 2</th>
+                            <th scope="col">SOP</th>
+                            <th scope="col">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.symbol }}</td>
+                            <td>{{ transaction.pdate }}</td>
+                            <td>{{ transaction.ppshare }}</td>
+                            <td>{{ transaction.qty }}</td>
+                            <td>{{ transaction.tpurch }}</td>
+                            <td>{{ transaction.purstring }}</td>
+                            <td>{{ transaction.sdate }}</td>
+                            <td>{{ transaction.sppshare }}</td>
+                            <td>{{ transaction.tsale }}</td>
+                            <td>{{ transaction.sellstring }}</td>
+                            <td>{{ transaction.exreturn }}</td>
+                            <td>{{ transaction.percroi }}%</td>
+                            <td>{{ transaction.actualrtrn }}</td>
+                            <td>{{ transaction.stplss }}</td>
+                            <td>{{ transaction.tp1 }}</td>
+                            <td>{{ transaction.tp2 }}</td>
+                            <td>{{ transaction.sop }}</td>
+                            <td>{{ transaction.result }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom CSS for Table -->
+<style>
+    body {
+        background-color: #f4f6f9;
+        font-family: 'Arial', sans-serif;
+    }
+    .container {
+        margin-top: 50px;
+    }
+    .card {
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .thead-dark th {
+        background-color: #343a40;
+        color: white;
+        text-align: center;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f1f1f1;
+    }
+    th, td {
+        text-align: center;
+        padding: 12px;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+</style>
+
+{% endblock %}
