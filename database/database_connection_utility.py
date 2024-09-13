@@ -21,3 +21,19 @@ def get_db_connection():
         print(f"Error while connecting to MySQL: {e}")
 
 
+def get_aws_db_connection():
+    try:
+        # Establish the connection
+        connection = mysql.connector.connect(
+            host = getenv('AWSHOST'),
+            database = getenv('AWSDB'),
+            user = getenv('AWSDB_USER'),
+            password = getenv('AWSDB_PASS')
+        )
+
+        if connection.is_connected():
+            print("Connected to AWS MySQL database")
+        return connection
+    
+    except Error as e:
+        print(f"Error while connecting to MySQL: {e}")

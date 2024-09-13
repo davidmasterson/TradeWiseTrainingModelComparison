@@ -1,5 +1,5 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL, metrics_DAOIMPL
+from database import transactions_DAOIMPL, metrics_DAOIMPL, database_connection_utility as dcu
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
@@ -50,3 +50,6 @@ from Models import transaction
 # avg = metrics_DAOIMPL.get_last_sector_breakdown()
 # accuracy_values = [int(acc[0]) for acc in avg]
 # print(avg[0])
+
+db_conn = dcu.get_aws_db_connection()
+print(db_conn)
