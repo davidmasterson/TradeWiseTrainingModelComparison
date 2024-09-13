@@ -1,3 +1,6 @@
+import sys
+print(sys.executable)
+print(sys.version)
 from flask import Flask, render_template, request, jsonify, Response, session, redirect, url_for
 
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
@@ -12,7 +15,6 @@ import Hypothetical_Predictor
 import subprocess
 from database import metrics_DAOIMPL, manual_metrics_DAOIMPL
 from Models import plotters, metric, manual_metrics
-
 
 app = Flask(__name__)
 socketio = SocketIO(app)
