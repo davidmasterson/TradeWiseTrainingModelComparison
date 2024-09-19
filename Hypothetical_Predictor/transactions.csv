@@ -1,3 +1,0 @@
-transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,stop_loss_price,tp1,tp2,sop
-0,SN,2024-09-12,101.9525,1,101.9525,,N/A,N/A,N/A,N/A,3.058575,3.0,N/A,0.0,105.011075,107.05012500000001,100.932975
-1,GGAL,2024-09-12,43.485,1,43.485,,N/A,N/A,N/A,N/A,1.3045499999999999,3.0,N/A,0.0,44.78955,45.65925,43.05015

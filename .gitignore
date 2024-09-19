@@ -1,7 +1,12 @@
 venv/*
 __pycache__
 .env
-Hypothetical_Predictor/*.csv
-Model_Training/*.csv
+# Hypothetical_Predictor/*.csv
+# Model_Training/*.csv
 final_list
 static/plots/*
+Hypothetical_Predictor copy/*
+Model_Training copy/*
+
+
+static copy/*
