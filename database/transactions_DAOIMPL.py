@@ -1,3 +1,4 @@
+import pymysql
 from datetime import date, datetime
 from database import database_connection_utility as dcu
 
@@ -74,12 +75,60 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
     reader.close()
     return trans_df_initial_data
 
+def get_project_training_transactions():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions WHERE prediction IS NOT NULL'''
+    
+    try:
+        cur.execute(sql)
+        rows = cur.fetchall()  # Fetch all rows as tuples
+        
+        # Get the column names from the cursor description
+        columns = [col[0] for col in cur.description]
+        
+        # Convert each row into a dictionary
+        transactions = [dict(zip(columns, row)) for row in rows]
+        
+        return transactions if transactions else []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+def get_project_training_most_recent_5_transactions():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions WHERE prediction IS NOT NULL ORDER BY transaction_id DESC LIMIT 5'''
+    
+    try:
+        cur.execute(sql)
+        rows = cur.fetchall()  # Fetch all rows as tuples
+        
+        # Get the column names from the cursor description
+        columns = [col[0] for col in cur.description]
+        
+        # Convert each row into a dictionary
+        transactions = [dict(zip(columns, row)) for row in rows]
+        
+        return transactions if transactions else []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+
 def calculate_average_days_to_close():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
                 WHERE sell_string !='N/A'
+                AND prediction = 1
                 AND prediction = result'''
     try:
         cur.execute(sql)
@@ -131,7 +180,9 @@ def calculate_cumulative_loss():
 def calculate_correct_predictions():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT COUNT(*) FROM transactions WHERE prediction = result'
+    sql = '''SELECT COUNT(*) FROM transactions 
+            WHERE prediction IS NOT NULL
+            AND prediction = result'''
     try:
         cur.execute(sql)
         count = cur.fetchone()
@@ -402,12 +453,13 @@ def insert_transaction(transaction):
             tp1,
             tp2,
             sop,
-            prediction
+            prediction,
+            result
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s,%s
+            %s,%s,%s,%s
             )
             '''
     vals = [transaction.symbol,
@@ -427,7 +479,8 @@ def insert_transaction(transaction):
             transaction.tp1,
             transaction.tp2,
             transaction.sop,
-            transaction.prediction]
+            transaction.prediction,
+            transaction.result]
     try:
         cur.execute(sql,vals)
         conn.commit()
@@ -449,7 +502,8 @@ def update_transaction(transaction_id, values):
             total_sell_price = %s,
             sell_string = %s,
             percentage_roi = %s,
-            actual_return = %s
+            actual_return = %s,
+            result = %s
             WHERE
             transaction_id = %s
         '''
@@ -459,6 +513,7 @@ def update_transaction(transaction_id, values):
             values[3],
             values[4],
             values[5],
+            values[6],
             transaction_id
             ]
     try:

@@ -10,7 +10,7 @@ import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL
 from Models import plotters, metric, manual_metrics, user
 import bcrypt
 
@@ -91,7 +91,9 @@ def plot_metrics():
 @app.route('/user_profile', methods=['GET'])
 def user_profile():
     if 'logged_in' in session:
-        return render_template('user_profile_page.html')
+        last_5 = transactions_DAOIMPL.get_project_training_most_recent_5_transactions()
+        user = user_DAOIMPL.get_user_by_username(session['user_id'])[0]
+        return render_template('user_profile_page.html', last_5=last_5, user=user)
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 
@@ -107,10 +109,12 @@ def login():
         user_data = user_DAOIMPL.get_user_by_username(username)
 
         
-        if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data[4].encode('utf-8')):
-            session['logged_in'] = True
-            session['user_id'] = user_data[3]
-            return redirect(url_for('dashboard'))
+        if user_data[0] is not None:
+            user_data = user_data[0]
+            if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
+                session['logged_in'] = True
+                session['user_id'] = user_data['user']
+                return redirect(url_for('dashboard'))
         else:
             return render_template('login.html', error='Invalid username or password')
     
@@ -118,22 +122,27 @@ def login():
 
 @app.route('/transactions', methods=['GET'])
 def transactions():
-    return render_template('transactions.html')
+    transactions = transactions_DAOIMPL.get_project_training_transactions()
+    return render_template('transactions.html', transactions=transactions)
 
 # New sign-up route (already included in your existing routes)
 @app.route('/submit_signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         # Get the form data
-        first_name = request.form.get('first_name')
-        last_name = request.form.get('last_name')
-        username = request.form.get('username')
+        first_name = request.form.get('first')
+        last_name = request.form.get('last')
+        username = request.form.get('user')
         password = request.form.get('password')
-        alpaca_key = request.form.get('alpaca_key')
-        alpaca_secret = request.form.get('alpaca_secret')
+        email = request.form['email']
+        min_investment = float(request.form['min_investment'])
+        max_investment = float(request.form['max_investment'])
+        min_price = float(request.form['min_price'])
+        max_price = float(request.form['max_price'])
+        risk_tolerance = request.form['risk_tolerance']
         password = hash_password(password)
 
-        new_user = user.User(first_name, last_name, username, password, alpaca_key, alpaca_secret)
+        new_user = user.User(first_name, last_name, username, password, email, min_investment, max_investment, min_price, max_price, risk_tolerance)
         user_DAOIMPL.insert_user(new_user)
 
         return redirect(url_for('login'))  # Redirect to login page after successful sign-up

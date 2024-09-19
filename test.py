@@ -37,15 +37,24 @@ from Models import transaction
 #     transactions_DAOIMPL.insert_transactions(transactions)
 
     # UPDATE TRANSACTION
-# transactions_DAOIMPL.update_transaction(312,['2024-09-11',18.19,36.38,'2024/09/06 09:31-2-17.75-buy-PHAT ~sell(1)',2.47,'0.88'])
-# transactions_DAOIMPL.update_transaction(317,['2024-09-11',286.50,12319.50,'2024/09/10 12:30-43-291.62-buy-MCD ~sell(1)',-1.76,'-220.16'])
+# transactions_DAOIMPL.update_transaction(323,['2024-09-19',37.15,965.90,'2024/09/16 9:30-26-35.95-buy-PLTR~sell(1)',3.33,'31.19', 1])
+# transactions_DAOIMPL.update_transaction(328,['2024-09-18',106.02,954.18,'2024/09/16 9:30-9-103.65-buy-SN~sell(3)',2.28,'21.32', 1])
 # transactions_DAOIMPL.update_transaction(311,['2024-09-10',154.38,7101.48,'2024/09/05 12:30-46-142.06-buy-ORCL ~sell(1)',8.67,'566.71'])
     # INSERT TRANSACTION
-# trans1 = transaction.transaction('SN','2024-09-12',101.02,85,8586.69,'2024/09/12 12:30-85-101.02-buy-SN',expected_return=251.78,stop_loss_price=0.0,tp1=103.9821,tp2=106.00,sop=94.49,prediction=1)
-# trans2 = transaction.transaction('GGAL','2024-09-12',43.51,198,8614.98,'2024/09/12 12:30-198-43.51-buy-GGAL',expected_return=261.50,stop_loss_price=0.0,tp1=44.83075,tp2=45.70125,sop=40.60,prediction=1)
-# trans3 = transaction.transaction('MCD','2024-09-10',291.62,43,12539.66,'2024/09/10 12:30-43-291.62-buy-MCD',expected_return=378.18,stop_loss_price=0.00,tp1=300.4149,tp2=306.24825,sop=287.21)
+# transactions = [
+    # transaction.transaction('PYPL','2024-09-19',77.37,70,5415.90,'2024/09/19 12:30-70-77.37-buy-PYPL',expected_return=160.67,stop_loss_price=0.0,tp1=79.66535,tp2=81.21225,sop=370.99,prediction=0),
+#     transaction.transaction('PLTR','2024-09-16',35.95,26,934.70,'2024/09/16 9:30-26-35.95-buy-PLTR',expected_return=29.91,stop_loss_price=0.0,tp1=37.1006,tp2=37.821,sop=34.40,prediction=1),
+#     transaction.transaction('ZETA','2024-09-16',27.37,35,957.95,'2024/09/16 9:30-35-27.37-buy-ZETA',expected_return=26.57,stop_loss_price=0.0,tp1=28.1292,tp2=28.6755,sop=26.20,prediction=1),
+#     transaction.transaction('CP','2024-09-16',86.94,11,956.33,'2024/09/16 9:30-11-86.96-buy-CP',expected_return=27.00,stop_loss_price=0.0,tp1=89.3937,tp2=91.1295,sop=85.06,prediction=0),
+#     transaction.transaction('VNO','2024-09-16',36.60,26,951.60,'2024/09/16 9:30-26-36.60-buy-VNO',expected_return=26.40,stop_loss_price=0.0,tp1=37.6156,tp2=38.3460,sop=33.95,prediction=0),
+#     transaction.transaction('BXP','2024-09-16',80.59,11,886.49,'2024/09/16 9:30-11-80.59-buy-BXP',expected_return=24.21,stop_loss_price=0.0,tp1=82.7914,tp2=84.399,sop=75.90,prediction=0),
+#     transaction.transaction('SN','2024-09-16',103.65,9,932.85,'2024/09/16 9:30-9-103.65-buy-SN',expected_return=19.54,stop_loss_price=0.0,tp1=105.8222,tp2=107.877,sop=99.10,prediction=0),
+#     transaction.transaction('BK','2024-09-16',69.29,13,900.77,'2024/09/16 9:30-13-69.29-buy-BK',expected_return=27.02,stop_loss_price=0.0,tp1=71.3687,tp2=72.7545,sop=67.8500,prediction=1),
+#     transaction.transaction('WELL','2024-09-16',129.43,3,388.29,'2024/09/16 12:30-3-129.43-buy-WELL',expected_return=11.52,stop_loss_price=0.0,tp1=133.2716,tp2=135.8595,sop=128.05,prediction=1),
+#     transaction.transaction('MCD','2024-09-16',296.63,1,296.63,'2024/09/16 12:30-1-296.63-buy-MCD',expected_return=8.85,stop_loss_price=0.00,tp1=305.4876,tp2=311.4194,sop=292.01,prediction=1)
+# ]
 
-# transactions_DAOIMPL.insert_transactions([trans1,trans2])
+# transactions_DAOIMPL.insert_transactions(transactions)
 
 # avg = metrics_DAOIMPL.get_last_sector_breakdown()
 # accuracy_values = [int(acc[0]) for acc in avg]

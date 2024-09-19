@@ -24,6 +24,28 @@ def get_user_by_username(username):
         cur.close()
         conn.close()
 
+def get_user_by_username(user_name):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM users WHERE user = %s'''
+    vals = [user_name]
+    try:
+        cur.execute(sql, vals)
+        rows = cur.fetchall()  # Fetch all rows as tuples
+        
+        # Get the column names from the cursor description
+        columns = [col[0] for col in cur.description]
+        
+        # Convert each row into a dictionary
+        user = [dict(zip(columns, row)) for row in rows]
+        
+        return user if user else []
+    except Exception as e:
+        print(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
 
 def insert_user(user):
     conn = dcu.get_db_connection()
@@ -32,17 +54,26 @@ def insert_user(user):
                 first,
                 last,
                 user,
-                pass,
-                alpaca_key,
-                alpaca_secret)
+                password,
+                email,
+                min_investment,
+                max_investment,
+                min_price,
+                max_price,
+                risk_tolerance)
                 VALUES(
-                %s,%s,%s,%s,%s,%s)'''
-    vals = [user.first_name,
-            user.last_name,
-            user.username,
+                %s,%s,%s,%s,%s,%s,
+                %s,%s,%s,%s)'''
+    vals = [user.first,
+            user.last,
+            user.user,
             user.password,
-            user.alpaca_key,
-            user.alpaca_secret]
+            user.email,
+            user.min_investment,
+            user.max_investment,
+            user.min_price,
+            user.max_price,
+            user.risk_tolerance]
     try:
         cur.execute(sql, vals)
         conn.commit()

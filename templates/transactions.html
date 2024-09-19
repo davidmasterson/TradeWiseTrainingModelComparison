@@ -17,11 +17,9 @@
                             <th scope="col">Price Per Share</th>
                             <th scope="col">Quantity</th>
                             <th scope="col">Total Purchase</th>
-                            <th scope="col">Purchase String</th>
                             <th scope="col">Sale Date</th>
                             <th scope="col">Sale Price Per Share</th>
                             <th scope="col">Total Sale</th>
-                            <th scope="col">Sell String</th>
                             <th scope="col">Expected Return</th>
                             <th scope="col">Percentage ROI</th>
                             <th scope="col">Actual Return</th>
@@ -29,6 +27,7 @@
                             <th scope="col">Take Profit 1</th>
                             <th scope="col">Take Profit 2</th>
                             <th scope="col">SOP</th>
+                            <th scope="col">Prediction</th>
                             <th scope="col">Result</th>
                         </tr>
                     </thead>
@@ -36,22 +35,21 @@
                         {% for transaction in transactions %}
                         <tr>
                             <td>{{ transaction.symbol }}</td>
-                            <td>{{ transaction.pdate }}</td>
-                            <td>{{ transaction.ppshare }}</td>
+                            <td>{{ transaction.date_purchased }}</td>
+                            <td>{{ transaction.purchased_pps }}</td>
                             <td>{{ transaction.qty }}</td>
-                            <td>{{ transaction.tpurch }}</td>
-                            <td>{{ transaction.purstring }}</td>
-                            <td>{{ transaction.sdate }}</td>
-                            <td>{{ transaction.sppshare }}</td>
-                            <td>{{ transaction.tsale }}</td>
-                            <td>{{ transaction.sellstring }}</td>
-                            <td>{{ transaction.exreturn }}</td>
-                            <td>{{ transaction.percroi }}%</td>
-                            <td>{{ transaction.actualrtrn }}</td>
-                            <td>{{ transaction.stplss }}</td>
+                            <td>{{ transaction.total_buy_price }}</td>
+                            <td>{{ transaction.date_sold }}</td>
+                            <td>{{ transaction.sold_pps }}</td>
+                            <td>{{ transaction.total_sell_price }}</td>
+                            <td>{{ transaction.expected_return }}</td>
+                            <td>{{ transaction.percentage_roi }}%</td>
+                            <td>{{ transaction.actual_return }}</td>
+                            <td>{{ transaction.stop_loss_price }}</td>
                             <td>{{ transaction.tp1 }}</td>
                             <td>{{ transaction.tp2 }}</td>
                             <td>{{ transaction.sop }}</td>
+                            <td>{{ transaction.prediction }}</td>
                             <td>{{ transaction.result }}</td>
                         </tr>
                         {% endfor %}

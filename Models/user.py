@@ -2,10 +2,14 @@
 
 class User:
 
-    def __init__(self, first_name,last_name,username,password,alpaca_key,alpaca_secret):
-        self.first_name = first_name
-        self.last_name = last_name
-        self.username = username
+    def __init__(self, first,last,user,password,email,min_investment,max_investment,min_price,max_price,risk_tolerance):
+        self.first = first
+        self.last = last
+        self.user = user
         self.password = password
-        self.alpaca_key = alpaca_key
-        self.alpaca_secret = alpaca_secret
+        self.email = email
+        self.min_investment = min_investment
+        self.max_investment = max_investment
+        self.min_price = min_price
+        self.max_price = max_price
+        self.risk_tolerance = risk_tolerance
