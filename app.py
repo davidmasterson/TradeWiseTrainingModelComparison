@@ -1,3 +1,6 @@
+import sys
+print(sys.executable)
+print(sys.version)
 from flask import Flask, render_template, request, jsonify, Response, session, redirect, url_for
 
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
