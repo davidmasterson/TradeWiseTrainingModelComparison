@@ -37,7 +37,7 @@ from Models import transaction
 #     transactions_DAOIMPL.insert_transactions(transactions)
 
     # UPDATE TRANSACTION
-# transactions_DAOIMPL.update_transaction(323,['2024-09-19',37.15,965.90,'2024/09/16 9:30-26-35.95-buy-PLTR~sell(1)',3.33,'31.19', 1])
+# transactions_DAOIMPL.update_transaction(318,['2024-09-20',105.98,9008.30,'2024/09/12 12:30-85-101.02-buy-SN~sell(1)',5.00,'421.61', 1])
 # transactions_DAOIMPL.update_transaction(328,['2024-09-18',106.02,954.18,'2024/09/16 9:30-9-103.65-buy-SN~sell(3)',2.28,'21.32', 1])
 # transactions_DAOIMPL.update_transaction(311,['2024-09-10',154.38,7101.48,'2024/09/05 12:30-46-142.06-buy-ORCL ~sell(1)',8.67,'566.71'])
     # INSERT TRANSACTION
