@@ -6,3 +6,4 @@ Model_Training/*.csv
 final_list
 static/plots/*
 Model_Training/RandomForestModel.pkl
+app.log
