@@ -1,26 +1,25 @@
 import sector_finder
+import logging
 
 class transaction:
 
-    def __init__(self,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,
-                 date_sold = 'N/A',sold_pps = 'N/A',total_sell_price = 'N/A',sell_string = 'N/A',expected_return = 0.00,percentage_roi =0.0,
-                 actual_return = 'N/A',stop_loss_price = 0.00,tp1 = 0.00,tp2 = 0.00,sop = 0.00,prediction=1, result = None):
+    def __init__(self,symbol,dp,ppps,qty,total_buy,pstring,user_id,ds = 'N/A',spps = 'N/A',tsp = 'N/A',
+                 sstring = 'N/A',expected = 0.00,proi =0.0,actual = 'N/A',tp1 = 0.00, sop = 0.00, prediction=1, result = None):
         self.symbol = symbol
-        self.date_purchased = date_purchased
-        self.purchased_pps = purchased_pps
+        self.dp = dp
+        self.ppps = ppps
         self.qty = qty
-        self.total_buy_price = total_buy_price
-        self.purchase_string = purchase_string
-        self.date_sold = date_sold
-        self.sold_pps = sold_pps
-        self.total_sell_price = total_sell_price
-        self.sell_string = sell_string
-        self.expected_return = expected_return
-        self.percentage_roi = percentage_roi
-        self.actual_return = actual_return
-        self.stop_loss_price = stop_loss_price
+        self.total_buy = total_buy
+        self.pstring = pstring
+        self.user_id = user_id
+        self.ds = ds
+        self.spps = spps
+        self.tsp = tsp
+        self.sstring = sstring
+        self.expected = expected
+        self.proi = proi
+        self.actual = actual
         self.tp1 = tp1
-        self.tp2 = tp2
         self.sop = sop
         self.prediction = prediction
         self.result = result
@@ -29,7 +28,7 @@ class transaction:
         sectors = {}
         for symbol in symbols:
             sector = sector_finder.get_stock_sector(symbol[0])
-            print(sector, symbol)
+            logging.info(sector, symbol)
             # Aggregate the sectors by counting occurrences
             if sector in sectors:
                 sectors[sector] += 1  # Increment the count if the sector already exists

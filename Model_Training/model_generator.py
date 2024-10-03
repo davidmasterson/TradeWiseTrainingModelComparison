@@ -15,6 +15,7 @@ from datetime import date
 from Models.metric import calculate_daily_metrics_values
 from Models.manual_metrics import calculate_manual_metrics
 from database import manual_metrics_DAOIMPL, metrics_DAOIMPL
+import logging
 
 import json
 
@@ -249,8 +250,8 @@ y_pred = grid_search.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 classification_rep = classification_report(y_test, y_pred, output_dict=True)
 
-print(f"Accuracy: {accuracy}")
-print("Classification Report:\n", classification_rep)
+logging.info(f"Accuracy: {accuracy}")
+logging.info("Classification Report:\n", classification_rep)
 
 # calculate and insert or update model metrics
 today = date.today().strftime('%Y-%m-%d')

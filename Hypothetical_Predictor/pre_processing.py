@@ -6,6 +6,7 @@
 
 import pandas as pd
 import numpy as np
+import logging
 
 
 # In[201]:
@@ -14,7 +15,8 @@ import numpy as np
 # Read in and look at the data
 df = pd.read_csv('Hypothetical_Predictor/stock_trans_data.csv')
 
-df.head()
+
+logging.info(df.head())
 
 
 # In[202]:

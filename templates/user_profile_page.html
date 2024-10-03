@@ -1,21 +1,33 @@
 {% extends 'base.html' %}
 
 {% block content %}
+{% with messages = get_flashed_messages(with_categories=True) %}
+  {% if messages %}
+    <div class="container mt-4">
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endwith %}
 <!-- Profile Content -->
 <div class="profile-content">
     <!-- Profile Header -->
     <div class="profile-header">
         <img src="{{ url_for('static', filename='images/profile-picture.jpg') }}" alt="User Profile Picture">
         <div>
-            <h1>John Doe</h1>
-            <h2>@johndoe</h2>
+            <h1>{{user['username']}}</h1>
+            <h2>{{user['email']}}</h2>
         </div>
     </div>
 
     <!-- Account Overview -->
     <div class="account-overview">
         <h3>Account Overview</h3>
-        <p><strong>Total Portfolio Value:</strong> $150,000</p>
+        <p><strong>Total Portfolio Value:</strong>${{equity}}</p>
         <p><strong>Total Profit/Loss:</strong> +$20,000</p>
 
         <!-- Recent Transactions -->
@@ -35,9 +47,7 @@
                         <th>Expected Return</th>
                         <th>ROI %</th>
                         <th>Actual Return</th>
-                        <th>Stop Loss</th>
                         <th>TP1</th>
-                        <th>TP2</th>
                         <th>SOP</th>
                         <th>Prediction</th>
                         <th>Result</th>
@@ -47,19 +57,17 @@
                     {% for transaction in last_5 %}
                     <tr>
                         <td>{{ transaction.symbol }}</td>
-                        <td>{{ transaction.date_purchased }}</td>
-                        <td>{{ transaction.purchased_pps }}</td>
+                        <td>{{ transaction.dp }}</td>
+                        <td>{{ transaction.ppps }}</td>
                         <td>{{ transaction.qty }}</td>
-                        <td>{{ transaction.total_buy_price }}</td>
-                        <td>{{ transaction.date_sold }}</td>
-                        <td>{{ transaction.sold_pps }}</td>
-                        <td>{{ transaction.total_sell_price }}</td>
-                        <td>{{ transaction.expected_return }}</td>
-                        <td>{{ transaction.percentage_roi }}%</td>
-                        <td>{{ transaction.actual_return }}</td>
-                        <td>{{ transaction.stop_loss_price }}</td>
+                        <td>{{ transaction.total_buy }}</td>
+                        <td>{{ transaction.ds }}</td>
+                        <td>{{ transaction.spps }}</td>
+                        <td>{{ transaction.tsp }}</td>
+                        <td>{{ transaction.expected }}</td>
+                        <td>{{ transaction.proi }}%</td>
+                        <td>{{ transaction.actual }}</td>
                         <td>{{ transaction.tp1 }}</td>
-                        <td>{{ transaction.tp2 }}</td>
                         <td>{{ transaction.sop }}</td>
                         <td>{{ transaction.prediction }}</td>
                         <td>{{ transaction.result }}</td>
@@ -73,17 +81,13 @@
     <!-- Account Details -->
     <div class="account-details">
         <h3>Account Details</h3>
-        <p><strong>Account Balance:</strong> $50,000</p>
-        <p><strong>Available Margin:</strong> $25,000</p>
-        <p><strong>Linked Bank Accounts:</strong> Bank of America (****1234)</p>
-        <button class="btn blue">Deposit Funds</button>
-        <button class="btn red">Withdraw Funds</button>
+        <p><strong>Account Cash Balance:</strong> ${{cash}} </p>
     </div>
 
     <!-- Investment Preferences -->
     <div class="preferences">
         <h3>Investment Preferences</h3>
-        <p><strong>Risk Tolerance:</strong> {{user.risk_tolerance}}</p>
+        <p><strong>Risk Tolerance:</strong> {{pref[6]}}</p>
         <p><strong>Trading Style:</strong> Long-term</p>
     </div>
 
@@ -97,15 +101,16 @@
     <!-- Investment Limits -->
     <div class="investment-limits">
         <h3>Investment Limits</h3>
-        <form>
+        <form action="{{ url_for('update_prefs') }}" method="POST">
+            
             <label for="min-investment">Minimum Investment per Symbol:</label>
-            <input type="number" id="min-investment" name="min-investment" min="0" placeholder="${{user.min_investment}}"><br>
+            <input type="number" id="min-investment" name="min-investment" min="0" placeholder="${{pref[3]}}"><br>
             <label for="max-investment">Maximum Investment per Symbol:</label>
-            <input type="number" id="max-investment" name="max-investment" min="0" placeholder="${{user.max_investment}}"><br>
+            <input type="number" id="max-investment" name="max-investment" min="0" placeholder="${{pref[4]}}"><br>
             <label for="min-price">Minimum Price per Share:</label>
-            <input type="number" id="min-price" name="min-price" min="0" placeholder="${{user.min_price}}"><br>
+            <input type="number" id="min-price" name="min-price" min="0" placeholder="${{pref[1]}}"><br>
             <label for="max-price">Maximum Price per Share:</label>
-            <input type="number" id="max-price" name="max-price" min="0" placeholder="${{user.max_price}}"><br>
+            <input type="number" id="max-price" name="max-price" min="0" placeholder="${{pref[2]}}"><br>
             <button class="btn" type="submit">Save Limits</button>
         </form>
     </div>

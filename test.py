@@ -1,9 +1,12 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL, metrics_DAOIMPL, database_connection_utility as dcu
+from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
 from Models import transaction
+import logging
+from datetime import datetime
+import order_methods
 
 # with open('080724-transactiondata.csv', 'r') as trans_reader:
 #     lines = trans_reader.readlines()
@@ -58,4 +61,20 @@ from Models import transaction
 
 # avg = metrics_DAOIMPL.get_last_sector_breakdown()
 # accuracy_values = [int(acc[0]) for acc in avg]
-# print(avg[0])
+# logging.infoavg[0])
+
+# conn = user_DAOIMPL.get_user_by_username('davidstage2')[0]
+# id = conn['id']
+# user_DAOIMPL.update_user_alpaca_keys('PK2OCFYFS8QN6RXFG2I8','CkiDGG3MWQbgv8Z9lCR2dudhKZbHMUrNn9RgRWpb',id)
+
+# user_DAOIMPL.update_user_alpaca_keys('PKZBW6ION9J31KWUYTRW','WmzUgfZypTdbkYQG596ea9UTtwd2mKG3gyJwkGaa',7)
+# user = transactions_DAOIMPL.get_open_transactions_for_user(7)
+# print(user)
+
+
+# transs = transactions_DAOIMPL.get_open_transactions_for_user(7)
+# print(transs)
+order_methods.place_sell_order('XNET',140,5.00,'2024-10-03 14:30:07.604395XNET140 2.13,7','davidstage3')
+# transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
+# for trans in transactions:
+#     print(trans)

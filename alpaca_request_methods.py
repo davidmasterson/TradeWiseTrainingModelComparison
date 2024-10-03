@@ -2,22 +2,26 @@ from datetime import datetime, timedelta, date
 import pandas as pd
 import os
 import alpaca_trade_api as tradeapi
+from alpaca_trade_api import Stream
 from dotenv import load_dotenv
-from database import transactions_DAOIMPL
-import socketio
+from database import transactions_DAOIMPL, user_DAOIMPL
+
 import sector_finder
+import logging
+import time
+from Models import transaction
+from flask import session
+import order_methods
+import asyncio
 
 
-
+alpaca_api_datastream = "wss://paper-api.alpaca.markets/stream"
 
 load_dotenv()
 
-# This will hold the reference to SocketIO instance passed from app.py
-sio = None
 
-def set_socketio_instance(socketio_instance):
-    global sio
-    sio = socketio_instance
+
+
 # Function to return api connection object
 def get_alpaca_connection():
     ALPACA_API_KEY = os.getenv('ALPACA_API_KEY')
@@ -27,6 +31,21 @@ def get_alpaca_connection():
     api = tradeapi.REST(ALPACA_API_KEY, ALPACA_SECRET_KEY, BASE_URL, api_version='v2')
     return api
 
+
+
+
+def get_alpaca_stream_connection(username):
+    
+    this_user = user_DAOIMPL.get_user_by_username(username)[0]
+    alpaca_key = this_user['alpaca_key']
+    alpaca_secret_key = this_user['alpaca_secret']
+    alpaca_base_url = "https://paper-api.alpaca.markets"  # Base URL for paper trading
+
+    # Remove 'data_stream' argument
+    conn = Stream(alpaca_key, alpaca_secret_key, base_url=alpaca_base_url)
+    return conn
+
+    
 # Function to get historical data for a list of symbols
 def fetch_stock_data(years=5):
     percent = 0
@@ -51,8 +70,9 @@ def fetch_stock_data(years=5):
     
     total_iterations = len(trans_data)
     for i, trans in enumerate(trans_data):
+        logging.info(trans)
         percent = int((i / total_iterations) * 100)
-        sio.emit('update progress', {'percent': percent, 'type': 'model'})
+      
         
         end_date = trans[3]
         symbol = trans[0]
@@ -61,7 +81,7 @@ def fetch_stock_data(years=5):
         sell_date = trans[3]
         sell_price = trans[4]
         actual_return = trans[5]
-        print(type(end_date))
+        logging.info(type(end_date))
         if sell_date == 'N/A':
             start_date = date.today() - timedelta(days=years*365)
             end_date = date.today()
@@ -108,7 +128,6 @@ def fetch_stock_data(years=5):
     df = pd.DataFrame(df_data)
     df.to_csv('Model_Training/stock_trans_data.csv', index=False)
     
-    sio.emit('update progress', {'percent': percent, 'type': 'model'})
     return df_data
 
 
@@ -121,3 +140,84 @@ def get_symbol_current_price(symbol):
         return []
     finally:
         conn.close()
+        
+def connect_to_user_alpaca_account(user_name):
+    this_user = user_DAOIMPL.get_user_by_username(user_name)[0]
+    try:
+        user_alpaca_account_key = this_user['alpaca_key']
+        user_alpaca_secret_key = this_user['alpaca_secret']
+        # api = tradeapi.REST(user_alpaca_account_key, user_alpaca_secret_key, 'paper-api.alpaca.markets', api_version='v2')
+        conn = tradeapi.stream.Stream(user_alpaca_account_key, user_alpaca_secret_key, base_url='paper-api.alpaca.markets')
+        return conn
+    except Exception as e:
+        logging.error(f'Unable to connect to user alpaca account due to : {e}')
+
+def create_alpaca_api(username):
+    this_user = user_DAOIMPL.get_user_by_username(username)[0]
+    try:
+        user_alpaca_account_key = this_user['alpaca_key']
+        user_alpaca_secret_key = this_user['alpaca_secret']
+        api = tradeapi.REST(user_alpaca_account_key, user_alpaca_secret_key, 'https://paper-api.alpaca.markets', api_version='v2')
+        return api
+    except Exception as e:
+        logging.error(f'Unable to connect to user alpaca account due to : {e}')
+        
+# Function to handle trade updates
+async def handle_trade_updates(data):
+    logging.info(f"Trade update received: {data}")
+
+    # Access attributes using dot notation instead of dictionary-style indexing
+    if data.event == 'fill':  # Use dot notation for 'event'
+        order_id = data.order['id'] # Use dot notation for 'order' attributes
+        symbol = data.order['symbol']
+        filled_qty = int(data.order['filled_qty'])
+        filled_avg_price = float(data.order['filled_avg_price'])
+        side = data.order['side']  # 'buy' or 'sell'
+        fill_time = data.order['filled_at']  # The timestamp of the fill
+        client_order_id = data.order['client_order_id']
+        logging.info(client_order_id)
+        user_id = client_order_id.split(',')[1]
+        if side == 'buy':
+            logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
+            total_buy = float(filled_avg_price) * int(filled_qty)
+            tp1 = (float(filled_avg_price) * .03)  + float(filled_avg_price)
+            sop = float(filled_avg_price) - (float(filled_avg_price) * .01) 
+            expected = total_buy * .03
+            new_trans = transaction.transaction(symbol, date.today(), filled_avg_price, filled_qty, total_buy, client_order_id, user_id, expected=expected,tp1 = tp1, sop=sop)
+
+            # insert into the transactions table
+            transactions_DAOIMPL.insert_transaction(new_trans)
+        elif side == 'sell':
+            logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
+            transaction2 = transactions_DAOIMPL.get_transaction_by_bstring(client_order_id)
+            if transaction2:
+                ds = date.today()
+                spps = filled_avg_price
+                tsp = float(filled_avg_price) * int(filled_qty)
+                total_purchase = float(transaction2[5])
+                actual = tsp - total_purchase
+                proi = actual / total_purchase
+                result = 1 
+                if actual > 0:
+                    result = 0
+                sstring = f"{client_order_id}~sell({datetime.now()})"
+                transaction_id = int(transaction2[0])
+                values = [ds,spps,tsp,sstring,proi,actual,result]
+                transactions_DAOIMPL.update_transaction(transaction_id,values)
+    
+    elif data.event == 'partial_fill':
+        logging.info(f"Order {data.order['id']} partially filled.")
+    
+    elif data.event == 'canceled':
+        logging.info(f"Order {data.order['id']} was canceled.")
+    
+    else:
+        logging.warning(f"Unhandled event: {data.event}")
+
+
+
+
+
+
+
+

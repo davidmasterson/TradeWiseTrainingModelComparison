@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import json
+import logging
 
 def plot_accuracy(accuracy_values, time_periods):
     # Convert datetime.date objects to strings in 'YYYY-MM-DD' format
     time_periods_str = [date.strftime('%Y-%m-%d') for date in time_periods]
     plt.figure(figsize=(8,5))
     plt.bar(time_periods_str, accuracy_values)
-    print(accuracy_values)
+    logging.info(accuracy_values)
     plt.title('Model Accuracy')
     plt.xlabel('Time Period')
     plt.ylabel('Accuracy (%)')

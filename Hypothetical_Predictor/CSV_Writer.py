@@ -6,7 +6,7 @@ class CSV_Writer:
 
     def write_temporary_csv(symbols):
         with open('Hypothetical_Predictor/transactions.csv', 'w') as temporary_writer:
-            temporary_writer.write(f'transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,stop_loss_price,tp1,tp2,sop\n')
+            temporary_writer.write(f'transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,tp1,sop\n')
             count = 0
             for symbol in symbols:
                 date_today = date.today()
@@ -22,16 +22,14 @@ class CSV_Writer:
                 total_sell_price = 'N/A'
                 sell_string = 'N/A'
                 expected_return = purchased_pps * .03
-                percentage_roi = 3.0
+                percentage_roi = 0.00
                 actual_return = 'N/A'
-                stop_loss_price = 0.00
                 tp1 = purchased_pps + (purchased_pps * .03)
-                tp2 = purchased_pps + (purchased_pps * .05)
                 sop = purchased_pps - (purchased_pps * .01)
                 if isinstance(symbol, str):
-                    temporary_writer.write(f'{count},{symbol},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{stop_loss_price},{tp1},{tp2},{sop}\n')
+                    temporary_writer.write(f'{count},{symbol},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{tp1},{sop}\n')
                 else:
-                    temporary_writer.write(f'{count},{symbol[0]},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{stop_loss_price},{tp1},{tp2},{sop}\n')
+                    temporary_writer.write(f'{count},{symbol[0]},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{tp1},{sop}\n')
                 count += 1
             temporary_writer.close()
 

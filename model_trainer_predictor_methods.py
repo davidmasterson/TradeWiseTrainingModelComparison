@@ -1,39 +1,28 @@
 import subprocess
 import alpaca_request_methods
+import logging
 
-# Global variable to hold the SocketIO instance
-sio = None
 
-def set_socketio_instance(socketio_instance):
-    global sio
-    sio = socketio_instance
+
 
 def model_trainer():
-    global sio
     percent = 90
 
     alpaca_request_methods.fetch_stock_data()
-    sio.emit('update progress', {'percent':percent, 'type': 'model'})
     percent = 95
-    subprocess.run(['python', 'Model_Training/model_generator.py'])
+    subprocess.run(['python3', 'Model_Training/model_generator.py'])
     
     percent = 100
-    sio.emit('update progress', {'percent':percent, 'type':'model'})
-    print('Emitted 100%')
+    logging.info('Emitted 100%')
 
 def stock_predictor_using_pretrained_model():
-    global sio
     percent = 0
 
-    if sio is not None:
-        sio.emit('update progress', {'percent':percent, 'type': 'prediction'})
-        print("Emitted 10% progress")
-    subprocess.run(['python', 'Future_Predictor/future_predictor.py'])
+    
+    subprocess.run(['python3', 'Future_Predictor/future_predictor.py'])
     percent = 5
     
-    if sio is not None:
-        sio.emit('update progress', {'percent':percent, 'type':'prediction'})
-        print("Emitted 50% progress")
+    
     
     probs = []
     percent = 50
@@ -94,14 +83,10 @@ def stock_predictor_using_pretrained_model():
                               hit_take_profit_predicted])
             
             percent = 50 + int((count / total_lines) * 50)
-            if sio is not None:
-                sio.emit('update progress', {'percent':percent, 'type':'prediction'})
-                print(f'emitted {percent} progress')
+            
             
             count += 1
         future_reader.close()
     percent = 100
-    if sio is not None:
-        sio.emit('update progress', {'percent':percent, 'type':'prediction'})  # Emit 100% when done
-        print("Emitted 100% progress")
+    
     return probs

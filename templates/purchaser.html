@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container mt-5">
+        <h1>Stock Recommendations</h1>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="alert-container">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        <!-- Button to generate recommendations -->
+         <div class="container" style="display:flex;justify-content:space-between;">
+            <form action='/purchaser' method='POST'>
+              
+                <button type="submit" id="generateBtn" class="btn btn-primary mb-3">Generate Recommendations</button>
+            </form>
+            <h3 >Cash Available: ${{"{:,.2f}".format(user_cash)}}</h3>
+          </div>
+
+        
+
+
+        <!-- Table to display recommendations -->
+        {% if orders %}
+        <table class="table table-bordered" id="recommendationsTable">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Limit Price</th>
+                    <th>Qty</th>
+                    <th>Updated Last</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for stock, details in orders.items() %}
+                <tr>
+                    <td>{{ details.symbol }}</td>
+                    <td>{{ details.limit_price }}</td>
+                    <td>{{ details.qty }}</td>
+                    <td>{{ details.updated_last }}</td>
+                    <td>
+                        <!-- Purchase button with form -->
+                        <form action="/purchase" method="POST">
+                          
+                            <input type="hidden" name="symbol" value="{{ details.symbol }}">
+                            <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
+                            <input type="hidden" name="qty" value="{{ details.qty }}">
+                            <button type="submit" class="btn btn-success">Purchase</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+{% endblock %}

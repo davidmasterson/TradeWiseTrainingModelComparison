@@ -23,9 +23,7 @@
                             <th scope="col">Expected Return</th>
                             <th scope="col">Percentage ROI</th>
                             <th scope="col">Actual Return</th>
-                            <th scope="col">Stop Loss</th>
                             <th scope="col">Take Profit 1</th>
-                            <th scope="col">Take Profit 2</th>
                             <th scope="col">SOP</th>
                             <th scope="col">Prediction</th>
                             <th scope="col">Result</th>
@@ -35,19 +33,17 @@
                         {% for transaction in transactions %}
                         <tr>
                             <td>{{ transaction.symbol }}</td>
-                            <td>{{ transaction.date_purchased }}</td>
-                            <td>{{ transaction.purchased_pps }}</td>
+                            <td>{{ transaction.dp }}</td>
+                            <td>{{ transaction.ppps }}</td>
                             <td>{{ transaction.qty }}</td>
-                            <td>{{ transaction.total_buy_price }}</td>
-                            <td>{{ transaction.date_sold }}</td>
-                            <td>{{ transaction.sold_pps }}</td>
-                            <td>{{ transaction.total_sell_price }}</td>
-                            <td>{{ transaction.expected_return }}</td>
-                            <td>{{ transaction.percentage_roi }}%</td>
-                            <td>{{ transaction.actual_return }}</td>
-                            <td>{{ transaction.stop_loss_price }}</td>
+                            <td>{{ transaction.total_buy }}</td>
+                            <td>{{ transaction.ds }}</td>
+                            <td>{{ transaction.spps }}</td>
+                            <td>{{ transaction.tsp }}</td>
+                            <td>{{ transaction.expected }}</td>
+                            <td>{{ transaction.proi }}%</td>
+                            <td>{{ transaction.actual }}</td>
                             <td>{{ transaction.tp1 }}</td>
-                            <td>{{ transaction.tp2 }}</td>
                             <td>{{ transaction.sop }}</td>
                             <td>{{ transaction.prediction }}</td>
                             <td>{{ transaction.result }}</td>

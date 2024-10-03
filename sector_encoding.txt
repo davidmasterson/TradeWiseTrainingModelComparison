@@ -1,1 +1,1 @@
-{'Basic Materials': 0, 'Communication Services': 1, 'Consumer Cyclical': 2, 'Consumer Defensive': 3, 'Energy': 4, 'Financial Services': 5, 'Healthcare': 6, 'Industrials': 7, 'Real Estate': 8, 'Sector not available': 9, 'Technology': 10, 'Utilities': 11}
+{'Consumer Cyclical': 0, 'Industrials': 1}

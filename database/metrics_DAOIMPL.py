@@ -1,8 +1,9 @@
 from database import database_connection_utility as dcu
 from datetime import datetime
+import logging
 
 def get_all_metrics():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = 'SELECT * FROM metrics'
     try:
@@ -12,14 +13,14 @@ def get_all_metrics():
             return metrics
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         cur.close()
         conn.close()
 
 def get_metrics_dates():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT date FROM metrics'''
     
@@ -30,14 +31,14 @@ def get_metrics_dates():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_accuracies():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT accuracy FROM metrics'''
     
@@ -48,14 +49,14 @@ def get_metrics_accuracies():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_error_rates():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT error_rate FROM metrics'''
     
@@ -66,14 +67,14 @@ def get_metrics_error_rates():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_cumlative_correct_predictions():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_correct_predictions FROM metrics'''
     
@@ -84,14 +85,14 @@ def get_metrics_cumlative_correct_predictions():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_cumlative_incorrect_predictions():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_incorrect_predictions FROM metrics'''
     
@@ -102,14 +103,14 @@ def get_metrics_cumlative_incorrect_predictions():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_times_to_close():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT time_to_close_correct_predictions FROM metrics'''
     
@@ -120,14 +121,14 @@ def get_metrics_times_to_close():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_cumlative_profits():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_profit FROM metrics'''
     
@@ -138,14 +139,14 @@ def get_metrics_cumlative_profits():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metrics_cumlative_losses():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_loss FROM metrics'''
     
@@ -156,14 +157,14 @@ def get_metrics_cumlative_losses():
             return dates
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
         return []
     finally:
         conn.close()
         cur.close()
 
 def get_metric_by_date(date):
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = "SELECT * FROM metrics WHERE date = %s"
     vals = [date]
@@ -174,14 +175,31 @@ def get_metric_by_date(date):
             return metrics
         return []
     except Exception as e:
-        print(e)
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+def get_metrics_by_user_id(user_id):
+    conn = dcu.get_aws_db_connection()
+    cur = conn.cursor()
+    sql = "SELECT * FROM metrics WHERE user_id = %s"
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        metrics = cur.fetchall()
+        if metrics:
+            return metrics
+        return []
+    except Exception as e:
+        logging.info(f'unable to get metrics for user: {user_id} due to: {e}')
         return []
     finally:
         cur.close()
         conn.close()
 
 def get_last_sector_breakdown_profit():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_profit FROM metrics ORDER BY id DESC limit 1 "
     try:
@@ -191,14 +209,32 @@ def get_last_sector_breakdown_profit():
             return metrics
         return {}
     except Exception as e:
-        print(e)
+        logging.info(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_last_metric_for_user(user_id):
+    conn = dcu.get_aws_db_connection()
+    cur = conn.cursor()
+    sql = "SELECT * FROM metrics WHERE user_id=%s ORDER BY id DESC limit 1"
+    vals = [user_id]
+    try:
+        cur.execute(sql,vals)
+        metrics = cur.fetchone()
+        if metrics:
+            return metrics
+        return {}
+    except Exception as e:
+        logging.info(e)
         return {}
     finally:
         cur.close()
         conn.close()
 
 def get_last_sector_breakdown_loss():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_loss FROM metrics ORDER BY id DESC limit 1 "
     try:
@@ -208,14 +244,14 @@ def get_last_sector_breakdown_loss():
             return metrics
         return {}
     except Exception as e:
-        print(e)
+        logging.info(e)
         return {}
     finally:
         cur.close()
         conn.close()
 
 def get_last_sector_breakdown_rec():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_rec FROM metrics ORDER BY id DESC limit 1 "
     try:
@@ -225,14 +261,14 @@ def get_last_sector_breakdown_rec():
             return metrics
         return {}
     except Exception as e:
-        print(e)
+        logging.info(e)
         return {}
     finally:
         cur.close()
         conn.close()
 
 def get_last_sector_breakdown_nrec():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_nrec FROM metrics ORDER BY id DESC limit 1 "
     try:
@@ -242,14 +278,14 @@ def get_last_sector_breakdown_nrec():
             return metrics
         return {}
     except Exception as e:
-        print(e)
+        logging.info(e)
         return {}
     finally:
         cur.close()
         conn.close()
 
 def get_all_last_sector_breakdowns():
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''SELECT 
             sector_breakdown_profit,
@@ -268,7 +304,7 @@ def get_all_last_sector_breakdowns():
             return metrics
         return [{},{},{},{}]
     except Exception as e:
-        print(e)
+        logging.info(e)
         return [{},{},{},{}]
     finally:
         cur.close()
@@ -277,7 +313,7 @@ def get_all_last_sector_breakdowns():
 
 
 def insert_metric(metric):
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''INSERT into metrics
             (
@@ -292,10 +328,11 @@ def insert_metric(metric):
                 sector_breakdown_loss,
                 sector_breakdown_rec,
                 sector_breakdown_nrec,
-                date) VALUES (
+                date,
+                user_id) VALUES (
                 %s,%s,%s,%s,
                 %s,%s,%s,%s,
-                %s,%s,%s,%s)
+                %s,%s,%s,%s,%s)
                 '''
     vals = [metric.accuracy,
             metric.error_rate,
@@ -308,14 +345,15 @@ def insert_metric(metric):
             metric.sector_breakdown_loss,
             metric.sector_breakdown_rec,
             metric.sector_breakdown_nrec,
-            metric.date]
+            metric.date,
+            metric.user_id]
     try:
         cur.execute(sql,vals)
         conn.commit()
         if cur.rowcount > 0:
-            print(f"{cur.rowcount}, record(s) affected inserted transaction {datetime.now()}")
+            logging.info(f"{cur.rowcount}, record(s) affected inserted transaction {datetime.now()}")
         else:
-            print(f"{datetime.now()}:No record has not been inserted.")
+            logging.info(f"{datetime.now()}:No record has not been inserted.")
     except Exception as e:
         return e
     finally:
@@ -324,7 +362,7 @@ def insert_metric(metric):
 
 
 def update_metric(metric, id):
-    conn = dcu.get_db_connection()
+    conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE metrics SET 
                 accuracy = %s,
@@ -338,7 +376,8 @@ def update_metric(metric, id):
                 sector_breakdown_loss = %s,
                 sector_breakdown_rec = %s,
                 sector_breakdown_nrec = %s,
-                date = %s
+                date = %s,
+                user_id = %s
                 WHERE
                 id = %s'''
     vals = [metric.accuracy,
@@ -353,14 +392,15 @@ def update_metric(metric, id):
             metric.sector_breakdown_rec,
             metric.sector_breakdown_nrec,
             metric.date,
+            metric.user_id,
             id[0]]
     try:
         cur.execute(sql, vals)
         conn.commit()
         if cur.rowcount > 0:
-            print(f"{cur.rowcount}, record(s) affected updated transaction {datetime.now()}")
+            logging.info(f"{cur.rowcount}, record(s) affected updated transaction {datetime.now()}")
         else:
-            print(f"{datetime.now()}:No record has not been updated.")
+            logging.info(f"{datetime.now()}:No record has not been updated.")
     except Exception as e:
         return e
     finally:

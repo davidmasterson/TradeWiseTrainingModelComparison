@@ -1,15 +1,21 @@
 
+from flask import session
+import logging
 
 class User:
 
-    def __init__(self, first,last,user,password,email,min_investment,max_investment,min_price,max_price,risk_tolerance):
+    def __init__(self, first,last,user_name,password,email,alpaca_key, alpaca_secret):
         self.first = first
         self.last = last
-        self.user = user
+        self.user_name = user_name
         self.password = password
         self.email = email
-        self.min_investment = min_investment
-        self.max_investment = max_investment
-        self.min_price = min_price
-        self.max_price = max_price
-        self.risk_tolerance = risk_tolerance
+        self.alpaca_key = alpaca_key
+        self.alpaca_secret = alpaca_secret
+        
+        
+    def check_logged_in(session=None):
+        logging.info(session)
+        if session.get('logged_in'):
+            return True
+        return False

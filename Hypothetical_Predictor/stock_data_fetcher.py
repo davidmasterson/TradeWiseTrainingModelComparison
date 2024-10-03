@@ -3,15 +3,12 @@ from datetime import timedelta, date
 import alpaca_request_methods
 import pandas as pd
 import sector_finder
+import logging
 
 
 
 
-sio = None
 
-def set_socketio_instance(socketio_instance):
-    global sio
-    sio = socketio_instance
 
 def fetch_stock_data(years=5):
     percent = 0
@@ -36,8 +33,9 @@ def fetch_stock_data(years=5):
     
     total_iterations = len(trans_data)
     for i, trans in enumerate(trans_data):
+        logging.info(i, trans)
         percent = int((i / total_iterations) * 100)
-        # sio.emit('update progress', {'percent': percent, 'type': 'model'})
+        
         
         end_date = trans[3]
         symbol = trans[0]
@@ -46,7 +44,7 @@ def fetch_stock_data(years=5):
         sell_date = trans[3]
         sell_price = trans[4]
         actual_return = trans[5]
-        print(type(end_date))
+        logging.info(type(end_date))
         if sell_date == 'N/A':
             start_date = date.today() - timedelta(days=years*365)
             end_date = date.today()
@@ -62,7 +60,7 @@ def fetch_stock_data(years=5):
         
         
         
-        print(f"Fetching data for {symbol}")
+        logging.info(f"Fetching data for {symbol}")
         barset = connection.get_bars(symbol, '1Day', start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
         
         data = {
@@ -70,7 +68,7 @@ def fetch_stock_data(years=5):
             'close': [bar.c for bar in barset],
             'open': [bar.o for bar in barset],
         }
-        print(len(data['close']), len(data['open']))
+        logging.info(len(data['close']), len(data['open']))
 
         
         
@@ -93,7 +91,7 @@ def fetch_stock_data(years=5):
     df = pd.DataFrame(df_data)
     df.to_csv('Hypothetical_Predictor/stock_trans_data.csv', index=False)
     
-    # sio.emit('update progress', {'percent': percent, 'type': 'model'})
+    
     return df_data
 
 

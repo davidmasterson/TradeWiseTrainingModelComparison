@@ -1,19 +1,16 @@
 import subprocess
+import logging
 
 
 def stock_predictor_using_pretrained_model():
-    global sio
+    
     percent = 0
 
-    # if sio is not None:
-    #     sio.emit('update progress', {'percent':percent, 'type': 'prediction'})
-    #     print("Emitted 10% progress")
-    subprocess.run(['python', 'Hypothetical_Predictor/future_predictor.py'])
+   
+    subprocess.run(['python3', 'Hypothetical_Predictor/future_predictor.py'])
     percent = 5
     
-    # if sio is not None:
-    #     sio.emit('update progress', {'percent':percent, 'type':'prediction'})
-    #     print("Emitted 50% progress")
+   
     
     probs = []
     percent = 50
@@ -74,14 +71,10 @@ def stock_predictor_using_pretrained_model():
                               hit_take_profit_predicted])
             
             percent = 50 + int((count / total_lines) * 50)
-            # if sio is not None:
-            #     sio.emit('update progress', {'percent':percent, 'type':'prediction'})
-            #     print(f'emitted {percent} progress')
+            
             
             count += 1
         future_reader.close()
     percent = 100
-    # if sio is not None:
-    #     sio.emit('update progress', {'percent':percent, 'type':'prediction'})  # Emit 100% when done
-    #     print("Emitted 100% progress")
+    
     return probs
