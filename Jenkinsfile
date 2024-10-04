@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = '/path/to/your/project'
+        PROJECT_DIR = '/home/ubuntu/LSTMStockPricePredictor'
     }
 
     stages {
@@ -10,7 +10,7 @@ pipeline {
             steps {
                 script {
                     echo "Installing dependencies..."
-                    sh '/home/ubuntu/LSTMStockPricePredictor/venv/bin/pip install -r requirements.txt'
+                    sh "${env.PROJECT_DIR}/venv/bin/python -m pip install -r ${env.PROJECT_DIR}/requirements.txt"
                 }
             }
         }
@@ -28,16 +28,16 @@ pipeline {
             steps {
                 script {
                     echo "Deploying application..."
-                    sh 'sudo systemctl stop autotrader_project.service'
-                    sh 'sudo cp -r $PROJECT_DIR /var/www/autotrader_project'
-                    sh 'sudo systemctl daemon-reload'
-                    sh 'sudo systemctl start autotrader_project.service'
-                    sh 'sudo systemctl enable autotrader_project.service'
+                    sh "sudo systemctl stop autotrader_project.service"
+                    sh "sudo cp -r ${env.PROJECT_DIR} /var/www/autotrader_project"
+                    sh "sudo systemctl daemon-reload"
+                    sh "sudo systemctl start autotrader_project.service"
+                    sh "sudo systemctl enable autotrader_project.service"
                     echo "Application deployed and service restarted successfully."
                     
                     echo "Reloading Nginx..."
-                    sh 'sudo systemctl reload nginx'
-                    sh 'sudo systemctl enable nginx'
+                    sh "sudo systemctl reload nginx"
+                    sh "sudo systemctl enable nginx"
                     echo "Nginx reloaded and enabled successfully."
                 }
             }
