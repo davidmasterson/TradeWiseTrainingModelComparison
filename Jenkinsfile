@@ -10,7 +10,7 @@ pipeline {
             steps {
                 script {
                     echo "Installing dependencies..."
-                    sh 'pip install -r requirements.txt'
+                    sh '/home/ubuntu/LSTMStockPricePredictor/venv/bin/pip install -r requirements.txt'
                 }
             }
         }
