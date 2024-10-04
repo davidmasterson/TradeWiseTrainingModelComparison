@@ -40,9 +40,9 @@ import order_methods
 #     transactions_DAOIMPL.insert_transactions(transactions)
 
     # UPDATE TRANSACTION
-# transactions_DAOIMPL.update_transaction(318,['2024-09-20',105.98,9008.30,'2024/09/12 12:30-85-101.02-buy-SN~sell(1)',5.00,'421.61', 1])
-# transactions_DAOIMPL.update_transaction(328,['2024-09-18',106.02,954.18,'2024/09/16 9:30-9-103.65-buy-SN~sell(3)',2.28,'21.32', 1])
-# transactions_DAOIMPL.update_transaction(311,['2024-09-10',154.38,7101.48,'2024/09/05 12:30-46-142.06-buy-ORCL ~sell(1)',8.67,'566.71'])
+# transactions_DAOIMPL.update_transaction(1,['2024-10-3',6.68,233.80,'2024-09-26 18:50:36.789194NVVE35 5.68,7~sell(1)',1,35.00, 1])
+# transactions_DAOIMPL.update_transaction(2,['2024-10-3',7.21,230.72,'2024-09-26 18:50:33.097167EVTL32 6.21,7~sell(3)',1,32.00, 1])
+# transactions_DAOIMPL.update_transaction(3,['2024-10-3',8.66,303.10,'2024-09-26 19:01:04.818726NVVE35 5.66,7~sell(1)',1,35.00,1])
     # INSERT TRANSACTION
 # transactions = [
     # transaction.transaction('PYPL','2024-09-19',77.37,70,5415.90,'2024/09/19 12:30-70-77.37-buy-PYPL',expected_return=160.67,stop_loss_price=0.0,tp1=79.66535,tp2=81.21225,sop=370.99,prediction=0),
@@ -72,9 +72,10 @@ import order_methods
 # print(user)
 
 
-# transs = transactions_DAOIMPL.get_open_transactions_for_user(7)
-# print(transs)
-order_methods.place_sell_order('XNET',140,5.00,'2024-10-03 14:30:07.604395XNET140 2.13,7','davidstage3')
-# transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
-# for trans in transactions:
-#     print(trans)
+# cols = dcu.show_table_columns('transactions')
+# count = 0
+# for col in cols:
+#     column_name = col[0]
+#     print(count,column_name)
+#     count += 1
+

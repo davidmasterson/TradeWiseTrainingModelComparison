@@ -1,1 +1,1 @@
-{'Consumer Cyclical': 0, 'Industrials': 1}
+{'Consumer Cyclical': 0, 'Healthcare': 1, 'Industrials': 2, 'Technology': 3}

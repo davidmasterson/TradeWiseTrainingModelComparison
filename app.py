@@ -38,15 +38,15 @@ result_queue = queue.Queue()
 
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.ERROR)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 # New homepage with logo and buttons
 @app.route('/', methods=['GET'])
@@ -372,7 +372,7 @@ def update_prefs():
         max_total = float(max_total)
         min_total = float(min_total)
         
-        username = session.get('user_id')
+        username = session.get('user_name')
         
         # Fetch user details
         this_user = user_DAOIMPL.get_user_by_username(username)[0]
