@@ -31,6 +31,25 @@ def get_user_by_username(user_name):
         cur.close()
         conn.close()
 
+def get_user_by_user_id(user_id):
+    conn = dcu.get_aws_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM users WHERE id = %s'''
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        id = cur.fetchone()
+        if id:
+            return id
+        return None
+        
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
 def get_all_users():
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()

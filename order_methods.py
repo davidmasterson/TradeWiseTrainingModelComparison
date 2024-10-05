@@ -32,8 +32,8 @@ def place_sell_order(symbol, qty, price, transaction_id, username):
             symbol=symbol,
             qty=qty,  # Quantity to sell
             side='sell',
-            type='market',
-            # vcm cmx  # Limit price for the sell order
+            type='limit',
+            limit_price= price,
             time_in_force='day',  # day
             client_order_id=f"sell-{symbol}-{qty}-{limit_price}-{datetime.now().strftime('%Y-%M-%d %H:%m:%S')}/{username} "  # Unique identifier for the order
         )

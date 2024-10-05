@@ -5,7 +5,7 @@ import alpaca_trade_api as tradeapi
 from alpaca_trade_api import Stream
 from dotenv import load_dotenv
 from database import transactions_DAOIMPL, user_DAOIMPL
-
+import app
 import sector_finder
 import logging
 import time
@@ -163,7 +163,7 @@ def create_alpaca_api(username):
         logging.error(f'Unable to connect to user alpaca account due to : {e}')
         
 # Function to handle trade updates
-async def handle_trade_updates(data):
+async def handle_trade_updates(data, conn):
     logging.info(f"Trade update received: {data}")
 
     # Access attributes using dot notation instead of dictionary-style indexing
@@ -177,6 +177,7 @@ async def handle_trade_updates(data):
         client_order_id = data.order['client_order_id']
         logging.info(client_order_id)
         user_id = client_order_id.split(',')[1]
+        username = user_DAOIMPL.get_user_by_user_id(user_id)
         if side == 'buy':
             logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
             total_buy = float(filled_avg_price) * int(filled_qty)
@@ -184,9 +185,12 @@ async def handle_trade_updates(data):
             sop = float(filled_avg_price) - (float(filled_avg_price) * .01) 
             expected = total_buy * .03
             new_trans = transaction.transaction(symbol, date.today(), filled_avg_price, filled_qty, total_buy, client_order_id, user_id, expected=expected,tp1 = tp1, sop=sop)
-
             # insert into the transactions table
             transactions_DAOIMPL.insert_transaction(new_trans)
+            logging.info("Reconnecting WebSocket for new transactions...")
+            # Stop and reinitialize the connection
+            await conn.stop()  # This should stop the current connection
+            app.run_alpaca_websocket(username)  # Re-initialize the websocket with updated transactions
         elif side == 'sell':
             logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
             transaction2 = transactions_DAOIMPL.get_transaction_by_bstring(client_order_id)
@@ -213,8 +217,6 @@ async def handle_trade_updates(data):
     
     else:
         logging.warning(f"Unhandled event: {data.event}")
-
-
 
 
 

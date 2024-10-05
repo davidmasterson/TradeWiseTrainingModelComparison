@@ -7,6 +7,7 @@ from Models import transaction
 import logging
 from datetime import datetime
 import order_methods
+from flask import session
 
 # with open('080724-transactiondata.csv', 'r') as trans_reader:
 #     lines = trans_reader.readlines()
@@ -71,11 +72,20 @@ import order_methods
 # user = transactions_DAOIMPL.get_open_transactions_for_user(7)
 # print(user)
 
+username = session.get('user_name')
+conn = alpaca_request_methods.get_alpaca_stream_connection(username)
+transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
+transactions_dict = {}
+for transaction in transactions:
+    transactions_dict[transaction[1]] = {'id': transaction[0],
+     'symbol': transaction[1],
+     'client_order_id': f'{transaction[6]}~sell',
+     'take_profit': float(transaction[14]),
+     'stop_price': float(transaction[15])
+     }
+    
+symbols = [txn for txn in transactions_dict]
+quote_channels = [f'Q.{symbol}' for symbol in symbols]
 
-# cols = dcu.show_table_columns('transactions')
-# count = 0
-# for col in cols:
-#     column_name = col[0]
-#     print(count,column_name)
-#     count += 1
+print(symbols)
 

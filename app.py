@@ -319,34 +319,70 @@ def get_progress():
 
 def run_alpaca_websocket(username):
     """ Thread target function to handle websocket connection """
-    # Set up a new event loop for the thread
+
+    async def websocket_task():
+        try:
+            logging.info("Attempting to connect to Alpaca WebSocket...")
+            conn = alpaca_request_methods.get_alpaca_stream_connection(username)
+            if conn is None:
+                logging.error("Failed to connect to Alpaca WebSocket. Retrying...")
+                return
+
+            transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
+            transactions_dict = {}
+            for transaction in transactions:
+                transactions_dict[transaction[1]] = {
+                    'id': transaction[0],
+                    'symbol': transaction[1],
+                    'client_order_id': f'{transaction[6]}~sell',
+                    'take_profit': float(transaction[14]),
+                    'stop_price': float(transaction[15])
+                }
+
+            # Define your quote handler
+            async def on_quote(data):
+                transaction = transactions_dict.get(data.symbol, None)
+                if transaction:
+                    # Check for take profit or stop out
+                    if data.askprice >= transaction['take_profit']:
+                        logging.info(f"Take Profit hit for {data.symbol} at {data.askprice}.")
+                        order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.askprice), int(transaction['id']), username)
+                    elif data.bidprice <= transaction['stop_price']:
+                        logging.info(f"Stop Out hit for {data.symbol} at {data.bidprice}.")
+                        order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.bidprice), int(transaction['id']), username)
+
+            logging.info("Subscribing to trade updates...")
+            conn.subscribe_trade_updates(alpaca_request_methods.handle_trade_updates)
+            logging.info(f"Successfully subscribed to trade updates for user {username}")
+
+            # Subscribe to quote updates for all symbols
+            symbols = list(transactions_dict.keys())
+            for sym in symbols:
+                logging.info(f"Subscribing to quotes for symbol {sym}")
+                conn.subscribe_quotes(on_quote, sym)
+                logging.info(f'Successfully subscribed to quotes for symbol {sym}')
+
+           # We use this to keep the connection alive and process received messages
+            while True:
+                await asyncio.sleep(1)
+
+        except Exception as e:
+            logging.error(f"WebSocket connection error: {e}. Reconnecting...")
+    
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    try:
-        logging.info("Attempting to connect to Alpaca WebSocket...")
-        conn = alpaca_request_methods.get_alpaca_stream_connection(username)
-        if conn is None:
-            logging.error("Failed to connect to Alpaca WebSocket. Retrying...")
-           
-            return
 
-        logging.info("Subscribing to trade updates...")
-        conn.subscribe_trade_updates(alpaca_request_methods.handle_trade_updates)
-        logging.info(f"Successfully subscribed to trade updates for user {username}")
-
-        logging.info("WebSocket connection running...")
-        loop.run_until_complete(conn.run())
-
-    except Exception as e:
-        logging.error(f"WebSocket connection error: {e}. Reconnecting...")
-        
-    finally:
-        loop.close()
-        
+    # Add websocket_task to the event loop if running
+    if loop.is_running():
+        loop.create_task(websocket_task())  # Schedule it as a new task
+    else:
+        # Otherwise, run the event loop and task
+        loop.run_until_complete(websocket_task())
 
 @app.route('/start_websocket/<username>')
 def start_websocket_route(username):
-    # Create a thread for running the WebSocket connection
+    # Trigger the websocket connection without creating a new event loop
     thread = threading.Thread(target=run_alpaca_websocket, args=(username,))
     thread.start()
     return "WebSocket connection initiated"
@@ -388,6 +424,14 @@ def update_prefs():
         flash(f"Failed to update preferences. Error: {str(e)}", "danger")
     
     return redirect(url_for('user_profile'))
+
+
+
+
+
+
+
+
 
 ######DEBUG FUNCTIONS#################
 def log_event_loop_status(prefix=""):

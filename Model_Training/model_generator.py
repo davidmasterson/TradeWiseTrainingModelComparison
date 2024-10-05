@@ -253,12 +253,12 @@ classification_rep = classification_report(y_test, y_pred, output_dict=True)
 logging.info(f"Accuracy: {accuracy}")
 logging.info("Classification Report:\n", classification_rep)
 
-# # calculate and insert or update model metrics
-# today = date.today().strftime('%Y-%m-%d')
-# metric = calculate_daily_metrics_values()
-# metric_exists = metrics_DAOIMPL.get_metric_by_date(today)
-# metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
-# # calculate and insert or update manual metrics
+# calculate and insert or update model metrics
+today = date.today().strftime('%Y-%m-%d')
+metric = calculate_daily_metrics_values()
+metric_exists = metrics_DAOIMPL.get_metric_by_date(today)
+metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
+# calculate and insert or update manual metrics
 # manual_metric = calculate_manual_metrics()
 # manual_metric_exists = manual_metrics_DAOIMPL.get_metric_by_date(today)
 # manual_metrics_DAOIMPL.update_metric(manual_metric, manual_metric_exists[0]) if manual_metric_exists else manual_metrics_DAOIMPL.insert_metric(manual_metric)
