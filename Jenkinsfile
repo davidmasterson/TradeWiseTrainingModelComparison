@@ -4,16 +4,6 @@ pipeline {
     environment {
         PROJECT_DIR = '/home/ubuntu/LSTMStockPricePredictor'
     }
-
-    stages {
-        stage('Test Shell Access') {
-            steps {
-                script {
-                    echo 'Testing shell access...'
-                    sh 'echo Hello from the shell'
-                }
-            }
-        }
         stage('Build') {
             steps {
                 script {
