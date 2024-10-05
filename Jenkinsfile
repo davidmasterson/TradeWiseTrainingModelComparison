@@ -9,7 +9,7 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    echo $SHELL
+                    echo "Current Shell: $(echo $SHELL)" // Fixing the echo
                     echo "Installing dependencies..."
                     sh "${env.PROJECT_DIR}/venv/bin/python -m pip install -r ${env.PROJECT_DIR}/requirements.txt"
                 }
