@@ -4,6 +4,16 @@ pipeline {
     environment {
         PROJECT_DIR = '/home/ubuntu/LSTMStockPricePredictor'
     }
+
+    stages {
+        stage('Test Shell Access') {
+            steps {
+                script {
+                    echo 'Testing shell access...'
+                    sh 'echo Hello from the shell'
+                }
+            }
+        }
         stage('Build') {
             steps {
                 script {
@@ -23,7 +33,6 @@ pipeline {
                 script {
                     echo "Running unit tests..."
                     // Your testing commands will go here
-                    // Just adding a comment to test the jenkins CI/CD with github
                 }
             }
         }
@@ -53,4 +62,4 @@ pipeline {
             echo 'Build, Test and Deployment steps are completed.'
         }
     }
-
+}
