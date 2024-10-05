@@ -9,8 +9,11 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    def shellType = sh(script: 'echo $SHELL', returnStdout: true).trim()
+                    sh 'env'
+                    sh '#!/bin/bash -e \n echo "Running in bash"'
+                    shellType = sh(script: 'echo $SHELL', returnStdout: true).trim()
                     echo "Current Shell: ${shellType}"
+                    sh 'echo $SHELL'
                     echo "Installing dependencies..."
                     sh "${env.PROJECT_DIR}/venv/bin/python -m pip install -r ${env.PROJECT_DIR}/requirements.txt"
                 }
