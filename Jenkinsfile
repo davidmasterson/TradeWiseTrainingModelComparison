@@ -23,6 +23,7 @@ pipeline {
                 script {
                     echo "Running unit tests..."
                     // Your testing commands will go here
+                    // Just adding a comment to test the jenkins CI/CD with github
                 }
             }
         }
