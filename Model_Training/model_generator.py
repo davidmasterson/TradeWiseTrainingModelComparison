@@ -16,7 +16,7 @@ from Models.metric import calculate_daily_metrics_values
 from Models.manual_metrics import calculate_manual_metrics
 from database import manual_metrics_DAOIMPL, metrics_DAOIMPL
 import logging
-
+from flask import session
 import json
 
 
@@ -220,33 +220,34 @@ y = df['hit_take_profit']
 # Base hyperparameters for the initial Random Forest model
 rf_base = RandomForestClassifier(
     n_estimators=100,          # Number of trees
-    max_depth=None,            # Maximum depth of the tree
+    max_depth=20,            # Maximum depth of the tree
     min_samples_split=2,       # Minimum samples required to split a node
     min_samples_leaf=1,        # Minimum samples required at a leaf node
-    max_features='auto',       # Number of features to consider for best split
+    max_features='sqrt',       # Number of features to consider for best split
     bootstrap=True,            # Whether bootstrap samples are used
     random_state=42            # Seed for reproducibility
 )
 
-param_grid = {
-    'n_estimators': [100, 200, 300],
-    'max_depth': [None, 10, 20, 30],
-    'min_samples_split': [2, 5, 10],
-    'min_samples_leaf': [1, 2, 4],
-    'max_features': ['auto', 'sqrt', 'log2']
-}
+
+# param_grid = {
+#     'n_estimators': [100, 200, 300],
+#     'max_depth': [None, 10, 20, 30],
+#     'min_samples_split': [2, 5, 10],
+#     'min_samples_leaf': [1, 2, 4],
+#     'max_features': ['auto', 'sqrt', 'log2']
+# }
 
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
-                           cv=2, n_jobs=-1, scoring='accuracy', verbose=2)
-# Train the Random Forest model
-grid_search.fit(X_train,y_train)
+rf_base.fit(X_train,y_train)
+# grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
+#                            cv=2, n_jobs=-1, scoring='accuracy', verbose=2)
+# # Train the Random Forest model
+# grid_search.fit(X_train,y_train)
 
 # Make predictions and evaluate the model
-y_pred = grid_search.predict(X_test)
+y_pred = rf_base.predict(X_test)
 accuracy = accuracy_score(y_test, y_pred)
 classification_rep = classification_report(y_test, y_pred, output_dict=True)
 
@@ -255,8 +256,9 @@ logging.info("Classification Report:\n", classification_rep)
 
 # calculate and insert or update model metrics
 today = date.today().strftime('%Y-%m-%d')
-metric = calculate_daily_metrics_values()
-metric_exists = metrics_DAOIMPL.get_metric_by_date(today)
+user_id = int(sys.argv[1])
+metric = calculate_daily_metrics_values(user_id)
+metric_exists = metrics_DAOIMPL.get_metric_by_date_by_user(today,user_id)
 metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
 # calculate and insert or update manual metrics
 # manual_metric = calculate_manual_metrics()
@@ -268,11 +270,24 @@ future_df.to_csv('Model_Training/pre_future_predictions.csv', index=False)
 
 
 import pickle
+from Models import model
+from database import models_DAOIMPL
 model_pkl_file = "Model_Training/RandomForestModel.pkl"  
 
 
 with open(model_pkl_file, 'wb') as file:  
-    pickle.dump(grid_search, file)
+    pickle.dump(rf_base, file)
+    
+with open(model_pkl_file, 'rb') as file2:
+    model_data = file2.read()
+    model_name = f'RandomForestModel{rf_base.n_estimators}:{rf_base.max_depth}:{rf_base.min_samples_split}:{rf_base.min_samples_leaf}:{rf_base.max_features}{rf_base.bootstrap}:{rf_base.random_state}'
+    new_model = model.Model(model_name,model_data,user_id)
+    existing_model = models_DAOIMPL.get_trained_model_for_user(user_id)
+    if existing_model:
+        models_DAOIMPL.update_model_for_user(new_model,existing_model[0])
+    else:
+        models_DAOIMPL.insert_model_into_models_for_user(new_model)
+
 
 
 

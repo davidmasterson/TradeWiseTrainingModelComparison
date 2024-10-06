@@ -57,7 +57,7 @@ def process_symbols_for_purchase(symbols_list, min_spend, max_spend, min_total_s
     last_metric = metrics_DAOIMPL.get_last_metric_for_user(user['id'])
     
     if last_metric:  # Check if the result is not empty
-        last_metric = last_metric[0]  # Now safely access the first element
+        last_metric = last_metric # Now safely access the first element
         
         # Step 1: Fetch and parse the sector breakdown JSON for profits, losses, rec, and nrec
         sector_breakdown_profits_json = fetch_sector_breakdown_from_db("profits", user['id'])
@@ -123,7 +123,7 @@ def process_symbols_for_purchase(symbols_list, min_spend, max_spend, min_total_s
                 orders[symbol] = {
                     'symbol':symbol,
                     'limit_price':limit_price,
-                    'qty':int(float((min_total_spend * final_value) + min_total_spend)/limit_price),
+                    'qty':int(float((float(min_total_spend) * final_value) + float(min_total_spend))/limit_price),
                     'side':'buy',
                     'type':'limit',
                     'tif':'day',

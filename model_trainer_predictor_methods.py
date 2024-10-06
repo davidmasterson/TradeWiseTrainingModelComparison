@@ -1,16 +1,17 @@
 import subprocess
 import alpaca_request_methods
 import logging
+from flask import session
 
 
 
 
 def model_trainer():
     percent = 90
-
+    user_id = session.get('user_id')
     alpaca_request_methods.fetch_stock_data()
     percent = 95
-    subprocess.run(['python3', 'Model_Training/model_generator.py'])
+    subprocess.run(['python3', 'Model_Training/model_generator.py',str(user_id)])
     
     percent = 100
     logging.info('Emitted 100%')
@@ -18,8 +19,8 @@ def model_trainer():
 def stock_predictor_using_pretrained_model():
     percent = 0
 
-    
-    subprocess.run(['python3', 'Future_Predictor/future_predictor.py'])
+    user_id = session.get('user_id')
+    subprocess.run(['python3', 'Future_Predictor/future_predictor.py',str(user_id)])
     percent = 5
     
     

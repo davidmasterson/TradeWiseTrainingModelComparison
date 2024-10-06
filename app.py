@@ -111,7 +111,7 @@ def plot_metrics():
         metrics = metrics_DAOIMPL.get_metrics_by_user_id(session.get('user_id'))
         if metrics:
             metric.Metric.plot_model_metrics()
-            manual_metrics.Manual_metrics.plot_manual_metrics()
+            # manual_metrics.Manual_metrics.plot_manual_metrics()
             return render_template('metrics_plots.html')
         message = 'There are not any metrics yet!'
         return render_template('metrics_plots.html', message=message)
@@ -121,9 +121,10 @@ def plot_metrics():
 @app.route('/user_profile', methods=['GET', 'POST'])
 def user_profile():
     if session.get('logged_in'):
-        last_5 = transactions_DAOIMPL.get_project_training_most_recent_5_transactions()
+        user_id = session.get('user_id')
+        last_5 = transactions_DAOIMPL.get_project_training_most_recent_5_transactions_for_user(user_id)
         user = user_DAOIMPL.get_user_by_username(session.get('user_name'))[0]
-        pref = user_preferences_DAOIMPL.get_user_preferences(user['id'])
+        pref = user_preferences_DAOIMPL.get_user_preferences(user_id)
         conn = alpaca_request_methods.create_alpaca_api(session.get('user_name'))
         account = conn.get_account()
         equity = float(account.equity)
@@ -170,7 +171,8 @@ def login():
 @app.route('/transactions', methods=['GET'])
 def transactions():
     if session.get('logged_in'):
-        transactions = transactions_DAOIMPL.get_project_training_transactions()
+        user_id = session.get('user_id')
+        transactions = transactions_DAOIMPL.get_project_training_transactions_for_user(user_id)
         return render_template('transactions.html', transactions=transactions)
     return redirect(url_for('home'))
 

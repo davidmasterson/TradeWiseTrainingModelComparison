@@ -1,13 +1,14 @@
 import subprocess
 import logging
+from flask import session
 
 
 def stock_predictor_using_pretrained_model():
-    
+    user_id = session.get('user_id')
     percent = 0
 
    
-    subprocess.run(['python3', 'Hypothetical_Predictor/future_predictor.py'])
+    subprocess.run(['python3', 'Hypothetical_Predictor/future_predictor.py',str(user_id)])
     percent = 5
     
    

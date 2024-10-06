@@ -72,20 +72,16 @@ from flask import session
 # user = transactions_DAOIMPL.get_open_transactions_for_user(7)
 # print(user)
 
-username = session.get('user_name')
-conn = alpaca_request_methods.get_alpaca_stream_connection(username)
-transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
-transactions_dict = {}
-for transaction in transactions:
-    transactions_dict[transaction[1]] = {'id': transaction[0],
-     'symbol': transaction[1],
-     'client_order_id': f'{transaction[6]}~sell',
-     'take_profit': float(transaction[14]),
-     'stop_price': float(transaction[15])
-     }
-    
-symbols = [txn for txn in transactions_dict]
-quote_channels = [f'Q.{symbol}' for symbol in symbols]
 
-print(symbols)
+# Remove Testing Metrics
+# conn = dcu.get_aws_db_connection()
+# cur = conn.cursor()
+# sql = '''DELETE FROM metrics
+# WHERE id= 1'''
+# cur.execute(sql)
+# conn.commit()
+# conn.close()
+# cur.close()
+
+
 

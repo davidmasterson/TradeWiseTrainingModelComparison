@@ -1,18 +1,22 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
 import pickle
+import sys
+from database import models_DAOIMPL
 
-try:
-    model_pkl_file = "Model_Training/RandomForestModel.pkl"
+user_id = int(sys.argv[1])
 
 
-    with open(model_pkl_file, 'rb') as file:  
-        rf_model = pickle.load(file)
+model_pkl_file = "Model_Training/RandomForestModel.pkl"
 
-except:
-    pass
+rf_model = pickle.loads(models_DAOIMPL.get_trained_model_for_user(user_id))
+
+
 
 
 # In[209]:

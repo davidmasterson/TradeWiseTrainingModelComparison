@@ -81,23 +81,23 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
             purchase_price = float(seperated_line[3])
             sell_date_string = seperated_line[7].split('-') if seperated_line[8] != 'N/A' else 'N/A'
             sell_price = float(seperated_line[8]) if seperated_line[8] != 'N/A' else 'N/A'
-            actual_return = float(seperated_line[13]) if seperated_line[8] != 'N/A' else 'N/A'
+            actual = float(seperated_line[13]) if seperated_line[8] != 'N/A' else 'N/A'
             purchase_date = date(int(purchase_date_string[0]),int(purchase_date_string[1]), int(purchase_date_string[2]))
             sell_date = date(int(sell_date_string[0]), int(sell_date_string[1]), int(sell_date_string[2])) if sell_price != 'N/A' else 'N/A'
             days_to_sell = (sell_date - purchase_date).days if seperated_line[8] != 'N/A' else 'N/A'
             take_profit = float(purchase_price + (purchase_price * .03))
             stop_price = float(purchase_price - (purchase_price * .01))
-            hit_take_profit = 1 if actual_return != 'N/A' and actual_return > 0.00 else 0
-            trans_df_initial_data.append([symbol,purchase_date,purchase_price,sell_date,sell_price,actual_return,days_to_sell,
+            hit_take_profit = 1 if actual != 'N/A' and actual > 0.00 else 0
+            trans_df_initial_data.append([symbol,purchase_date,purchase_price,sell_date,sell_price,actual,days_to_sell,
                                         take_profit,stop_price,hit_take_profit])
         count += 1
     reader.close()
     return trans_df_initial_data
 
-def get_project_training_transactions():
+def get_project_training_transactions_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT * FROM transactions WHERE prediction IS NOT NULL'''
+    sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id}'''
     
     try:
         cur.execute(sql)
@@ -117,10 +117,10 @@ def get_project_training_transactions():
         cur.close()
         conn.close()
 
-def get_project_training_most_recent_5_transactions():
+def get_project_training_most_recent_5_transactions_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT * FROM transactions WHERE prediction IS NOT NULL ORDER BY id DESC LIMIT 5'''
+    sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id} ORDER BY id DESC LIMIT 5 '''
     
     try:
         cur.execute(sql)
@@ -141,14 +141,15 @@ def get_project_training_most_recent_5_transactions():
         conn.close()
 
 
-def calculate_average_days_to_close():
+def calculate_average_days_to_close_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
+    sql = f'''SELECT AVG(DATEDIFF(STR_TO_DATE(ds, '%Y-%m-%d'), STR_TO_DATE(dp, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
-                WHERE sell_string !='N/A'
+                WHERE sstring !='N/A'
                 AND prediction = 1
-                AND prediction = result'''
+                AND prediction = result
+                AND user_id = {user_id}'''
     try:
         cur.execute(sql)
         avg = cur.fetchone()
@@ -162,10 +163,10 @@ def calculate_average_days_to_close():
         conn.close()
         cur.close()
 
-def calculate_cumulative_profit():
+def calculate_cumulative_profit_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT sum(actual_return) from transactions WHERE actual_return > 0 and prediction = 1 and result = 1'
+    sql = f'SELECT sum(actual) from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id = {user_id}'
     try:
         cur.execute(sql)
         profit = cur.fetchone()
@@ -179,10 +180,10 @@ def calculate_cumulative_profit():
         conn.close()
         cur.close()
 
-def calculate_cumulative_loss():
+def calculate_cumulative_loss_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT sum(actual_return) from transactions WHERE actual_return < 0 and prediction = 1 AND result = 0'
+    sql = f'SELECT sum(actual) from transactions WHERE actual < 0 and prediction = 1 AND result = 0 AND user_id={user_id}'
     try:
         cur.execute(sql)
         loss = cur.fetchone()
@@ -196,12 +197,12 @@ def calculate_cumulative_loss():
         conn.close()
         cur.close()
 
-def calculate_correct_predictions():
+def calculate_correct_predictions_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT COUNT(*) FROM transactions 
+    sql = f'''SELECT COUNT(*) FROM transactions 
             WHERE prediction IS NOT NULL
-            AND prediction = result'''
+            AND prediction = result AND user_id={user_id}'''
     try:
         cur.execute(sql)
         count = cur.fetchone()
@@ -215,10 +216,10 @@ def calculate_correct_predictions():
         conn.close()
         cur.close()
 
-def calculate_incorrect_predictions():
+def calculate_incorrect_predictions_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT COUNT(*) FROM transactions WHERE prediction != result'
+    sql = f'SELECT COUNT(*) FROM transactions WHERE prediction != result AND user_id={user_id}'
     try:
         cur.execute(sql)
         count = cur.fetchone()
@@ -253,11 +254,12 @@ def get_open_transactions_for_user(user_id):
         cur.close()
         conn.close()
 
-def get_open_transaction_by_pstring(pstring):
+def get_open_transaction_by_pstring_for_user(pstring,user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT * FROM transactions
-                WHERE pstring = %s'''
+    sql = f'''SELECT * FROM transactions
+                WHERE pstring = %s
+                AND user_id={user_id}'''
     vals = [pstring]
     try:
         cur.execute(sql,vals)
@@ -273,10 +275,10 @@ def get_open_transaction_by_pstring(pstring):
         conn.close()
         
 # Sector breakdown aggregations
-def select_model_sector_profits_symbols():
+def select_model_sector_profits_symbols_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE actual_return > 0 and prediction = 1 and result = 1'
+    sql = f'SELECT symbol from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchall()
@@ -290,10 +292,10 @@ def select_model_sector_profits_symbols():
         conn.close()
         cur.close()
 
-def select_model_sector_loss_symbols():
+def select_model_sector_loss_symbols_for_user(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE actual_return < 0 and prediction = 1 and result = 0'
+    sql = f'SELECT symbol from transactions WHERE actual < 0 and prediction = 1 and result = 0 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -307,10 +309,10 @@ def select_model_sector_loss_symbols():
         conn.close()
         cur.close()
 
-def select_model_sector_recommended_symbols():
+def select_model_sector_recommended_symbols(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE prediction = 1'
+    sql = f'SELECT symbol from transactions WHERE prediction = 1 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -324,10 +326,10 @@ def select_model_sector_recommended_symbols():
         conn.close()
         cur.close()
 
-def select_model_sector_not_recommended_symbols():
+def select_model_sector_not_recommended_symbols(user_id):
     conn = dcu.get_aws_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE prediction = 0'
+    sql = f'SELECT symbol from transactions WHERE prediction = 0 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -341,147 +343,6 @@ def select_model_sector_not_recommended_symbols():
         conn.close()
         cur.close()
 
-# Manual sector breakdowns
-def select_manual_sector_profits_symbols():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE actual_return > 0 and prediction IS NOT NULL'
-    try:
-        cur.execute(sql)
-        symbols = cur.fetchall()
-        if symbols:
-            return symbols
-        return []
-    except Exception as e:
-        logging.info(e)
-        return []
-    finally:
-        conn.close()
-        cur.close()
-
-def select_manual_sector_loss_symbols():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE actual_return < 0 and prediction IS NOT NULL'
-    try:
-        cur.execute(sql)
-        symbols = cur.fetchone()
-        if symbols:
-            return symbols
-        return []
-    except Exception as e:
-        logging.info(e)
-        return []
-    finally:
-        conn.close()
-        cur.close()
-
-def select_manual_sector_recommended_symbols():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = 'SELECT symbol from transactions WHERE prediction IS NOT NULL'
-    try:
-        cur.execute(sql)
-        symbols = cur.fetchone()
-        if symbols:
-            return symbols[0]
-        return []
-    except Exception as e:
-        logging.info(e)
-        return []
-    finally:
-        conn.close()
-        cur.close()
-
-# Manual Algo Calculations
-def calculate_manual_algo_correct():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT count(*) from transactions WHERE prediction IS NOT NULL AND actual_return > 0.00'''
-    try:
-        cur.execute(sql)
-        count = cur.fetchone()
-        if count:
-            return count[0]
-        return 0
-    except Exception as e:
-        logging.info(e)
-        return 0
-    finally:
-        cur.close()
-        conn.close()
-
-def calculate_manual_algo_incorrect():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT count(*) from transactions WHERE prediction IS NOT NULL AND actual_return < 0.00'''
-    try:
-        cur.execute(sql)
-        count = cur.fetchone()
-        if count:
-            return count[0]
-        return 0
-    except Exception as e:
-        logging.info(e)
-        return 0
-    finally:
-        cur.close()
-        conn.close()
-
-def calculate_manual_algo_time_to_close_correct_pred():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT AVG(DATEDIFF(STR_TO_DATE(date_sold, '%Y-%m-%d'), STR_TO_DATE(date_purchased, '%Y-%m-%d'))) AS avg_days_to_close
-                FROM transactions
-                WHERE sell_string != "N/A"
-                AND actual_return > 0
-                AND prediction IS NOT NULL'''
-    try:
-        cur.execute(sql)
-        avg = cur.fetchone()
-        if avg:
-            return avg[0]
-        return None
-    except Exception as e:
-        logging.info(e)
-        return None
-    finally:
-        conn.close()
-        cur.close()
-
-def calculate_manual_algo_cumulative_profit():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT sum(actual_return) from transactions WHERE prediction IS NOT NULL AND actual_return > 0.00'''
-    try:
-        cur.execute(sql)
-        count = cur.fetchone()
-        if count:
-            return count[0]
-        return 0
-    except Exception as e:
-        logging.info(e)
-        return 0
-    finally:
-        cur.close()
-        conn.close()
-
-def calculate_manual_algo_cumulative_loss():
-    conn = dcu.get_aws_db_connection()
-    cur = conn.cursor()
-    sql = '''SELECT sum(actual_return) from transactions WHERE prediction IS NOT NULL AND actual_return < 0.00'''
-    try:
-        cur.execute(sql)
-        count = cur.fetchone()
-        if count:
-            return count[0]
-        return 0
-    except Exception as e:
-        logging.info(e)
-        return 0
-    finally:
-        cur.close()
-        conn.close()
 
 
 def insert_transactions(transactions):
