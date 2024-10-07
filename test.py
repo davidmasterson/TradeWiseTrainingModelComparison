@@ -1,9 +1,9 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL
+from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
-from Models import transaction
+from Models import transaction, preprocessing_script
 import logging
 from datetime import datetime
 import order_methods
@@ -82,6 +82,9 @@ from flask import session
 # conn.commit()
 # conn.close()
 # cur.close()
+# preprocessing_scripts_DAOIMPL.create_preprocessing_scripts_table(7)
+# cols = dcu.show_table_columns('preprocessing_scripts')
+# print(cols)
 
-
-
+script = preprocessing_script.Preprocessing_Script.get_script_from_database_and_decrypt(7, 'RFM Preprocessing Script')
+print(script)

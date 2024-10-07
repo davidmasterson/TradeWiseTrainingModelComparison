@@ -76,6 +76,41 @@
                 </tbody>
             </table>
         </div>
+        
+    </div>
+    <div class="scripts">
+        <h3>Your Preprocessing Scripts</h3>
+        <div class="table-responsive">
+            <form action="">
+                <table class="user_preprocessing_scripts">
+                    <thead>
+                        <tr>
+                            <th>Select</th>
+                            <th>Script Name</th>
+                            <th>Uploaded</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for script in user_script_names %}
+                        <tr>
+                            <td><input type="checkbox" name="script" value="{{ script }}"></td>
+                            <td>{{ script[0] }}</td>
+                            <td>{{ script[1] }}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button class="compare-btn" type="submit">Compare</button>
+            </form>
+        </div>
+        <div class="upload-section">
+            <form action="/upload_script" method="POST" enctype="multipart/form-data">
+                <input type="file" name="script_file" accept=".py" required>
+                <input type="text" name="script_name" placeholder="Script Name" required>
+                <textarea name="script_description" placeholder="Script Description" required></textarea>
+                <button class="upload-btn" type="submit">Upload Script</button>
+            </form>
+        </div>
     </div>
 
     <!-- Account Details -->
@@ -160,7 +195,7 @@
         box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
 
-    .account-overview h3, .account-details h3, .preferences h3, .security-notifications h3, .investment-limits h3 {
+    .account-overview h3, .account-details h3, .preferences h3, .security-notifications h3, .investment-limits h3 , .scripts{
         font-size: 20px;
         margin-bottom: 10px;
     }
@@ -226,6 +261,112 @@
     .investment-limits label {
         font-size: 18px;
         margin-right: 10px;
+    }
+    .scripts {
+        margin-top: 20px;
+        background-color: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .table-responsive {
+        margin-bottom: 20px;
+    }
+    
+    .user_preprocessing_scripts {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    
+
+    .upload-section {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .upload-section input[type="file"],
+    .upload-section input[type="text"],
+    .upload-section textarea {
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+    }
+    
+    .upload-section input[type="file"] {
+        flex: 1;
+        max-width: 200px;
+    }
+    
+    .upload-section input[type="text"],
+    .upload-section textarea {
+        flex: 2;
+    }
+    
+    .upload-btn {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    
+    .upload-btn:hover {
+        background-color: #0056b3;
+    }
+    .scripts form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .scripts form input[type="text"], 
+    .scripts form textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    
+    .scripts form input[type="submit"], 
+    .scripts button {
+        padding: 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 150px;
+    }
+    
+    .scripts form input[type="file"] {
+        padding: 6px;
+    }
+    
+    .scripts form input[type="submit"]:hover, 
+    .scripts button:hover {
+        opacity: 0.9;
+    }
+    
+    .user_preprocessing_scripts {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+    }
+    
+    .user_preprocessing_scripts th, 
+    .user_preprocessing_scripts td {
+        padding: 10px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+    
+    .user_preprocessing_scripts th {
+        background-color: #cde;
     }
 </style>
 {% endblock %}

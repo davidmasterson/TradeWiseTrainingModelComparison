@@ -5,13 +5,14 @@ from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, s
 import alpaca_request_methods
 # import threading
 import model_trainer_predictor_methods
+from Models import preprocessing_script, metric, user, user_preferences
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL, user_preferences_DAOIMPL
-from Models import plotters, metric, manual_metrics, user, user_preferences
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL
+
 import bcrypt
 import threading
 import time
@@ -23,6 +24,7 @@ import order_methods
 import requests
 from flask_cors import CORS
 import asyncio
+from datetime import datetime
 
 
 app = Flask(__name__)
@@ -129,7 +131,11 @@ def user_profile():
         account = conn.get_account()
         equity = float(account.equity)
         cash = float(account.cash)
-        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, pref=pref)
+        user_script_names = preprocessing_scripts_DAOIMPL.get_preprocessing_script_names_and_dates_for_user(user_id)
+        if user_script_names:
+            print(user_script_names)
+            user_script_names = user_script_names
+        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, pref=pref, user_script_names=user_script_names)
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 
@@ -431,7 +437,35 @@ def update_prefs():
 
 
 
+# Upload preprocessing script to database
+@app.route('/upload_script', methods=['POST'])
+def upload_script():
+    script_file = request.files['script_file']
+    script_name = request.form['script_name']
+    script_description = request.form['script_description']
+    user_id = session.get('user_id')
+    username = session.get('user_name')# Retrieve from session or login
 
+    if script_file and script_name and script_description:
+        # Read the script content
+        script_content = script_file.read().decode("utf-8")
+
+        # Create the Preprocessing_Script object
+        new_script = preprocessing_script.Preprocessing_Script(
+            script_name=script_name,
+            script=script_content,
+            user_id=user_id,
+            upload_date=datetime.now(),
+            script_description=script_description,
+            username= username
+        )
+
+        # Save to database
+        preprocessing_scripts_DAOIMPL.insert_preprocessing_script_for_user(new_script)
+
+        return "Script uploaded and encrypted successfully!"
+    else:
+        return "All fields are required!"
 
 
 

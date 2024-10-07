@@ -7,3 +7,6 @@ final_list
 static/plots/*
 Model_Training/RandomForestModel.pkl
 app.log
+aws/*
+
+awscliv2.zip
