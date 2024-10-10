@@ -1,5 +1,5 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL
+from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, models_DAOIMPL,model_metrics_history_DAOIMPL
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
@@ -83,8 +83,24 @@ from flask import session
 # conn.close()
 # cur.close()
 # preprocessing_scripts_DAOIMPL.create_preprocessing_scripts_table(7)
-# cols = dcu.show_table_columns('preprocessing_scripts')
+# cols = dcu.show_table_columns('model_metrics_history')
+# print(cols)
+# 
+
+# model = models_DAOIMPL.get_trained_model_for_user(7)
+
+# cols = dcu.show_table_columns('model_metrics_history')
 # print(cols)
 
-script = preprocessing_script.Preprocessing_Script.get_script_from_database_and_decrypt(7, 'RFM Preprocessing Script')
-print(script)
+
+
+# create statements
+
+# models = models_DAOIMPL.get_trained_model_names_for_user(7)
+# print(models)
+# model_metrics_history_DAOIMPL.create_model_metrics_history_table(7)
+# model_trainer_predictor_methods.model_trainer(7)
+# models_DAOIMPL.update_selected_models_for_user(7, 'RandomForestModel')
+# models = model_metrics_history_DAOIMPL.get_most_recent_metric_for_user_selected_models(7)
+
+# print(models)

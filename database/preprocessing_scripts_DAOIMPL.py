@@ -17,7 +17,7 @@ def create_preprocessing_scripts_table(user_id):
                 upload_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 script_description VARCHAR(1000) NOT NULL,
                 user_alias VARCHAR(25) NOT NULL,
-                encrypted_fernet_key BLOB,
+                encrypted_fernet_key VARCHAR(1024),
                 CONSTRAINT preprocessing_scripts_users FOREIGN KEY (user_id) REFERENCES users(id)
                 )
             '''

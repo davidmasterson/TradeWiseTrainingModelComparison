@@ -14,7 +14,7 @@ user_id = int(sys.argv[1])
 
 model_pkl_file = "Model_Training/RandomForestModel.pkl"
 
-rf_model = pickle.loads(models_DAOIMPL.get_trained_model_for_user(user_id))
+rf_model = pickle.loads(models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, 'RandomForestModel'))
 
 
 

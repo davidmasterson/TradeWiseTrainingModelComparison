@@ -14,7 +14,7 @@ def submit_limit_order(username, order):
             type=order['type'],
             limit_price=order['limit_price'],# Order type: "market" or "limit"
             time_in_force=order['tif'],  # Good 'til canceled
-            client_order_id=f"{datetime.now()}{order['symbol']}{order['qty']} {order['limit_price']},{this_user['id']}"
+            client_order_id=f"{datetime.now()}{order['symbol']}{order['qty']} {order['limit_price']}/{this_user['id']}"
         )
         logging.info(f"Order submitted: {order}")
     except Exception as e:

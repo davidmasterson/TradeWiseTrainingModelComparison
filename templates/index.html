@@ -1,139 +1,192 @@
 {% extends "base.html" %}
 
-{% block title %}Model Training and Predictions{% endblock %}
+{% block title %}TradeWise AI Trader{% endblock %}
 
 {% block content %}
-    <div class="container">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1 class="text-center">Model Operations Dashboard</h1>
-            <!-- Logout Button -->
-            <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
-        </div>
-        
-        <!-- Train Random Forest Model Section -->
-        <div class="card">
-            <div class="card-body text-center">
-                <h2 class="card-title">Train Random Forest Model</h2>
-                <form id="trainer-form" method="POST" action="/create_rf_model">
-                   
-                    <div class="d-flex justify-content-center align-items-center flex-column">
-                        <div class="progress w-100">
-                            <div id="model-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" aria-valuenow="" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">0%</div>
-                        </div>
-                        <button id="create-model-button" type="submit" class="btn btn-success mt-3">Create Model</button>
-                        {% if status == 'DONE' %}
-                        <h3 style="color: green;">DONE TRAINING</h3>
-                        {% endif %}
+<div class="dashboard-container">
+    <div class="model-row">
+        {% if metrics_data %}
+            {% for metric in metrics_data %}
+            <div class="model-card">
+                <div class="text-wrapper">
+                    <h2>{{ metric.model_name }}</h2>
+                    <p><strong>Top Features:</strong></p>
+                    <ul>
+                        {% for key, value in metric.top_features.items() %}
+                        <li>{{ key }}: {{ value }}</li>
+                        {% endfor %}
+                    </ul>
+                    <p>Accuracy: {{ metric.accuracy }}%</p>
+                    <p>Precision: {{ metric.precision }}</p>
+                    <p>Recall: {{ metric.recall }}</p>
+                    <p>F1-Score: {{ metric.f1_score }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No model metrics found.</p>
+        {% endif %}
+    </div>
+
+    <!-- Model 1 Historical Charts -->
+    <div class="cards-container">
+        <div class="charts-card">
+            <h2>Model 1 History</h2>
+            <div class="charts-container">
+                <div class="charts-grid">
+                    <div class="chart-wrapper">
+                        <canvas id="accuracyChart" width="200" height="150"></canvas>
                     </div>
-                </form>
+                    <div class="chart-wrapper">
+                        <canvas id="precisionChart" width="200" height="150"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="recallChart" width="200" height="150"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="f1Chart" width="200" height="150"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-
-        <!-- Run Predictions Section -->
-        <div class="card">
-            <div class="card-body text-center">
-                <h2 class="card-title">Run Predictions Against Already Open Positions</h2>
-                <form id="predictor-form" method="POST" action="/predict">
-                    
-                    <div class="d-flex justify-content-center align-items-center flex-column">
-                        <div class="progress w-100">
-                            <div id="prediction-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" aria-valuenow="" aria-valuemin="0" aria-valuemax="100" style="width: 0%;">0%</div>
-                        </div>
-                        <button id="run-prediction-button" type="submit" class="btn btn-primary mt-3">Predict Buy</button>
+        <div class="charts-card">
+            <h2>Model 2 History</h2>
+            <div class="charts-container">
+                <div class="charts-grid">
+                    <div class="chart-wrapper">
+                        <canvas id="accuracyChart" width="200" height="150"></canvas>
                     </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- New Section for User to Input Multiple Symbols -->
-        <div class="card mt-4">
-            <div class="card-body text-center">
-                <h2 class="card-title">Input Stock Symbols</h2>
-                <form id="symbol-form" method="POST" action="/process_symbols">
-                   
-                    <div id="symbol-inputs">
-                        <div class="symbol-input mb-3">
-                            <input type="text" name="symbols[]" class="form-control" placeholder="Enter stock symbol" required>
-                        </div>
+                    <div class="chart-wrapper">
+                        <canvas id="precisionChart" width="200" height="150"></canvas>
                     </div>
-                    <button type="button" id="add-symbol-button" class="btn btn-secondary mb-3">Add Another Symbol</button>
-                    <button type="submit" class="btn btn-primary">Submit Symbols</button>
-                </form>
+                    <div class="chart-wrapper">
+                        <canvas id="recallChart" width="200" height="150"></canvas>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="f1Chart" width="200" height="150"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+</div>
 
-    <script type="text/javascript">
-        // Additional UI elements like adding new inputs can remain the same.
-        document.addEventListener('DOMContentLoaded', function() {
-            var addButton = document.getElementById('add-symbol-button');
-            console.log(addButton)
-            if (addButton) {
-                addButton.addEventListener('click', function() {
-                    var newInputDiv = document.createElement('div');
-                    newInputDiv.classList.add('symbol-input', 'mb-3');
-                    newInputDiv.innerHTML = '<input type="text" name="symbols[]" class="form-control" placeholder="Enter stock symbol" required>';
-                    document.getElementById('symbol-inputs').appendChild(newInputDiv);
-                });
-            } else {
-                console.log('Add button not found');
+<!-- Styles -->
+<style>
+.dashboard-container {
+    display: grid;
+    flex-direction: column;
+    align-items: center;
+}
+.model-row {
+    display: flex;
+    justify-content: space-between;
+    width: 98%;
+    margin-bottom: 30px;
+}
+.model-card {
+    background-color: #f4f5f7;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    width: 50%;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+.charts-card {
+    background-color: #f4f5f7;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    width: 50%; /* Adjust width to ensure cards fit side by side */
+    margin: 20px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.charts-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Two charts per row */
+    grid-gap: 20px;
+    justify-items: center;
+}
+.cards-container {
+    display: flex;
+    justify-content: space-between; /* Align cards next to each other */
+    width: 100%;
+    margin-bottom: 30px;
+}
+.chart-wrapper {
+    width: 300px; /* Smaller chart size */
+    height: 250px;
+    margin: 10px;
+}
+canvas {
+    width: 100%;
+    height: 100%;
+}
+
+.text-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+</style>
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script> <!-- Add this for date support -->
+
+<script>
+    // Function to create the chart
+    function createChart(chartId, labels, data, labelName) {
+        const ctx = document.getElementById(chartId).getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,  // Timestamps or Dates
+                datasets: [{
+                    label: labelName,
+                    data: data,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    fill: true,
+                }]
+            },
+            options: {
+                scales: {
+                    x: {
+                        type: 'time',
+                        time: {
+                            unit: 'day'
+                        }
+                    },
+                    y: {
+                        beginAtZero: true
+                    }
+                }
             }
         });
-        
-    </script>
-    
+    }
 
-    <!-- CSS for styling -->
-    <style>
-        body {
-            background-color: #f4f6f9;
-            font-family: 'Arial', sans-serif;
-        }
-        .container {
-            max-width: 800px;
-            margin-top: 50px;
-        }
-        .card {
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        .progress {
-            height: 30px;
-            border-radius: 15px;
-            overflow: hidden;
-            margin-bottom: 15px;
-        }
-        .progress-bar {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-primary, .btn-success {
-            width: 180px;
-            padding: 10px;
-            font-size: 16px;
-        }
-        h1 {
-            color: #343a40;
-            font-weight: 700;
-            margin-bottom: 40px;
-        }
-        h2 {
-            color: #495057;
-            font-size: 1.5rem;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-        .card-body {
-            padding: 30px;
-        }
-        /* Logout Button */
-        .btn-danger {
-            width: 100px;
-            padding: 10px;
-            font-size: 14px;
-        }
-    </style>
+    // Data coming from the backend
+    const historicalMetrics = {{ historical_metrics | tojson }};
+    
+    console.log(historicalMetrics);
+
+    // Prepare labels (dates) and data for each metric
+    const labels = historicalMetrics.map(m => new Date(m[7]));  // Timestamp is at index 7
+    const accuracyData = historicalMetrics.map(m => parseFloat(m[2]));  // Accuracy is at index 2
+    const precisionData = historicalMetrics.map(m => parseFloat(m[3]));  // Precision is at index 3
+    const recallData = historicalMetrics.map(m => parseFloat(m[4]));  // Recall is at index 4
+    const f1ScoreData = historicalMetrics.map(m => parseFloat(m[5]));  // F1-Score is at index 5
+    
+    // Create the charts
+    createChart('accuracyChart', labels, accuracyData, 'Accuracy');
+    createChart('precisionChart', labels, precisionData, 'Precision');
+    createChart('recallChart', labels, recallData, 'Recall');
+    createChart('f1Chart', labels, f1ScoreData, 'F1-Score');
+</script>
 {% endblock %}

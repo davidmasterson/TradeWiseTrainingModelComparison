@@ -215,3 +215,23 @@ def plot_manual_sector_breakdown_recommend(sector_data):
     plt.axis('equal')
     plt.title('Sector Breakdown Recommend')
     plt.savefig('static/plots/manual_sector_breakdown_recommend.png')
+    
+    
+    
+import plotly.graph_objs as go
+
+def generate_model_performance_graph(model_scores):
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(x=model_scores['dates'], y=model_scores['accuracy'],
+                             mode='lines', name='Accuracy'))
+    fig.add_trace(go.Scatter(x=model_scores['dates'], y=model_scores['precision'],
+                             mode='lines', name='Precision'))
+    fig.add_trace(go.Scatter(x=model_scores['dates'], y=model_scores['recall'],
+                             mode='lines', name='Recall'))
+
+    fig.update_layout(title='Model Performance Over Time',
+                      xaxis_title='Date',
+                      yaxis_title='Score')
+
+    return fig.to_html()  # To embed in your webpage

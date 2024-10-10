@@ -38,9 +38,17 @@ class Preprocessing_Script:
                 # Assuming the encrypted Fernet key is stored somewhere securely.
                 encrypted_key = preprocessing_scripts_DAOIMPL.get_preprocessing_script_encrypted_fernet_key_for_user(self.user_id)
                 if encrypted_key:
-                    # Decrypt the encrypted Fernet key with KMS
-                    decrypted_key = kms_client.decrypt(CiphertextBlob=encrypted_key)['Plaintext']
+                    encrypted_key_bytes = encrypted_key[0][0]
+                    print(len(encrypted_key_bytes))
+                    try:
+                        if isinstance(encrypted_key_bytes, str):
+                            decoded_key =base64.urlsafe_b64decode(encrypted_key_bytes)
+                    except Exception as e:
+                        logging.error(f"Base64 decoding error: {e}")
+                        raise
+                    decrypted_key = kms_client.decrypt(CiphertextBlob=decoded_key)['Plaintext']
                     return decrypted_key
+
 
         # If no existing KMS key or Fernet key, create a new one
         key_response = kms_client.create_key(
@@ -65,7 +73,10 @@ class Preprocessing_Script:
         encrypted_cipher = self.upload_cryptography_cipher_to_kms(new_fernet_key)
 
         # Save the encrypted Fernet key securely (e.g., in the database)
-        self.encrypted_fernet_key = base64.urlsafe_b64encode(encrypted_cipher)
+        self.encrypted_fernet_key = base64.urlsafe_b64encode(encrypted_cipher).decode('utf-8')
+        print(len(new_fernet_key))
+        logging.info(f"Original Fernet Key: {new_fernet_key}")
+        logging.info(f"Encrypted Fernet Key (Base64): {self.encrypted_fernet_key}")
         return new_fernet_key
 
     def upload_cryptography_cipher_to_kms(self, cipher_key):

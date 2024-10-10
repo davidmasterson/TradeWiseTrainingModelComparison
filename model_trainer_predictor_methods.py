@@ -6,9 +6,9 @@ from flask import session
 
 
 
-def model_trainer():
+def model_trainer(user_id):
     percent = 90
-    user_id = session.get('user_id')
+    # user_id = session.get('user_id')
     alpaca_request_methods.fetch_stock_data()
     percent = 95
     subprocess.run(['python3', 'Model_Training/model_generator.py',str(user_id)])

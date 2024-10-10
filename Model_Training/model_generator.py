@@ -267,28 +267,50 @@ metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else me
 
 
 future_df.to_csv('Model_Training/pre_future_predictions.csv', index=False)
+# Create historical model metrics object to input to database
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report
+from Models import model_metrics_history
 
 
 import pickle
+import json
 from Models import model
-from database import models_DAOIMPL
+from database import models_DAOIMPL, model_metrics_history_DAOIMPL
+from datetime import datetime
 model_pkl_file = "Model_Training/RandomForestModel.pkl"  
 
 
 with open(model_pkl_file, 'wb') as file:  
     pickle.dump(rf_base, file)
     
+model_name = ''    
 with open(model_pkl_file, 'rb') as file2:
     model_data = file2.read()
-    model_name = f'RandomForestModel{rf_base.n_estimators}:{rf_base.max_depth}:{rf_base.min_samples_split}:{rf_base.min_samples_leaf}:{rf_base.max_features}{rf_base.bootstrap}:{rf_base.random_state}'
+    model_name = f'RandomForestModel'
     new_model = model.Model(model_name,model_data,user_id)
-    existing_model = models_DAOIMPL.get_trained_model_for_user(user_id)
+    existing_model = models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, model_name)
     if existing_model:
         models_DAOIMPL.update_model_for_user(new_model,existing_model[0])
     else:
         models_DAOIMPL.insert_model_into_models_for_user(new_model)
 
 
+accuracy = accuracy_score(y_test, y_pred)
+precision = precision_score(y_test, y_pred)
+recall = recall_score(y_test, y_pred)
+f1 = f1_score(y_test, y_pred)
+feature_importance = rf_base.feature_importances_
+feature_names = X.columns  # or use the feature names in case you have them
+feature_importance_dict = {feature_names[i]: feature_importance[i] for i in range(len(feature_importance))}
+
+# Convert to JSON format
+top_features = json.dumps(feature_importance_dict)
+# get model from database by model name and user_id
+model_id = models_DAOIMPL.get_trained_models_id_for_user_by_name(user_id,model_name)
+new_history_object = model_metrics_history.Model_Metrics_History(model_id,accuracy,precision,recall,f1,top_features,timestamp=datetime.now(),user_id=user_id)
+model_metrics_history_DAOIMPL.insert_metrics_history(new_history_object)
 
 
 

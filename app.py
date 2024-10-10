@@ -5,13 +5,13 @@ from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, s
 import alpaca_request_methods
 # import threading
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, user, user_preferences
+from Models import preprocessing_script, metric, user, user_preferences, model_metrics_history
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL
 
 import bcrypt
 import threading
@@ -25,6 +25,8 @@ import requests
 from flask_cors import CORS
 import asyncio
 from datetime import datetime
+import websocket
+import json
 
 
 app = Flask(__name__)
@@ -101,10 +103,36 @@ def process_symbols():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    # User must be logged in to access the dashboard
     if session.get('logged_in'):
-        return render_template('index.html')
-    return redirect(url_for('home'))  # Redirect to homepage if not logged in
+        user_id = session.get('user_id')
+        model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_for_user_selected_models(user_id)
+        # Get the latest metric by model name
+        model_metrics = model_metrics_history.Model_Metrics_History.get_most_recent_metric(model_metrics)
+
+        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_selected_models(user_id)
+        logging.info(f"historical_metrics {historical_metrics}")
+        logging.info(f'model metrics: {model_metrics}')
+        if model_metrics:
+            metrics_data = []
+            for metric in [model_metrics]:
+                top_features_dict = json.loads(metric[6])  # Load JSON into a dictionary
+                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])  # Sort and limit to top 5
+                
+                metrics_data.append({
+                    'model_name': metric[1],
+                    'accuracy': float(metric[2]),
+                    'precision': float(metric[3]),
+                    'recall': float(metric[4]),
+                    'f1_score': float(metric[5]),
+                    'top_features': sorted_features,  # Now it contains sorted features
+                    'timestamp': metric[7]
+                })
+            logging.info(metrics_data)
+            return render_template('index.html', metrics_data=metrics_data, historical_metrics=historical_metrics)
+        
+        return render_template('index.html')  # If no metrics found
+    return redirect(url_for('home'))
+
 
 
 @app.route('/metrics_plots', methods=['GET'])
@@ -325,73 +353,12 @@ def get_progress():
 
 
 
-def run_alpaca_websocket(username):
-    """ Thread target function to handle websocket connection """
 
-    async def websocket_task():
-        try:
-            logging.info("Attempting to connect to Alpaca WebSocket...")
-            conn = alpaca_request_methods.get_alpaca_stream_connection(username)
-            if conn is None:
-                logging.error("Failed to connect to Alpaca WebSocket. Retrying...")
-                return
-
-            transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
-            transactions_dict = {}
-            for transaction in transactions:
-                transactions_dict[transaction[1]] = {
-                    'id': transaction[0],
-                    'symbol': transaction[1],
-                    'client_order_id': f'{transaction[6]}~sell',
-                    'take_profit': float(transaction[14]),
-                    'stop_price': float(transaction[15])
-                }
-
-            # Define your quote handler
-            async def on_quote(data):
-                transaction = transactions_dict.get(data.symbol, None)
-                if transaction:
-                    # Check for take profit or stop out
-                    if data.askprice >= transaction['take_profit']:
-                        logging.info(f"Take Profit hit for {data.symbol} at {data.askprice}.")
-                        order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.askprice), int(transaction['id']), username)
-                    elif data.bidprice <= transaction['stop_price']:
-                        logging.info(f"Stop Out hit for {data.symbol} at {data.bidprice}.")
-                        order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.bidprice), int(transaction['id']), username)
-
-            logging.info("Subscribing to trade updates...")
-            conn.subscribe_trade_updates(alpaca_request_methods.handle_trade_updates)
-            logging.info(f"Successfully subscribed to trade updates for user {username}")
-
-            # Subscribe to quote updates for all symbols
-            symbols = list(transactions_dict.keys())
-            for sym in symbols:
-                logging.info(f"Subscribing to quotes for symbol {sym}")
-                conn.subscribe_quotes(on_quote, sym)
-                logging.info(f'Successfully subscribed to quotes for symbol {sym}')
-
-           # We use this to keep the connection alive and process received messages
-            while True:
-                await asyncio.sleep(1)
-
-        except Exception as e:
-            logging.error(f"WebSocket connection error: {e}. Reconnecting...")
-    
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Add websocket_task to the event loop if running
-    if loop.is_running():
-        loop.create_task(websocket_task())  # Schedule it as a new task
-    else:
-        # Otherwise, run the event loop and task
-        loop.run_until_complete(websocket_task())
 
 @app.route('/start_websocket/<username>')
 def start_websocket_route(username):
-    # Trigger the websocket connection without creating a new event loop
-    thread = threading.Thread(target=run_alpaca_websocket, args=(username,))
+    # Start the WebSocket in a separate thread to avoid blocking Flask
+    thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,))
     thread.start()
     return "WebSocket connection initiated"
 
@@ -475,7 +442,11 @@ def log_event_loop_status(prefix=""):
     logging.info(f"{prefix} Event loop running: {loop.is_running()}, closed: {loop.is_closed()}")
 
 
-if __name__ == '__main__':
-    
+
+if __name__ == "__main__":
     app.run(debug=False)
+    start_websocket_route(session.get('user_name'))
+
+    
+   
     

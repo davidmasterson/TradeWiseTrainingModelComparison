@@ -13,6 +13,8 @@ from Models import transaction
 from flask import session
 import order_methods
 import asyncio
+import websocket
+import json
 
 
 alpaca_api_datastream = "wss://paper-api.alpaca.markets/stream"
@@ -163,23 +165,23 @@ def create_alpaca_api(username):
         logging.error(f'Unable to connect to user alpaca account due to : {e}')
         
 # Function to handle trade updates
-async def handle_trade_updates(data, conn):
-    logging.info(f"Trade update received: {data}")
+def handle_trade_updates(ws, event, data ):
+    if data['order']['status'] == 'filled':  # Use dot notation for 'event'
+        logging.info(f'''Trade update received: Symbol:{data['order']['symbol']} Quantity: {data['order']['qty']} Price:{data['order']['filled_avg_price']}
+                     Side:{data['order']['side']} Client order ID: {data['order']['client_order_id']}''')
 
     # Access attributes using dot notation instead of dictionary-style indexing
-    if data.event == 'fill':  # Use dot notation for 'event'
-        order_id = data.order['id'] # Use dot notation for 'order' attributes
-        symbol = data.order['symbol']
-        filled_qty = int(data.order['filled_qty'])
-        filled_avg_price = float(data.order['filled_avg_price'])
-        side = data.order['side']  # 'buy' or 'sell'
-        fill_time = data.order['filled_at']  # The timestamp of the fill
-        client_order_id = data.order['client_order_id']
+        
+        symbol = data['order']['symbol']
+        filled_qty = int(data['order']['qty'])
+        filled_avg_price = float(data['order']['filled_avg_price'])
+        side = data['order']['side']  # 'buy' or 'sell'
+        client_order_id = data['order']['client_order_id']
         logging.info(client_order_id)
-        user_id = client_order_id.split(',')[1]
-        username = user_DAOIMPL.get_user_by_user_id(user_id)
+        user_id = client_order_id.split('/')[1]
+        username = session.get('user_name')
         if side == 'buy':
-            logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
+            logging.info(f"Order {client_order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
             total_buy = float(filled_avg_price) * int(filled_qty)
             tp1 = (float(filled_avg_price) * .03)  + float(filled_avg_price)
             sop = float(filled_avg_price) - (float(filled_avg_price) * .01) 
@@ -189,10 +191,10 @@ async def handle_trade_updates(data, conn):
             transactions_DAOIMPL.insert_transaction(new_trans)
             logging.info("Reconnecting WebSocket for new transactions...")
             # Stop and reinitialize the connection
-            await conn.stop()  # This should stop the current connection
-            app.run_alpaca_websocket(username)  # Re-initialize the websocket with updated transactions
+            stop_websocket(ws)  # This should stop the current connection
+            run_alpaca_websocket(username)  # Re-initialize the websocket with updated transactions
         elif side == 'sell':
-            logging.info(f"Order {order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
+            logging.info(f"Order {client_order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
             transaction2 = transactions_DAOIMPL.get_transaction_by_bstring(client_order_id)
             if transaction2:
                 ds = date.today()
@@ -208,18 +210,110 @@ async def handle_trade_updates(data, conn):
                 transaction_id = int(transaction2[0])
                 values = [ds,spps,tsp,sstring,proi,actual,result]
                 transactions_DAOIMPL.update_transaction(transaction_id,values)
-    
-    elif data.event == 'partial_fill':
-        logging.info(f"Order {data.order['id']} partially filled.")
-    
-    elif data.event == 'canceled':
-        logging.info(f"Order {data.order['id']} was canceled.")
-    
     else:
-        logging.warning(f"Unhandled event: {data.event}")
+        logging.warning(f"Unhandled event: {event}")
+
+
+def quote_management(data, username):
+    transactions = transactions_DAOIMPL.get_open_transactions_for_user(7)
+    transactions_dict = {}
+    for transaction in transactions:
+        transactions_dict[transaction[1]] = {
+            'id': transaction[0],
+            'symbol': transaction[1],
+            'client_order_id': f'{transaction[6]}~sell',
+            'take_profit': float(transaction[14]),
+            'stop_price': float(transaction[15]),
+            'quantity': int(transaction[4])
+        }
+    transaction = transactions_dict.get(data.symbol, None)
+    if transaction:
+        # Check for take profit or stop out
+        if data.askprice >= transaction['take_profit']:
+            logging.info(f"Take Profit hit for {data.symbol} at {data.askprice}.")
+            order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.askprice), int(transaction['id']), username)
+        elif data.bidprice <= transaction['stop_price']:
+            logging.info(f"Stop Out hit for {data.symbol} at {data.bidprice}.")
+            order_methods.place_sell_order(transaction['symbol'], int(transaction['quantity']), float(data.bidprice), int(transaction['id']), username)
 
 
 
+def run_alpaca_websocket(username):
+    websocket.enableTrace(True)
+    ws = websocket.WebSocketApp('wss://paper-api.alpaca.markets/stream',
+                                on_open=lambda ws: on_open(ws, username),
+                                on_message=lambda ws, message: on_message(ws, message, username),
+                                on_error=on_error,
+                                on_close=on_close)
+    logging.info(f'Websocket is running for user {username}')
+    ws.run_forever()
+
+def on_message(ws,message, username):
+    data = json.loads(message)
+    logging.info(data['data'])
+    if data['stream'] == "trade_updates":
+        event = data['data']['event']
+        # Pass the action and price to your trade update handler
+        handle_trade_updates(ws, data['data'], event )
+    elif data['stream']== 'authorization':
+        if data['data']['status']== 'authorized':
+            logging.info('WebSocket authenticated successfully.')
+            subscribe_to_data_streams(ws, username)
+    else:
+        print(data['data'])
+    
 
 
+def stop_websocket(ws):
+    if ws:
+        print("Closing WebSocket connection.")
+        ws.close()
+        
+def on_error(ws, error):
+    print(f"Error: {error}")
 
+def on_close(ws, close_status_code, close_msg):
+    print("### closed ###")
+
+def on_open(ws, username):
+    # Authenticate
+    user = user_DAOIMPL.get_user_by_username(username)
+    if user:
+        user = user[0]
+        alpaca_key = os.getenv('ALPACA_API_KEY')
+        alpaca_secret = os.getenv('ALPACA_SECRET_KEY')
+    auth_data = {
+        "action": "auth",
+        "key": alpaca_key,
+        "secret": alpaca_secret
+    }
+    ws.send(json.dumps(auth_data))
+
+    # Subscribe to data streams
+def subscribe_to_data_streams(ws,username):
+    user = user_DAOIMPL.get_user_by_username(username)
+    if user:
+        user = user[0]
+    transactions = transactions_DAOIMPL.get_open_transactions_for_user(user['id'])
+    transactions_dict = {}
+    for transaction in transactions:
+        transactions_dict[transaction[1]] = {
+            'id': transaction[0],
+            'symbol': transaction[1],
+            'client_order_id': f'{transaction[6]}~sell',
+            'take_profit': float(transaction[14]),
+            'stop_price': float(transaction[15]),
+            'quantity': int(transaction[4])
+        }
+        
+    symbols = list(transactions_dict.keys())
+    print(symbols)
+    subscribe_data = {
+                    "action": "listen",
+                    "data": {
+                        "streams": ["trade_updates"]
+                    }
+                    }
+    
+    ws.send(json.dumps(subscribe_data))
+    
