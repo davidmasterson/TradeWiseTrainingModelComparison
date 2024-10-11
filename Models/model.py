@@ -2,17 +2,17 @@ import pickle
 from database import models_DAOIMPL
 class Model:
     
-    def __init__(self, model_name, model_data, user_id):
+    def __init__(self, model_name, model_data):
         self.model_name = model_name
         self.model_data = model_data
-        self.user_id = user_id
+        
         
         
 
     @staticmethod
-    def get_selected_models(user_id):
+    def get_selected_models():
         # Retrieve the model data from the database
-        model_data = models_DAOIMPL.get_comparison_trained_models_for_user(user_id)
+        model_data = models_DAOIMPL.get_comparison_trained_models()
         models = []
         if model_data:
             for model_entry in model_data:

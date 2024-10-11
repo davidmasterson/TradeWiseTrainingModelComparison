@@ -7,7 +7,7 @@ import logging
 import csv
 
 def get_qty_for_transaction(pstring,user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT qty FROM transactions
                 WHERE pstring = %s and user_id=%s'''
@@ -26,7 +26,7 @@ def get_qty_for_transaction(pstring,user_id):
         conn.close()
 
 def get_transactions_from_db():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions'''
     
@@ -95,7 +95,7 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
     return trans_df_initial_data
 
 def get_project_training_transactions_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id}'''
     
@@ -118,7 +118,7 @@ def get_project_training_transactions_for_user(user_id):
         conn.close()
 
 def get_project_training_most_recent_5_transactions_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id} ORDER BY id DESC LIMIT 5 '''
     
@@ -142,7 +142,7 @@ def get_project_training_most_recent_5_transactions_for_user(user_id):
 
 
 def calculate_average_days_to_close_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT AVG(DATEDIFF(STR_TO_DATE(ds, '%Y-%m-%d'), STR_TO_DATE(dp, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
@@ -164,7 +164,7 @@ def calculate_average_days_to_close_for_user(user_id):
         cur.close()
 
 def calculate_cumulative_profit_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT sum(actual) from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id = {user_id}'
     try:
@@ -181,7 +181,7 @@ def calculate_cumulative_profit_for_user(user_id):
         cur.close()
 
 def calculate_cumulative_loss_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT sum(actual) from transactions WHERE actual < 0 and prediction = 1 AND result = 0 AND user_id={user_id}'
     try:
@@ -198,7 +198,7 @@ def calculate_cumulative_loss_for_user(user_id):
         cur.close()
 
 def calculate_correct_predictions_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT COUNT(*) FROM transactions 
             WHERE prediction IS NOT NULL
@@ -217,7 +217,7 @@ def calculate_correct_predictions_for_user(user_id):
         cur.close()
 
 def calculate_incorrect_predictions_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT COUNT(*) FROM transactions WHERE prediction != result AND user_id={user_id}'
     try:
@@ -234,7 +234,7 @@ def calculate_incorrect_predictions_for_user(user_id):
         cur.close()
 # Get open transactions
 def get_open_transactions_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
                 WHERE ds=%s
@@ -255,7 +255,7 @@ def get_open_transactions_for_user(user_id):
         conn.close()
 
 def get_open_transaction_by_pstring_for_user(pstring,user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT * FROM transactions
                 WHERE pstring = %s
@@ -276,7 +276,7 @@ def get_open_transaction_by_pstring_for_user(pstring,user_id):
         
 # Sector breakdown aggregations
 def select_model_sector_profits_symbols_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT symbol from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id={user_id}'
     try:
@@ -293,7 +293,7 @@ def select_model_sector_profits_symbols_for_user(user_id):
         cur.close()
 
 def select_model_sector_loss_symbols_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT symbol from transactions WHERE actual < 0 and prediction = 1 and result = 0 AND user_id={user_id}'
     try:
@@ -310,7 +310,7 @@ def select_model_sector_loss_symbols_for_user(user_id):
         cur.close()
 
 def select_model_sector_recommended_symbols(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT symbol from transactions WHERE prediction = 1 AND user_id={user_id}'
     try:
@@ -327,7 +327,7 @@ def select_model_sector_recommended_symbols(user_id):
         cur.close()
 
 def select_model_sector_not_recommended_symbols(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'SELECT symbol from transactions WHERE prediction = 0 AND user_id={user_id}'
     try:
@@ -351,7 +351,7 @@ def insert_transactions(transactions):
 
 
 def insert_transaction(transaction):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''
             INSERT INTO transactions
@@ -410,7 +410,7 @@ def insert_transaction(transaction):
         conn.close()
 
 def update_transaction(transaction_id, values):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''
             UPDATE transactions

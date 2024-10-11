@@ -3,7 +3,7 @@ from datetime import datetime
 
 class Model_Metrics_History:
     
-    def __init__(self, model_id, accuracy, precision, recall, f1_score, top_features, timestamp,user_id):
+    def __init__(self, model_id, accuracy, precision, recall, f1_score, top_features, timestamp):
         self.model_id = model_id
         self.accuracy = accuracy
         self.precision = precision
@@ -11,7 +11,6 @@ class Model_Metrics_History:
         self.f1_score = f1_score
         self.top_features = top_features
         self.timestamp = timestamp
-        self.user_id = user_id
         
         
     

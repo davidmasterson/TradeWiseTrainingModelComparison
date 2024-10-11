@@ -74,7 +74,7 @@ from flask import session
 
 
 # Remove Testing Metrics
-# conn = dcu.get_aws_db_connection()
+# conn = dcu.get_db_connection()
 # cur = conn.cursor()
 # sql = '''DELETE FROM metrics
 # WHERE id= 1'''
@@ -104,3 +104,6 @@ from flask import session
 # models = model_metrics_history_DAOIMPL.get_most_recent_metric_for_user_selected_models(7)
 
 # print(models)
+
+conn = dcu.get_db_connection()
+print(conn)

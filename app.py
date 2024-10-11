@@ -52,7 +52,7 @@ logging.basicConfig(
 app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
 app.logger.setLevel(logging.ERROR)  # Logs errors only
 
-# New homepage with logo and buttons
+#Public Homepage
 @app.route('/', methods=['GET'])
 def home():
     # If the user is logged in, redirect to the dashboard
@@ -60,13 +60,42 @@ def home():
         return redirect(url_for('dashboard'))
     return render_template('home.html')  # Renders new homepage with Sign In and Sign Up buttons
 
-
+# Authenticated user's homepage
 @app.route('/index', methods=['GET'])
 def index():
-    # This will be the landing page after login (previously your home page)
     if session.get('logged_in'):
         return render_template('index.html')
     return redirect(url_for('home'))
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # Get form data and validate
+        username = request.form.get('username')
+        password = request.form.get('password')
+        # Fetch user from the database
+        user_data = user_DAOIMPL.get_user_by_username(username)
+        logging.info( f'this is the {user_data}')
+        if user_data is not None:
+            if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
+                session['logged_in'] = True
+                session['user_name'] = user_data['user_name']
+                session['user_id'] = user_data['id']
+                logging.info(f'session is {session}')
+                # Start WebSocket using the user_id directly
+                try:
+                    username = user_data['user_name']
+                    user_id = user_data['id']
+                    url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
+                    response = requests.get(url)
+                    logging.info(f"WebSocket initiation response: {response.status_code}")
+                except Exception as e:
+                    logging.error(f"Failed to start WebSocket: {e}")
+                return redirect(url_for('dashboard'))
+        else:
+            return render_template('login.html', error='Invalid username or password')
+    return render_template('login.html')
 
 
 @app.route('/create_rf_model', methods=['POST'])
@@ -167,40 +196,7 @@ def user_profile():
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        # Get form data and validate
-        username = request.form.get('username')
-        password = request.form.get('password')
-        
-        # Fetch user from the database
-        user_data = user_DAOIMPL.get_user_by_username(username)[0]
-        logging.info( f'this is the {user_data}')
 
-        if user_data is not None:
-            if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
-                session['logged_in'] = True
-                session['user_name'] = user_data['user_name']
-                session['user_id'] = user_data['id']
-                logging.info(f'session is {session}')
-
-                # Start WebSocket using the user_id directly
-                try:
-                    username = user_data['user_name']
-                    user_id = user_data['id']
-                    url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
-                    response = requests.get(url)
-                    logging.info(f"WebSocket initiation response: {response.status_code}")
-                except Exception as e:
-                    logging.error(f"Failed to start WebSocket: {e}")
-                    
-                
-                return redirect(url_for('dashboard'))
-        else:
-            return render_template('login.html', error='Invalid username or password')
-
-    return render_template('login.html')
 
 @app.route('/transactions', methods=['GET'])
 def transactions():

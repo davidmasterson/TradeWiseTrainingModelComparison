@@ -4,7 +4,7 @@ import logging
 
 
 def create_preprocessing_scripts_table(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     cur.execute('DROP TABLE IF EXISTS preprocessing_scripts')
     conn.commit()
@@ -36,7 +36,7 @@ def create_preprocessing_scripts_table(user_id):
 
         
 def get_preprocessing_script_names_and_dates_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT script_name, upload_date FROM preprocessing_scripts WHERE user_id = %s'''
     vals = [user_id]
@@ -54,7 +54,7 @@ def get_preprocessing_script_names_and_dates_for_user(user_id):
         cur.close()
 
 def get_preprocessing_script_encrypted_fernet_key_for_user(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT encrypted_fernet_key FROM preprocessing_scripts WHERE user_id = %s'''
     vals = [user_id]
@@ -72,7 +72,7 @@ def get_preprocessing_script_encrypted_fernet_key_for_user(user_id):
         cur.close()
 
 def get_encrypted_preprocessing_script_for_user(user_id, script_name):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT script FROM preprocessing_scripts WHERE user_id = %s and script_name=%s'''
     vals = [user_id, script_name]
@@ -91,7 +91,7 @@ def get_encrypted_preprocessing_script_for_user(user_id, script_name):
         
         
 def insert_preprocessing_script_for_user(script):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT INTO preprocessing_scripts(
                 script_name,
@@ -122,7 +122,7 @@ def insert_preprocessing_script_for_user(script):
         conn.close()
         
 def update_preprocessing_script_row_for_user(preprocessing_script):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE preprocessing_scripts SET
                 encrypted_fernet_key = %s
@@ -140,7 +140,7 @@ def update_preprocessing_script_row_for_user(preprocessing_script):
         conn.close()
         
 def delete_user_preprocessing_script(script_row_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''DELETE FROM preprocessing_scripts
                 WHERE id=%s'''

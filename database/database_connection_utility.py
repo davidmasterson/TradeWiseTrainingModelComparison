@@ -1,16 +1,17 @@
 import mysql.connector
 from mysql.connector import Error
-from os import getenv
+from dotenv import load_dotenv
+import os
 import logging
-
+load_dotenv()
 def get_db_connection():
     try:
         # Establish the connection
         connection = mysql.connector.connect(
-            host= getenv('HOST'),  # or '127.0.0.1'
-            database= getenv('DB'),
-            user= getenv('DB_USER'),
-            password= getenv('DB_PASS')
+            host= os.getenv('HOST'),  # or '127.0.0.1'
+            user= os.getenv('DB_USER'),
+            database = os.getenv('DB'),
+            password= os.getenv('DB_PASS')
         )
         
         if connection.is_connected():
@@ -21,28 +22,9 @@ def get_db_connection():
         logging.info(f"Error while connecting to MySQL: {e}")
 
 
-def get_aws_db_connection(db = 'fsproject'):
-    logging.info(getenv('AWSHOST'))
-    try:
-        # Establish the connection
-        connection = mysql.connector.connect(
-            host = getenv('AWSHOST'),
-            user = getenv('AWSDB_USER'),
-            password = getenv('AWSDB_PASS'),
-            database = db
-        )
-
-        if connection.is_connected():
-            logging.info("Connected to AWS MySQL database")
-        return connection
-    
-    except Error as e:
-        logging.info(f"Error while connecting to MySQL: {e}")
-        
-
 
 def create_database(db_name):
-    conn = get_aws_db_connection()
+    conn = get_db_connection()
     cur = conn.cursor()
     sql = f'CREATE DATABASE IF NOT EXISTS `{db_name}`'  # Use f-string for dynamic SQL
     try:
@@ -56,7 +38,7 @@ def create_database(db_name):
         
 def create_initial_tables():
     try:
-        conn = get_aws_db_connection()
+        conn = get_db_connection()
         cur = conn.cursor()
 
         # SQL script containing the CREATE TABLE statements
@@ -163,7 +145,7 @@ def create_initial_tables():
             conn.close()  # Close connection
 
 def show_tables():
-    conn = get_aws_db_connection()
+    conn = get_db_connection()
     cur = conn.cursor()
     sql = '''SHOW TABLES'''
     try:
@@ -179,7 +161,7 @@ def show_tables():
         cur.close()
 
 def show_table_columns(table):
-    conn = get_aws_db_connection()
+    conn = get_db_connection()
     cur = conn.cursor()
     sql = f"SHOW COLUMNS FROM `{table}`"
     try:
@@ -195,7 +177,7 @@ def show_table_columns(table):
         cur.close()
 
 def alter_table_columns():
-    conn = get_aws_db_connection()
+    conn = get_db_connection()
     cur = conn.cursor()
     sql = f"ALTER TABLE user_preferences ADD COLUMN risk_tolerance ENUM('safe','moderate','risky') NOT NULL"
     try:
@@ -207,7 +189,7 @@ def alter_table_columns():
         cur.close()
 
 def truncate_table_columns(table):
-    conn = get_aws_db_connection()
+    conn = get_db_connection()
     cur = conn.cursor()
     sql = f"DELETE FROM {table}"
     sql2 = f"ALTER TABLE {table} AUTO_INCREMENT=1"

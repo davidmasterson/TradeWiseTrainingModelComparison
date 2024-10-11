@@ -6,33 +6,59 @@ from datetime import datetime
 from Models import user
 import logging
 
+def create_user_table(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''DROP TABLE IF EXISTS users'''
+    sql2 = '''CREATE TABLE users(
+            id INT AUTO_INCREMENT,
+            first VARCHAR(50) NOT NULL,
+            last VARCHAR(50) NOT NULL,
+            user_name VARCHAR(20) NOT NULL UNIQUE,
+            password VARCHAR(255) NOT NULL,
+            alpaca_key VARCHAR(255) NOT NULL,
+            alpaca_secret VARCHAR(255) NOT NULL,
+            PRIMARY KEY (id))
+            '''
+    try:
+        cur.execute(sql)
+        conn.commit()
+        cur.execute(sql2)
+        conn.commit()
+        logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+    except Exception as e:
+        logging.info( f'{datetime.now()}:User: {user_id} Unable to create users table due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
 
 
 def get_user_by_username(user_name):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM users WHERE user_name = %s'''
     vals = [user_name]
     try:
         cur.execute(sql, vals)
-        rows = cur.fetchall()  # Fetch all rows as tuples
-        
-        # Get the column names from the cursor description
-        columns = [col[0] for col in cur.description]
-        
-        # Convert each row into a dictionary
-        user = [dict(zip(columns, row)) for row in rows]
-        
-        return user if user else []
+        rows = cur.fetchone()  # Fetch one row as tuple
+        if rows:
+            # Get the column names from the cursor description
+            columns = [col[0] for col in cur.description]
+            
+            # Convert each row into a dictionary
+            user = [dict(zip(columns, row)) for row in rows]
+            
+            return user if user else None
+        return None
     except Exception as e:
         logging.info(e)
-        return []
+        return None
     finally:
         cur.close()
         conn.close()
 
 def get_user_by_user_id(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM users WHERE id = %s'''
     vals = [user_id]
@@ -51,7 +77,7 @@ def get_user_by_user_id(user_id):
         conn.close()
 
 def get_all_users():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM users'''
     try:
@@ -73,7 +99,7 @@ def get_all_users():
         conn.close()
 
 def insert_user(user):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT INTO users(
                 first,
@@ -107,7 +133,7 @@ def insert_user(user):
         conn.close()
         
 def delete_user(id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''DELETE FROM users
             WHERE id={id}'''
@@ -124,7 +150,7 @@ def delete_user(id):
 
 
 def update_user_alpaca_keys(key, secret_key, id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE users SET
             alpaca_key = %s,

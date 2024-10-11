@@ -7,7 +7,7 @@ import logging
 
 
 def insert_user_preferance(up):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT INTO user_preferences(
             min_pps,
@@ -40,7 +40,7 @@ def insert_user_preferance(up):
 
     
 def get_all_preferences():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM user_preferences'''
              
@@ -57,7 +57,7 @@ def get_all_preferences():
         cur.close()
 
 def get_user_preferences(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM user_preferences
                 WHERE user_id = %s'''
@@ -75,7 +75,7 @@ def get_user_preferences(user_id):
         cur.close()
 
 def update_user_preferences_limits_for_user(user_id, minpps,maxpps,min_inv,max_inv):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE user_preferences
             SET

@@ -3,7 +3,7 @@ from datetime import datetime
 import logging
 
 def get_all_metrics():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = 'SELECT * FROM manual_metrics'
     try:
@@ -20,7 +20,7 @@ def get_all_metrics():
         conn.close()
 
 def get_metrics_dates():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT date FROM manual_metrics'''
     try:
@@ -37,7 +37,7 @@ def get_metrics_dates():
         cur.close()
 
 def get_manual_metrics_accuracies():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT accuracy FROM manual_metrics'''
     
@@ -55,7 +55,7 @@ def get_manual_metrics_accuracies():
         cur.close()
 
 def get_manual_metrics_error_rates():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT error_rate FROM manual_metrics'''
     
@@ -73,7 +73,7 @@ def get_manual_metrics_error_rates():
         cur.close()
 
 def get_manual_metrics_cumlative_correct_predictions():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_correct_predictions FROM manual_metrics'''
     
@@ -91,7 +91,7 @@ def get_manual_metrics_cumlative_correct_predictions():
         cur.close()
 
 def get_manual_metrics_cumlative_incorrect_predictions():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_incorrect_predictions FROM manual_metrics'''
     
@@ -109,7 +109,7 @@ def get_manual_metrics_cumlative_incorrect_predictions():
         cur.close()
 
 def get_manual_metrics_times_to_close():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT time_to_close_correct_predictions FROM manual_metrics'''
     
@@ -127,7 +127,7 @@ def get_manual_metrics_times_to_close():
         cur.close()
 
 def get_manual_metrics_cumlative_profits():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_profit FROM manual_metrics'''
     
@@ -145,7 +145,7 @@ def get_manual_metrics_cumlative_profits():
         cur.close()
 
 def get_manual_metrics_cumlative_losses():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT cumulative_loss FROM manual_metrics'''
     
@@ -163,7 +163,7 @@ def get_manual_metrics_cumlative_losses():
         cur.close()
 
 def get_metric_by_date(date):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = "SELECT * FROM manual_metrics WHERE date = %s"
     vals = [date]
@@ -181,7 +181,7 @@ def get_metric_by_date(date):
         conn.close()
         
 def get_metrics_by_user_id(user_id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = "SELECT * FROM manual_metrics WHERE user_id = %s"
     vals = [user_id]
@@ -199,7 +199,7 @@ def get_metrics_by_user_id(user_id):
         conn.close()
 
 def get_last_sector_breakdown_profit():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_profit FROM manual_metrics ORDER BY id DESC limit 1 "
     try:
@@ -216,7 +216,7 @@ def get_last_sector_breakdown_profit():
         conn.close()
 
 def get_last_sector_breakdown_loss():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_loss FROM manual_metrics ORDER BY id DESC limit 1 "
     try:
@@ -233,7 +233,7 @@ def get_last_sector_breakdown_loss():
         conn.close()
 
 def get_last_sector_breakdown_rec():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = "SELECT sector_breakdown_rec FROM manual_metrics ORDER BY id DESC limit 1 "
     try:
@@ -250,7 +250,7 @@ def get_last_sector_breakdown_rec():
         conn.close()
 
 def get_all_last_sector_breakdowns():
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT 
             sector_breakdown_profit,
@@ -275,7 +275,7 @@ def get_all_last_sector_breakdowns():
         conn.close()
 
 def insert_metric(metric):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT into manual_metrics
             (
@@ -322,7 +322,7 @@ def insert_metric(metric):
 
 
 def update_metric(metric, id):
-    conn = dcu.get_aws_db_connection()
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE manual_metrics SET 
                 accuracy = %s,
