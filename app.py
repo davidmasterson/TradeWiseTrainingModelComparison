@@ -1,19 +1,19 @@
 import sys
-from flask import Flask, render_template, request, jsonify, Response, session, redirect, url_for, flash
+from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, flash
 import logging
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
 import alpaca_request_methods
 # import threading
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, user, user_preferences, model_metrics_history
+from Models import preprocessing_script, metric, user_preferences, model_metrics_history
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL, user_DAOIMPL, transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL
 
-import bcrypt
+
 import threading
 import time
 from Finder import symbol_finder
@@ -67,6 +67,40 @@ def index():
         return render_template('index.html')
     return redirect(url_for('home'))
 
+# ------------------------------------------------------------------START USER MANAGEMENT -----------------------------------------------------------------
+import bcrypt
+from database import user_DAOIMPL
+from Models import user
+from flask import session
+
+# New sign-up route (already included in your existing routes)
+@app.route('/submit_signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        # Get the form data
+        first_name = request.form.get('first')
+        last_name = request.form.get('last')
+        user_name = request.form.get('user')
+        password = request.form.get('password')
+        email = request.form['email']
+        alpaca_key = request.form['alpaca_key']
+        alpaca_secret = request.form['alpaca_secret_key']
+        password = user.User.hash_password(password)
+        
+        #check for existing user
+        user_found = user_DAOIMPL.get_user_by_username(user_name)
+        if user_found:
+            error_message = 'Please choose a different user_name.'
+            return render_template('signup.html', error_message=error_message)
+
+        new_user = user.User(first_name, last_name, user_name, password, email, alpaca_key, alpaca_secret)
+        user_DAOIMPL.insert_user(new_user)
+        
+        
+
+        return render_template('login.html', success = 'Your account was created successfully!')  # Redirect to login page after successful sign-up
+
+    return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -97,7 +131,7 @@ def login():
             return render_template('login.html', error='Invalid username or password')
     return render_template('login.html')
 
-
+# ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
 @app.route('/create_rf_model', methods=['POST'])
 def create_rf_model():
     model_trainer_predictor_methods.model_trainer()
@@ -206,49 +240,10 @@ def transactions():
         return render_template('transactions.html', transactions=transactions)
     return redirect(url_for('home'))
 
-# New sign-up route (already included in your existing routes)
-@app.route('/submit_signup', methods=['GET', 'POST'])
-def signup():
-    if request.method == 'POST':
-        # Get the form data
-        first_name = request.form.get('first')
-        last_name = request.form.get('last')
-        username = request.form.get('user')
-        password = request.form.get('password')
-        email = request.form['email']
-        alpaca_key = request.form['alpaca_key']
-        alpaca_secret = request.form['alpaca_secret_key']
-        min_investment = float(request.form['min_investment'])
-        max_investment = float(request.form['max_investment'])
-        min_price_per_share = float(request.form['min_price'])
-        max_price_per_share = float(request.form['max_price'])
-        risk_tolerance = request.form['risk_tolerance']
-        password = hash_password(password)
-        
-        #check for existing user
-        user_found = len(user_DAOIMPL.get_user_by_username(username)) > 0
-        if user_found:
-            error_message = 'Please choose a different username.'
-            return render_template('signup.html', error_message=error_message)
-
-        new_user = user.User(first_name, last_name, username, password, email, alpaca_key, alpaca_secret)
-        confirm = user_DAOIMPL.insert_user(new_user)
-        if confirm:
-            user_found = user_DAOIMPL.get_user_by_username(username)[0]
-            new_preferences = user_preferences.UserPreferences(min_investment, max_investment, min_price_per_share, max_price_per_share, user_found['id'],  risk_tolerance)
-            user_preferences_DAOIMPL.insert_user_preferance(new_preferences)
-        
-
-        return redirect(url_for('login'))  # Redirect to login page after successful sign-up
-
-    return render_template('signup.html')
 
 
-# Password hashing function
-def hash_password(password):
-    salt = bcrypt.gensalt()
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed_password
+
+
 
 
 # New logout route

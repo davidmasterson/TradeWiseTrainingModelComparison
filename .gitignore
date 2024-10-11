@@ -10,3 +10,4 @@ app.log
 aws/*
 
 awscliv2.zip
+dataset.csv

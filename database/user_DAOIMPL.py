@@ -14,6 +14,7 @@ def create_user_table(user_id):
             id INT AUTO_INCREMENT,
             first VARCHAR(50) NOT NULL,
             last VARCHAR(50) NOT NULL,
+            email VARCHAR(100) NOT NULL,
             user_name VARCHAR(20) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             alpaca_key VARCHAR(255) NOT NULL,
@@ -104,22 +105,22 @@ def insert_user(user):
     sql = '''INSERT INTO users(
                 first,
                 last,
+                email,
                 user_name,
                 password,
                 alpaca_key,
-                alpaca_secret,
-                email
+                alpaca_secret
                 )
                 VALUES(
                 %s,%s,%s,%s,%s,
                 %s,%s)'''
     vals = [user.first,
             user.last,
+            user.email,
             user.user_name,
             user.password,
             user.alpaca_key,
-            user.alpaca_secret,
-            user.email
+            user.alpaca_secret
             ]
     try:
         cur.execute(sql, vals)
@@ -127,7 +128,7 @@ def insert_user(user):
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
         return cur.rowcount
     except Exception as e:
-        return e
+        logging.error(f'{datetime.now()} unable to insert user {user.first} due to : {e} ')
     finally:
         cur.close()
         conn.close()

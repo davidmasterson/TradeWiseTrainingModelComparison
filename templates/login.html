@@ -8,6 +8,10 @@
         <div class="alert alert-danger" role="alert">
             {{ error }}
         </div>
+        {% elif success %}
+        <div class="alert alert-success" role="alert">
+            {{ success }}
+        </div>
         {% endif %}
         <form action="{{ url_for('login') }}" method="POST">  <!-- Ensure the form posts to the login route -->
             

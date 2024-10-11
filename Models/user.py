@@ -1,5 +1,5 @@
 
-from flask import session
+import bcrypt
 import logging
 
 class User:
@@ -19,3 +19,9 @@ class User:
         if session.get('logged_in'):
             return True
         return False
+    
+    # Password hashing function
+    def hash_password(password):
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed_password
