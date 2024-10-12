@@ -69,8 +69,8 @@ def index():
 
 # ------------------------------------------------------------------START USER MANAGEMENT -----------------------------------------------------------------
 import bcrypt
-from database import user_DAOIMPL
-from Models import user
+from database import user_DAOIMPL, reset_password_DAOIMPL
+from Models import user, password_resets, email_sender
 from flask import session
 
 # New sign-up route (already included in your existing routes)
@@ -86,20 +86,14 @@ def signup():
         alpaca_key = request.form['alpaca_key']
         alpaca_secret = request.form['alpaca_secret_key']
         password = user.User.hash_password(password)
-        
         #check for existing user
-        user_found = user_DAOIMPL.get_user_by_username(user_name)
+        user_found = user_DAOIMPL.get_user_by_username(user_name)[0]
         if user_found:
             error_message = 'Please choose a different user_name.'
             return render_template('signup.html', error_message=error_message)
-
         new_user = user.User(first_name, last_name, user_name, password, email, alpaca_key, alpaca_secret)
         user_DAOIMPL.insert_user(new_user)
-        
-        
-
         return render_template('login.html', success = 'Your account was created successfully!')  # Redirect to login page after successful sign-up
-
     return render_template('signup.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -109,27 +103,118 @@ def login():
         username = request.form.get('username')
         password = request.form.get('password')
         # Fetch user from the database
-        user_data = user_DAOIMPL.get_user_by_username(username)
+        user_data = user_DAOIMPL.get_user_by_username(username)[0]
         logging.info( f'this is the {user_data}')
         if user_data is not None:
             if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
                 session['logged_in'] = True
                 session['user_name'] = user_data['user_name']
                 session['user_id'] = user_data['id']
-                logging.info(f'session is {session}')
-                # Start WebSocket using the user_id directly
+                #Try users Alpaca API Keys
+                conn = alpaca_request_methods.create_alpaca_api(username)
                 try:
-                    username = user_data['user_name']
-                    user_id = user_data['id']
-                    url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
-                    response = requests.get(url)
-                    logging.info(f"WebSocket initiation response: {response.status_code}")
-                except Exception as e:
-                    logging.error(f"Failed to start WebSocket: {e}")
-                return redirect(url_for('dashboard'))
+                    account = conn.get_account()
+                    if account:
+                        # Start WebSocket using the user_id directly
+                        try:
+                            username = user_data['user_name']
+                            user_id = user_data['id']
+                            url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
+                            response = requests.get(url)
+                            logging.info(f"WebSocket initiation response: {response.status_code}")
+                        except Exception as e:
+                            logging.error(f"Failed to start WebSocket: {e}")
+                        return redirect(url_for('dashboard'))
+                except:
+                    # render api key update form for user to resubmit their keys
+                    render_template('APIKeys_resubmission.html', user=username, first=user_data['first'], last=user_data['last'], email=user_data['email'])
         else:
             return render_template('login.html', error='Invalid username or password')
     return render_template('login.html')
+
+@app.route('/update_user_api_keys', methods=['POST'])
+def update_api_keys():
+    
+    # Get form data and validate
+    username = request.form.get('username')
+    password = request.form.get('password')
+    alpaca_key = request.form.get('alpaca_key')
+    alpaca_secret_key = request.form.get('alpaca_secret_key')
+    # Fetch user from the database
+    try:
+        conn = alpaca_request_methods.create_alpaca_api(username)
+        account = conn.get_account()
+        if account:
+            user_data = user_DAOIMPL.get_user_by_username(username)[0]
+            logging.info( f'this is the {user_data}')
+            if user_data is not None:
+                if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
+                    session['logged_in'] = True
+                    session['user_name'] = user_data['user_name']
+                    session['user_id'] = user_data['id']
+                    #Try users Alpaca API Keys
+                    user_DAOIMPL.update_user_alpaca_keys(alpaca_key,alpaca_secret_key,user_data['id'])
+                    # Start WebSocket using the user_id directly
+                    try:
+                        username = user_data['user_name']
+                        user_id = user_data['id']
+                        url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
+                        response = requests.get(url)
+                        logging.info(f"WebSocket initiation response: {response.status_code}")
+                    except Exception as e:
+                        logging.error(f"Failed to start WebSocket: {e}")
+                    return redirect(url_for('dashboard'))
+                    
+            else:
+                return render_template('login.html', error='Invalid username or password')
+    except:
+        render_template('APIKeys_resubmission.html', user=username, first=user_data['first'], last=user_data['last'], email=user_data['email'],
+                        error = "Your alpaca API keys do not work, please resubmit the correct alpaca key and alpaca secret key. ")
+    
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'POST':
+        email = request.form.get('email')
+        if email:
+            user = user_DAOIMPL.get_user_by_email_address(email)
+            if not user:
+                error = 'A user with this email address does not exist'
+                return render_template('login.html', error=error)
+            reset_token = password_resets.PasswordResets(None, None, None, None)
+            token = reset_token.create_reset_token(user[0]['id'])
+            new_email_sender = email_sender.EmailSender([email])
+            new_email_sender.send_reset_email(token)
+            success = 'Password reset email has been sent'
+            return render_template('login.html', success=success)
+    message = 'Please check your email. If an account is associated with this email address, you will receive a password reset email.'
+    return render_template('forgot_password.html', message=message)
+    
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    password_rst = password_resets.PasswordResets(None, None, None, None)
+    user_id = reset_password_DAOIMPL.get_user_id_by_token(token)
+
+    if user_id is None:
+        error = 'Invalid or expired token'
+        return render_template('login.html', error=error)
+    if not password_rst.validate_token(user_id[0],token):
+        error = 'Invalid or expired token'
+        return render_template('login.html', error=error)
+
+    if request.method == 'POST':
+        user_id = reset_password_DAOIMPL.get_user_id_by_token(token)
+        new_password = request.form.get('password')
+        hashed_password = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+        user_DAOIMPL.update_user_password(user_id[0], hashed_password)
+        password_reset_instance = password_resets.PasswordResets(None, None, None, None)
+        password_resets.PasswordResets.invalidate_password_reset_token(password_reset_instance,user_id[0])
+        success = "Password has been reset successfully."
+        return render_template('login.html', success=success)
+
+    return render_template('reset_password.html', token=token)  # Display password reset form
+         
+        
 
 # ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
 @app.route('/create_rf_model', methods=['POST'])

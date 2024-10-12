@@ -105,5 +105,3 @@ from flask import session
 
 # print(models)
 
-conn = dcu.get_db_connection()
-print(conn)

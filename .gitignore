@@ -11,3 +11,5 @@ aws/*
 
 awscliv2.zip
 dataset.csv
+client_secrets.json
+token.pickle

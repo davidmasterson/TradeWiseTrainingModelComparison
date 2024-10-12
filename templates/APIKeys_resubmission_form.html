@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="api-key-update-form">
+        <h2>User API Key Update Form</h2>
+        <form action="/update_user_api_keys" method="POST">
+            
+            {% if error_message %}
+                <div class='api-key-update-form'> {{error_message}}
+                </div>
+            {% endif %}
+            
+            <label for="username">Username:</label>
+            <input type="text" id="user" name="user" value="{{user_name}}"><br>
+            
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required><br>
+
+            <label for="alpaca_key">Alpaca Key:</label>
+            <input type="text" id="alpaca_key" name="alpaca_key" required><br>
+            
+            <label for="alpaca_secret_key">Alpaca Secret Key:</label>
+            <input type="text" id="alpaca_secret_key" name="alpaca_secret_key" required><br>
+        
+        
+            <button type="submit">Update Keys</button>
+        </form>
+    </div>
+</div>
+
+<!-- Custom Styling -->
+<style>
+    .api-key-update-form {
+        max-width: 600px;
+        margin: 50px auto;
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+    .api-key-update-form h2 {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .btn-primary {
+        width: 100%;
+    }
+</style>
+{% endblock %}
