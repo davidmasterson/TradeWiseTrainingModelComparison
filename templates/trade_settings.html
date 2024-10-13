@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Trade Settings</h2>
+    <form action="{{ url_for('update_trade_settings') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+            <label for="min_price">Minimum Price Per Share:</label>
+            <input type="number" id="min_price" name="min_price" class="form-control" value="{{ trade_settings[2] }}">
+        </div>
+        <div class="form-group">
+            <label for="max_price">Maximum Price Per Share:</label>
+            <input type="number" id="max_price" name="max_price" class="form-control" value="{{ trade_settings[3] }}">
+        </div>
+        <div class="form-group">
+            <label for="risk_tolerance">Risk Tolerance:</label>
+            <select id="risk_tolerance" name="risk_tolerance" class="form-control">
+                <option value="low" {% if trade_settings[4] == 'low' %}selected{% endif %}>Low</option>
+                <option value="medium" {% if trade_settings[4] == 'medium' %}selected{% endif %}>Medium</option>
+                <option value="high" {% if trade_settings[4] == 'high' %}selected{% endif %}>High</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="confidence_threshold">Confidence Threshold (%):</label>
+            <input type="number" id="confidence_threshold" name="confidence_threshold" class="form-control" value="{{ trade_settings[5] }}">
+        </div>
+        <button type="submit" class="btn btn-primary">Save Settings</button>
+    </form>
+</div>
+<style>
+    input, select {
+        width: 100%; 
+        max-width: 400px; 
+        padding: 8px; 
+        margin: 10px 0; 
+        box-sizing: border-box; 
+    }
+
+    select {
+        width: auto; 
+        padding: 8px;
+        margin: 10px 0;
+    }
+
+    .form-control {
+        display: flex;
+        justify-content: center; 
+    }
+    
+    .btn {
+        display: block;
+        width: auto; 
+        padding: 10px 20px; 
+        margin: 20px auto; 
+    }
+</style>
+{% endblock %}

@@ -10,7 +10,7 @@
                 <div class='api-key-update-form'> {{error_message}}
                 </div>
             {% endif %}
-            
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <label for="username">Username:</label>
             <input type="text" id="user" name="user" value="{{user_name}}"><br>
             

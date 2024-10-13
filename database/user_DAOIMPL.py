@@ -42,14 +42,14 @@ def get_user_by_username(user_name):
     try:
         cur.execute(sql, vals)
         rows = cur.fetchall()  # Fetch all rows as tuples
-        
-        # Get the column names from the cursor description
-        columns = [col[0] for col in cur.description]
-        
-        # Convert each row into a dictionary
-        user = [dict(zip(columns, row)) for row in rows]
-        
-        return user if user else []
+        if rows:
+            # Get the column names from the cursor description
+            columns = [col[0] for col in cur.description]
+            
+            # Convert each row into a dictionary
+            user = [dict(zip(columns, row)) for row in rows]
+            return user
+        return []
     except Exception as e:
         logging.info(e)
         return []
@@ -147,8 +147,9 @@ def insert_user(user):
     try:
         cur.execute(sql, vals)
         conn.commit()
+        user_id = cur.lastrowid
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
-        return cur.rowcount
+        return user_id
     except Exception as e:
         logging.error(f'{datetime.now()} unable to insert user {user.first} due to : {e} ')
     finally:
@@ -159,9 +160,10 @@ def delete_user(id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''DELETE FROM users
-            WHERE id={id}'''
+            WHERE id=%s'''
+    vals = [id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         conn.commit()
         logging.info(f"{datetime.now()}:{cur.rowcount}, record deleted")
     except Exception as e:
@@ -194,6 +196,41 @@ def update_user_alpaca_keys(key, secret_key, id):
         cur.close()
         conn.close()
 
+def update_user(user, user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''UPDATE users SET
+            first = %s,
+            last = %s,
+            email = %s,
+            password = %s,
+            alpaca_key = %s,
+            alpaca_secret = %s
+            WHERE 
+            id = %s'''
+    vals = [
+        user.first,
+        user.last,
+        user.email,
+        user.password,
+        user.alpaca_key,
+        user.alpaca_secret,
+        user_id
+    ] 
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f" {datetime.now()} {cur.rowcount}, record(s) affected updated user {user_id}")
+            return True
+        else:
+            logging.error(f"{datetime.now()}:No user has been updated for user {user_id}.")
+    except Exception as e:
+        logging.error(f'{datetime.now()} Unable to update user {user_id} due to {e}')
+    finally:
+        cur.close()
+        conn.close()       
+    
 def update_user_password(user_id, password_hash):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -209,9 +246,33 @@ def update_user_password(user_id, password_hash):
             logging.info(f" {datetime.now()} {cur.rowcount}, record(s) affected updated user password for user {user_id}")
             return True
         else:
-            logging.error(f"{datetime.now()}:No password has been updated for user {user_id}.")
+            logging.info(f"{datetime.now()}:No password has been updated for user {user_id}.")
     except Exception as e:
         logging.error(f'{datetime.now()} Unable to update user password for user {user_id} due to {e}')
+        return False
+    finally:
+        cur.close()
+        conn.close()
+
+def update_user_email(user_id, email):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''UPDATE users SET
+            email = %s
+            WHERE 
+            id = %s'''
+    vals = [email,user_id]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f" {datetime.now()} {cur.rowcount}, record(s) affected updated email for user {user_id}")
+            return True
+        else:
+            logging.info(f"{datetime.now()}:No email has been updated for user {user_id}.")
+    except Exception as e:
+        logging.error(f'{datetime.now()} Unable to update user email address for user {user_id} due to {e}')
+        return False
     finally:
         cur.close()
         conn.close()

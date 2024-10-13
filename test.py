@@ -1,9 +1,9 @@
 import model_trainer_predictor_methods
-from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, models_DAOIMPL,model_metrics_history_DAOIMPL
+from database import transactions_DAOIMPL, metrics_DAOIMPL, user_DAOIMPL, database_connection_utility as dcu, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, models_DAOIMPL,model_metrics_history_DAOIMPL, trade_settings_DAOIMPL
 import uuid
 import alpaca_request_methods
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
-from Models import transaction, preprocessing_script
+from Models import transaction, preprocessing_script, trade_setting
 import logging
 from datetime import datetime
 import order_methods

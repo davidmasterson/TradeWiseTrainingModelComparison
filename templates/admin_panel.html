@@ -1,0 +1,14 @@
+<!-- admin_panel.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>Admin Panel</h1>
+<p>{{ message }}</p>
+
+<!-- Button to view all users -->
+<a href="{{ url_for('admin_users') }}"><button>View All Users</button></a>
+
+<!-- Button to manage roles -->
+<a href="{{ url_for('assign_roles') }}"><button>Manage Roles</button></a>
+
+{% endblock %}

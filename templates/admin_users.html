@@ -1,0 +1,43 @@
+<!-- admin_users.html -->
+{% extends 'base.html' %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="admin-users">
+    <h2>Manage Users</h2>
+    {% if error %}
+        <div class='alert alert-danger' role="alert">{{ error }}</div>
+    {% elif success %}
+        <div class='alert alert-success' role="alert">{{ success }}</div>
+    {% endif %}
+    <table class="table table-hover">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[1] }}</td> <!-- Assuming user is an object with attribute access -->
+                <td>{{ user[2] }}</td>
+                <td>{{ user[3] }}</td> <!-- Assuming each user has a single role -->
+                <td>
+                    <a href="{{ url_for('edit_user', user_id=user[0]) }}">Edit</a>
+                    <form action = "{{url_for('delete_user', user_id=user[0])}}" method="POST">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="user_id" value="{{user[0]}}" />
+                        <input type="hidden" name="user_name" value="{{user[1]}}" />
+                        <button type="submit" onclick="return confirm('Are you sure?')">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">Back To Admin Home</a>
+</div>
+{% endblock %}

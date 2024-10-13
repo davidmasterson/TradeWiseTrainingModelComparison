@@ -19,7 +19,7 @@
         <!-- Button to generate recommendations -->
          <div class="container" style="display:flex;justify-content:space-between;">
             <form action='/purchaser' method='POST'>
-              
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" id="generateBtn" class="btn btn-primary mb-3">Generate Recommendations</button>
             </form>
             <h3 >Cash Available: ${{"{:,.2f}".format(user_cash)}}</h3>
@@ -50,7 +50,7 @@
                     <td>
                         <!-- Purchase button with form -->
                         <form action="/purchase" method="POST">
-                          
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <input type="hidden" name="symbol" value="{{ details.symbol }}">
                             <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
                             <input type="hidden" name="qty" value="{{ details.qty }}">

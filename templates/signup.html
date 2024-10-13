@@ -10,6 +10,7 @@
                 <div class='signup-form'> {{error_message}}
                 </div>
             {% endif %}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Existing User Information Fields -->
             <label for="first">First Name:</label>
             <input type="text" id="first" name="first" required><br>

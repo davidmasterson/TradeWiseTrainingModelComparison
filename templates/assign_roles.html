@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container">
+    <h2>Assign Roles</h2>
+    <form id="rolesForm" action="{{ url_for('assign_roles') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Current Role</th>
+                    <th>Assign New Role</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user[1] }}</td>
+                    <td>{{ user[3] }}</td>
+                    <td>
+                        <select class="role-select" data-user-id="{{ user[0] }}" data-original-role="{{ user[3] }}">
+                            {% for role in roles %}
+                            {% set role_name = role[0] %}
+                            <option value="{{ role_name }}" {% if role_name == user[3] %}selected{% endif %}>{{ role_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <button type="submit" class="btn btn-primary">Update Roles</button>
+        <a href="{{ url_for('admin_panel') }}" class="btn btn-secondary">Back To Admin Home</a>
+    </form>
+</div>
+<script>
+    document.getElementById('rolesForm').addEventListener('submit', function(event) {
+        // Clear any previously set hidden inputs (in case of multiple submits)
+        document.querySelectorAll('[name="user_ids[]"], [name="roles[]"]').forEach(input => input.remove());
+
+        const selects = document.querySelectorAll('.role-select');
+        selects.forEach(select => {
+            const originalRole = select.getAttribute('data-original-role');
+            const currentRole = select.value;
+            const userId = select.getAttribute('data-user-id');
+            if (originalRole !== currentRole) {
+                // Create hidden inputs for changed roles
+                const inputUserId = document.createElement('input');
+                inputUserId.type = 'hidden';
+                inputUserId.name = 'user_ids[]';
+                inputUserId.value = userId;
+
+                const inputRole = document.createElement('input');
+                inputRole.type = 'hidden';
+                inputRole.name = 'roles[]';
+                inputRole.value = currentRole;
+
+                this.appendChild(inputUserId);
+                this.appendChild(inputRole);
+            }
+        });
+    });
+</script>
+{% endblock %}

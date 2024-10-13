@@ -1,158 +1,101 @@
 {% extends 'base.html' %}
 
 {% block content %}
-{% with messages = get_flashed_messages(with_categories=True) %}
-  {% if messages %}
-    <div class="container mt-4">
-      {% for category, message in messages %}
-        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-          {{ message }}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+<div class="container profile-content">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="profile-header text-center">
+                <img src="{{ url_for('static', filename='/images/profile_picture.png') }}" alt="User Profile Picture" class="img-fluid rounded-circle">
+                <h3>{{ user['user_name'] }}</h3>
+                <!-- Link to Trade Settings Page -->
+                <div class="trade-settings-link">
+                    <a href="{{ url_for('update_trade_settings') }}" class="btn btn-info">Manage Trade Settings</a>
+                </div>
+            </div>
+            <div class="account-details">
+                <h4>Account Details</h4>
+                <p><strong>Cash Balance:</strong> ${{ cash }}</p>
+            </div>
         </div>
-      {% endfor %}
-    </div>
-  {% endif %}
-{% endwith %}
-<!-- Profile Content -->
-<div class="profile-content">
-    <!-- Profile Header -->
-    <div class="profile-header">
-        <img src="{{ url_for('static', filename='images/profile-picture.jpg') }}" alt="User Profile Picture">
-        <div>
-            <h1>{{user['username']}}</h1>
-            <h2>{{user['email']}}</h2>
+        <div class="col-md-8">
+            <div class="account-overview">
+                <h3>Account Overview</h3>
+                <p><strong>Total Portfolio Value:</strong> ${{ equity }}</p>
+                <p><strong>Total Profit/Loss:</strong> ${{ profit_loss }}</p>
+            </div>
+            <div class="transactions">
+                <h4>Recent Transactions</h4>
+                <div class="table-responsive">
+                    <table class="table transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Date Purchased</th>
+                                <th>Price/Share</th>
+                                <th>Quantity</th>
+                                <th>Total Purchase</th>
+                                <th>Date Sold</th>
+                                <th>Sold PPS</th>
+                                <th>Total Sale</th>
+                                <th>Expected Return</th>
+                                <th>ROI %</th>
+                                <th>Actual Return</th>
+                                <th>TP1</th>
+                                <th>SOP</th>
+                                <th>Prediction</th>
+                                <th>Result</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in last_5 %}
+                            <tr>
+                                <td>{{ transaction.symbol }}</td>
+                                <td>{{ transaction.dp }}</td>
+                                <td>{{ transaction.ppps }}</td>
+                                <td>{{ transaction.qty }}</td>
+                                <td>{{ transaction.total_buy }}</td>
+                                <td>{{ transaction.ds }}</td>
+                                <td>{{ transaction.spps }}</td>
+                                <td>{{ transaction.tsp }}</td>
+                                <td>{{ transaction.expected }}</td>
+                                <td>{{ transaction.proi }}%</td>
+                                <td>{{ transaction.actual }}</td>
+                                <td>{{ transaction.tp1 }}</td>
+                                <td>{{ transaction.sop }}</td>
+                                <td>{{ transaction.prediction }}</td>
+                                <td>{{ transaction.result }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Form for updating user information -->
+            <div class="update-form">
+                <h4>Update Profile</h4>
+                <form action="{{ url_for('update_profile') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="mb-3">
+                        <label for="user_email" class="form-label">Email address</label>
+                        <input type="email" class="form-control" id="user_email" name="email" value="{{ user['email'] }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="user_password" class="form-label">New Password</label>
+                        <input type="password" class="form-control" id="user_password" name="password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Update Profile</button>
+                </form>
+            </div>
         </div>
-    </div>
-
-    <!-- Account Overview -->
-    <div class="account-overview">
-        <h3>Account Overview</h3>
-        <p><strong>Total Portfolio Value:</strong>${{equity}}</p>
-        <p><strong>Total Profit/Loss:</strong> +$20,000</p>
-
-        <!-- Recent Transactions -->
-        <h3>Recent Transactions</h3>
-        <div class="table-responsive">
-            <table class="transactions-table">
-                <thead>
-                    <tr>
-                        <th>Symbol</th>
-                        <th>Date Purchased</th>
-                        <th>Price/Share</th>
-                        <th>Quantity</th>
-                        <th>Total Purchase</th>
-                        <th>Date Sold</th>
-                        <th>Sold PPS</th>
-                        <th>Total Sale</th>
-                        <th>Expected Return</th>
-                        <th>ROI %</th>
-                        <th>Actual Return</th>
-                        <th>TP1</th>
-                        <th>SOP</th>
-                        <th>Prediction</th>
-                        <th>Result</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for transaction in last_5 %}
-                    <tr>
-                        <td>{{ transaction.symbol }}</td>
-                        <td>{{ transaction.dp }}</td>
-                        <td>{{ transaction.ppps }}</td>
-                        <td>{{ transaction.qty }}</td>
-                        <td>{{ transaction.total_buy }}</td>
-                        <td>{{ transaction.ds }}</td>
-                        <td>{{ transaction.spps }}</td>
-                        <td>{{ transaction.tsp }}</td>
-                        <td>{{ transaction.expected }}</td>
-                        <td>{{ transaction.proi }}%</td>
-                        <td>{{ transaction.actual }}</td>
-                        <td>{{ transaction.tp1 }}</td>
-                        <td>{{ transaction.sop }}</td>
-                        <td>{{ transaction.prediction }}</td>
-                        <td>{{ transaction.result }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        
-    </div>
-    <div class="scripts">
-        <h3>Your Preprocessing Scripts</h3>
-        <div class="table-responsive">
-            <form action="">
-                <table class="user_preprocessing_scripts">
-                    <thead>
-                        <tr>
-                            <th>Select</th>
-                            <th>Script Name</th>
-                            <th>Uploaded</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for script in user_script_names %}
-                        <tr>
-                            <td><input type="checkbox" name="script" value="{{ script }}"></td>
-                            <td>{{ script[0] }}</td>
-                            <td>{{ script[1] }}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                <button class="compare-btn" type="submit">Compare</button>
-            </form>
-        </div>
-        <div class="upload-section">
-            <form action="/upload_script" method="POST" enctype="multipart/form-data">
-                <input type="file" name="script_file" accept=".py" required>
-                <input type="text" name="script_name" placeholder="Script Name" required>
-                <textarea name="script_description" placeholder="Script Description" required></textarea>
-                <button class="upload-btn" type="submit">Upload Script</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Account Details -->
-    <div class="account-details">
-        <h3>Account Details</h3>
-        <p><strong>Account Cash Balance:</strong> ${{cash}} </p>
-    </div>
-
-    <!-- Investment Preferences -->
-    <div class="preferences">
-        <h3>Investment Preferences</h3>
-        <p><strong>Risk Tolerance:</strong> {{pref[6]}}</p>
-        <p><strong>Trading Style:</strong> Long-term</p>
-    </div>
-
-    <!-- Security & Notifications -->
-    <div class="security-notifications">
-        <h3>Security & Notifications</h3>
-        <p><strong>Two-Factor Authentication:</strong> Enabled</p>
-        <p><strong>Notification Preferences:</strong> Price alerts, Trade execution alerts</p>
-    </div>
-
-    <!-- Investment Limits -->
-    <div class="investment-limits">
-        <h3>Investment Limits</h3>
-        <form action="{{ url_for('update_prefs') }}" method="POST">
-            
-            <label for="min-investment">Minimum Investment per Symbol:</label>
-            <input type="number" id="min-investment" name="min-investment" min="0" placeholder="${{pref[3]}}"><br>
-            <label for="max-investment">Maximum Investment per Symbol:</label>
-            <input type="number" id="max-investment" name="max-investment" min="0" placeholder="${{pref[4]}}"><br>
-            <label for="min-price">Minimum Price per Share:</label>
-            <input type="number" id="min-price" name="min-price" min="0" placeholder="${{pref[1]}}"><br>
-            <label for="max-price">Maximum Price per Share:</label>
-            <input type="number" id="max-price" name="max-price" min="0" placeholder="${{pref[2]}}"><br>
-            <button class="btn" type="submit">Save Limits</button>
-        </form>
     </div>
 </div>
 
+
 <!-- Custom Profile Page Styles -->
 <style>
+
+    
+
     .profile-content {
         flex-grow: 1;
         padding: 40px;
@@ -162,15 +105,17 @@
 
     .profile-header {
         display: flex;
+        flex-direction: column;
         align-items: center;
+        justify-content: center;
         margin-bottom: 20px;
     }
-
+    
     .profile-header img {
-        width: 100px;
-        height: 100px;
+        width: 120px;
+        height: 120px;
         border-radius: 50%;
-        margin-right: 20px;
+        margin-bottom: 10px; /* Adjusted margin */
     }
 
     .profile-header h1, .profile-header h2 {
@@ -185,7 +130,13 @@
     .profile-header h2 {
         font-size: 18px;
         color: #6c757d;
+
     }
+
+    .profile-header h3 {
+        margin-bottom: 10px;
+    }
+    
 
     .account-overview, .account-details, .preferences, .security-notifications, .investment-limits {
         background-color: white;
@@ -215,6 +166,20 @@
         cursor: pointer;
     }
 
+    .btn-info {
+        padding: 10px 20px;
+        font-size: 16px;
+        text-align: center;
+        background-color: #17a2b8;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    .btn-info:hover {
+        background-color: #138496;
+    }
+
     .btn.blue {
         background-color: #007bff;
     }
@@ -231,6 +196,13 @@
         overflow-x: auto; /* Enables horizontal scrolling */
     }
 
+    .trade-settings-link {
+        width: 100%; /* Ensure full width to accommodate the button */
+        display: flex;
+        justify-content: center; /* Center align the button */
+        margin-top: 10px; /* Add some space above the button */
+    }
+
     .transactions-table {
         width: 100%;
         border-collapse: collapse;
@@ -241,6 +213,7 @@
     }
 
     .transactions-table th, .transactions-table td {
+
         padding: 8px;
         text-align: left;
     }

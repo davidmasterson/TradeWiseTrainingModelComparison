@@ -5,15 +5,15 @@ from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, s
 import alpaca_request_methods
 # import threading
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, user_preferences, model_metrics_history
+from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
 from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL
-
-
+from flask_wtf.csrf import CSRFProtect
+from flask_login import LoginManager
 import threading
 import time
 from Finder import symbol_finder
@@ -32,12 +32,20 @@ import json
 app = Flask(__name__)
 
 CORS(app, supports_credentials=True)
+# Check if the environment is production
+if os.getenv('FLASK_ENV') == 'production':
+    app.config['SESSION_COOKIE_SECURE'] = True
+else:
+    app.config['SESSION_COOKIE_SECURE'] = False
+
 app.secret_key = os.getenv('SECRET')
 
 # Global variables to track progress
 progress = 0
 result_queue = queue.Queue()
 
+# security measures against crosssite scripting.
+csrf = CSRFProtect(app)
 
 
 
@@ -69,9 +77,30 @@ def index():
 
 # ------------------------------------------------------------------START USER MANAGEMENT -----------------------------------------------------------------
 import bcrypt
-from database import user_DAOIMPL, reset_password_DAOIMPL
+from database import user_DAOIMPL, reset_password_DAOIMPL, roles_DAOIMPL, user_roles_DAOIMPL, trade_settings_DAOIMPL
 from Models import user, password_resets, email_sender
-from flask import session
+from flask import session, abort
+from Models import user, user_role
+from flask_login import LoginManager, login_user, login_required, current_user
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    return user_DAOIMPL.get_user_by_user_id(user_id)
+
+
+def require_roles(*roles):
+    def decorator(f):
+        def wrapped(*args, **kwargs):
+            user_role = user.User.get_current_user_role(request)
+            if user_role not in roles:
+                abort(403) #forbidden
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
 
 # New sign-up route (already included in your existing routes)
 @app.route('/submit_signup', methods=['GET', 'POST'])
@@ -87,14 +116,22 @@ def signup():
         alpaca_secret = request.form['alpaca_secret_key']
         password = user.User.hash_password(password)
         #check for existing user
-        user_found = user_DAOIMPL.get_user_by_username(user_name)[0]
+        user_found = user_DAOIMPL.get_user_by_username(user_name)
         if user_found:
             error_message = 'Please choose a different user_name.'
             return render_template('signup.html', error_message=error_message)
-        new_user = user.User(first_name, last_name, user_name, password, email, alpaca_key, alpaca_secret)
-        user_DAOIMPL.insert_user(new_user)
+        new_user = user.User(first=first_name, last=last_name, user_name=user_name, password=password, email=email, alpaca_key=alpaca_key, alpaca_secret=alpaca_secret)
+        admin_id = user_DAOIMPL.get_user_by_username('shadow073180')
+        if admin_id:
+            admin_id = admin_id[0]['id']
+        new_user_id = user_DAOIMPL.insert_user(new_user)
+        role_id = roles_DAOIMPL.get_role_id_by_role_name('retail investor',admin_id)
+        new_user_roll = user_role.UserRole(new_user_id,role_id)
+        user_roles_DAOIMPL.insert_user_role(new_user_roll, admin_id)
         return render_template('login.html', success = 'Your account was created successfully!')  # Redirect to login page after successful sign-up
     return render_template('signup.html')
+
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -213,10 +250,183 @@ def reset_password(token):
         return render_template('login.html', success=success)
 
     return render_template('reset_password.html', token=token)  # Display password reset form
-         
+
+@app.route('/user_profile', methods=['GET', 'POST'])
+def user_profile():
+    if session.get('logged_in'):
+        user_id = session.get('user_id')
+        last_5 = transactions_DAOIMPL.get_project_training_most_recent_5_transactions_for_user(user_id)
+        user = user_DAOIMPL.get_user_by_username(session.get('user_name'))[0]
+        conn = alpaca_request_methods.create_alpaca_api(session.get('user_name'))
+        account = conn.get_account()
+        profit_loss = float(account.equity) - float(account.cash)
+        equity = float(account.equity)
+        cash = float(account.cash)
+        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=profit_loss)
+    return redirect(url_for('home'))  # Redirect to homepage if not logged in
+
+@app.route('/update_profile', methods=['POST'])
+def update_profile():
+    if session.get('logged_in'):
+        user_id = session.get('user_id')
+        new_email = request.form.get('email')
+        new_password = request.form.get('password')
+
+        # Validate and sanitize inputs
+        if new_email:
+            try:
+                if user_DAOIMPL.update_user_email(user_id, new_email): 
+                    flash('Email updated successfully!', 'success')
+            except Exception as e:
+                flash(f'Error updating email: {str(e)}', 'error')
+        
+        if new_password:
+            try:
+                hashed_password = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt())
+                if user_DAOIMPL.update_user_password(user_id, hashed_password):
+                    flash('Password updated successfully!', 'success')
+            except Exception as e:
+                flash(f'Error updating password: {str(e)}', 'error')
+        
+        return redirect(url_for('user_profile')) # Reload profile page
+
+    return redirect(url_for('home')) # Redirect if not logged in
+
+@app.route('/update_trade_settings', methods=['GET', 'POST'])
+def update_trade_settings():
+    from Models import trade_setting
+    id = user.User.get_id()
+    if request.method == 'POST':
+        # Assume validation and sanitation logic is implemented
+        new_settings = {
+            'min_price': request.form.get('min_price'),
+            'max_price': request.form.get('max_price'),
+            'risk_tolerance': request.form.get('risk_tolerance'),
+            'confidence_threshold': request.form.get('confidence_threshold')
+        }
+        trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(id)
+        new_trade_settings = trade_setting.TradeSetting(id,new_settings['min_price'],new_settings['max_price'],new_settings['risk_tolerance'],new_settings['confidence_threshold'])
+        trade_settings_DAOIMPL.update_trade_settings_for_user(new_trade_settings,trade_settings[0])
+        flash('Trade settings updated successfully!', 'success')
+        return redirect(url_for('update_trade_settings'))
+
+    # Load existing settings to display in the form
+    settings = trade_settings_DAOIMPL.get_trade_settings_by_user(id)
+    return render_template('trade_settings.html', trade_settings=settings)
+
+# -------------------------------------------------------ADMINISTRATION USER MANAGEMENT ----------------------------------------------------------------------
+@app.route('/admin_panel', methods = ['GET'])
+def admin_panel():
+    if not user_role.UserRole.check_if_admin():
+        abort(403) #not authorized
+    message = 'This is a protected admin-only area. Your actions are being logged.'
+    return render_template('admin_panel.html', message=message)
+
+@app.route('/admin/users', methods=['GET'])
+def admin_users():
+    id = user.User.get_id()
+    if not user_role.UserRole.check_if_admin():
+        abort(403) #deny access
+    users = roles_DAOIMPL.get_all_users_and_roles(id) #get all users from database
+    return render_template('admin_users.html', users=users)
+
+@app.route('/admin/assign_role', methods=['POST'])
+def assign_role():
+    if not user_role.UserRole.check_if_admin():
+        abort(403) # deny access
+    user_id = request.form['user_id']
+    new_role = request.form['role']
+    user_roles_DAOIMPL.update_user_role(user_id, new_role, current_user)
+    return redirect(url_for('admin_users'))
+
+from flask import Flask, render_template, request, redirect, url_for, flash
+
+@app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
+def edit_user(user_id):
+    if request.method == 'POST':
+        # Handle the form submission
+        first = request.form['first']
+        last = request.form['last']
+        email = request.form['email']
+        user_name = request.form['user_name']
+        password = request.form['password']  
+        alpaca_key = request.form['alpaca_key']
+        alpaca_secret = request.form['alpaca_secret']
+        
+        # Assume function to update user exists
+        new_user = user.User(first=first,last=last,email=email,user_name=user_name, password=password,alpaca_key=alpaca_key, alpaca_secret=alpaca_secret)
+        update_success = user_DAOIMPL.update_user(new_user,user_id)
+        if update_success:
+            flash('User updated successfully!', 'success')
+            return redirect(url_for('admin_users' ))
+        else:
+            flash('Failed to update user.', 'error')
+            return render_template('user_update.html', user=[user_id, first, last, email,user_name, password,  alpaca_key, alpaca_secret])
+    
+    # GET request: Fetch user data and populate the form
+    user_details = user_DAOIMPL.get_user_by_user_id(user_id)  # This function needs to return a list of user attributes
+    if user_details:
+        return render_template('user_update.html', user=user_details)
+    else:
+        flash('User not found!', 'error')
+        return redirect(url_for('admin_users'))
+
+
+@app.route('/delete_user', methods=['POST'])
+def delete_user():
+    id = user.User.get_id()
+    user_name = request.form.get('user_name')
+    user_for_deletion = user_DAOIMPL.get_user_by_username(user_name)
+    if user_for_deletion:
+        user_for_deletion = user_for_deletion[0]
+    if not user_for_deletion:
+        message = f'User by that username {user_name} does not exist'
+        return render_template('admin_users.html', error=message)
+    # delete user_role first
+    user_role = user_roles_DAOIMPL.get_user_role_id_by_user_id(user_for_deletion['id'], id)
+    user_roles_DAOIMPL.delete_user_role(user_role, id)
+    # delete user
+    user_DAOIMPL.delete_user(user_for_deletion['id'])
+    message = f'User {user_name} successfully deleted by user {id}'
+    return render_template('admin_users.html', success=message)
+
+@app.route('/admin/assign_roles', methods=['GET', 'POST'])
+def assign_roles():
+    requestor_id = user.User.get_id()
+    if request.method == 'POST':
+        user_ids = request.form.getlist('user_ids[]')  # Gets list of user IDs
+        roles = request.form.getlist('roles[]')
+        
+        for user_id, role in zip(user_ids, roles):
+            user_id = int(user_id)
+        # Process each user and role
+            if update_user_role(user_id, role):       
+                flash('Role updated successfully!', 'success')
+            else:
+                flash(f'Unable to update role to {role} for user {user_id}', 'error')              
+        return redirect(url_for('assign_roles'))
         
 
+    users = roles_DAOIMPL.get_all_users_and_roles(requestor_id)
+    roles = roles_DAOIMPL.get_all_roles(requestor_id)
+    if roles:
+        print(roles)
+    return render_template('assign_roles.html', users=users, roles=roles)
+
+def update_user_role(user_id, role):
+    try:
+        requestor_id = user.User.get_id()
+        role_id = roles_DAOIMPL.get_role_id_by_role_name(role, requestor_id)
+        user_roles_DAOIMPL.update_user_role(user_id, role_id, requestor_id)
+        return True
+    except Exception as e:
+        print(f"Error updating user role: {str(e)}")
+        return False
+
+# ---------------------------------------------------END ADMINISTRATION USER MANAGEMENT--------------------------------------------------------------------------------------
 # ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
+
+
 @app.route('/create_rf_model', methods=['POST'])
 def create_rf_model():
     model_trainer_predictor_methods.model_trainer()
@@ -296,23 +506,6 @@ def plot_metrics():
     return redirect(url_for('home'))
 
 
-@app.route('/user_profile', methods=['GET', 'POST'])
-def user_profile():
-    if session.get('logged_in'):
-        user_id = session.get('user_id')
-        last_5 = transactions_DAOIMPL.get_project_training_most_recent_5_transactions_for_user(user_id)
-        user = user_DAOIMPL.get_user_by_username(session.get('user_name'))[0]
-        pref = user_preferences_DAOIMPL.get_user_preferences(user_id)
-        conn = alpaca_request_methods.create_alpaca_api(session.get('user_name'))
-        account = conn.get_account()
-        equity = float(account.equity)
-        cash = float(account.cash)
-        user_script_names = preprocessing_scripts_DAOIMPL.get_preprocessing_script_names_and_dates_for_user(user_id)
-        if user_script_names:
-            print(user_script_names)
-            user_script_names = user_script_names
-        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, pref=pref, user_script_names=user_script_names)
-    return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 
 
