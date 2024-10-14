@@ -21,6 +21,9 @@
                     <button type="submit">Train</button>
                 </form>
             </div>
+            <div class="progress-container">
+                <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
             <div class="charts-container">
                 <div class="chart-wrapper">
                     <canvas id="{{ curmetric.model_name }}_accuracy_chart"></canvas>
@@ -44,6 +47,22 @@
 
 <!-- Styles -->
 <style>
+
+.progress-container {
+    width: 100%;
+    height: 20px;
+    background-color: #ddd;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #4CAF50;
+    border-radius: 5px;
+    transition: width 0.4s ease-in-out;
+}
+
 .button-container {
     display: flex;
     justify-content: center;
@@ -182,5 +201,26 @@ function createChart(canvasId, labels, data, labelName) {
         }
     });
 }
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const trainButtons = document.querySelectorAll('.button-container button');
+    
+        trainButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const progressBar = this.closest('.model-card').querySelector('.progress-bar');
+                let width = 0;
+                const interval = setInterval(function() {
+                    if (width >= 100) {
+                        clearInterval(interval);
+                    } else {
+                        width++;
+                        progressBar.style.width = width + '%';
+                        progressBar.setAttribute('aria-valuenow', width);
+                    }
+                }, 100);  // Adjust time interval for your use case
+            });
+        });
+    });
 </script>
 {% endblock %}
