@@ -49,107 +49,23 @@ def rank_sectors(sector_breakdown):
     sorted_sectors = sorted(sector_breakdown.items(), key=lambda x: x[1], reverse=True)
     return {sector: rank for rank, (sector, _) in enumerate(sorted_sectors, 1)}
 
-def process_symbols_for_purchase(symbols_list, min_spend, max_spend, min_total_spend, max_total_spend, username):
+def process_symbols_for_purchase(symbols_list, max_total_spend):
     
-    user = user_DAOIMPL.get_user_by_username(username)[0]
+    
     orders = {}
-    # Fetch the last metric, if available
-    last_metric = metrics_DAOIMPL.get_last_metric_for_user(user['id'])
-    
-    if last_metric:  # Check if the result is not empty
-        last_metric = last_metric # Now safely access the first element
-        
-        # Step 1: Fetch and parse the sector breakdown JSON for profits, losses, rec, and nrec
-        sector_breakdown_profits_json = fetch_sector_breakdown_from_db("profits", user['id'])
-        sector_breakdown_profits = json.loads(sector_breakdown_profits_json)
-        
-        sector_breakdown_loss_json = fetch_sector_breakdown_from_db("losses", user['id'])
-        sector_breakdown_loss = json.loads(sector_breakdown_loss_json)
-        
-        sector_breakdown_rec_json = fetch_sector_breakdown_from_db("rec", user['id'])
-        sector_breakdown_rec = json.loads(sector_breakdown_rec_json)
-        
-        sector_breakdown_nrec_json = fetch_sector_breakdown_from_db("nrec", user['id'])
-        sector_breakdown_nrec = json.loads(sector_breakdown_nrec_json)
-
-        # Step 2: Rank sectors for profits, losses, rec, and nrec based on stock counts
-        sector_ranking_profits = rank_sectors(sector_breakdown_profits)
-        sector_ranking_loss = rank_sectors(sector_breakdown_loss)
-        sector_ranking_rec = rank_sectors(sector_breakdown_rec)
-        sector_ranking_nrec = rank_sectors(sector_breakdown_nrec)
-        
-        logging.info(f"Sector ranking (profits): {sector_ranking_profits}")
-        logging.info(f"Sector ranking (loss): {sector_ranking_loss}")
-        logging.info(f"Sector ranking (recommended): {sector_ranking_rec}")
-        logging.info(f"Sector ranking (non-recommended): {sector_ranking_nrec}")
-    
-    else:
-        logging.info("No metrics available for this user.")
-        
-    # Step 3: Loop through each symbol and calculate values based on profits, losses, rec, and nrec
-    for symbol in symbols_list:
-        stock_sector = get_stock_sector(symbol)  # Get the sector of the current symbol
-        if last_metric:
-            if stock_sector:
-                final_value = ''
-                # Handle profit ranking
-                if stock_sector in sector_ranking_profits:
-                    profit_position = sector_ranking_profits[stock_sector]
-                    profit_value = 1 / profit_position
-                else:
-                    profit_value = 1  # Default to 1 if the sector is not found in profits
-                
-                # Handle loss ranking (subtract from profit value)
-                if stock_sector in sector_ranking_loss:
-                    loss_position = sector_ranking_loss[stock_sector]
-                    loss_value = 1 / loss_position
-                    final_value = profit_value - loss_value
-                else:
-                    final_value = profit_value  # No change if the sector is not found in the loss breakdown
-                
-                # Handle recommended ranking (add to final value)
-                if stock_sector in sector_ranking_rec:
-                    recommended_position = sector_ranking_rec[stock_sector]
-                    recommended_value = 1 / recommended_position
-                    final_value += recommended_value  # Add the recommended value
-                
-                # Handle non-recommended ranking (subtract from final value)
-                if stock_sector in sector_ranking_nrec:
-                    nrec_position = sector_ranking_nrec[stock_sector]
-                    nrec_value = 1 / nrec_position
-                    final_value -= nrec_value  # Subtract the non-recommended value
-                limit_price = alpaca_request_methods.get_symbol_current_price(symbol) + .01   
-               
-                orders[symbol] = {
-                    'symbol':symbol,
-                    'limit_price':limit_price,
-                    'qty':int(float((float(min_total_spend) * final_value) + float(min_total_spend))/limit_price),
-                    'side':'buy',
-                    'type':'limit',
-                    'tif':'day',
-                    'updated_last':datetime.now()
-                }
-            else:
-                logging.info(f"Sector information not found for symbol: {symbol}")
-                continue
-            
-        else:
-        
-            final_value = 1
-            
-            logging.info(f"{symbol}: Final value = {final_value}")
-            limit_price = alpaca_request_methods.get_symbol_current_price(symbol) + .01
-            # Purchase the symbol based on the final value
+    for symbol in symbols_list: 
+        limit_price = float(alpaca_request_methods.get_symbol_current_price(symbol))
          
-            orders[symbol] = {
-                'symbol':symbol,
-                'limit_price': limit_price,
-                'qty': int(float(max_total_spend) / limit_price),
-                'side':'buy',
-                'type':'limit',
-                'tif':'day',
-                'updated_last': datetime.now()
-            }
+        limit_price = round(limit_price,2)
+        orders[symbol] = {
+            'symbol':symbol,
+            'limit_price': float(limit_price),
+            'qty': int(float(max_total_spend) / float(limit_price)),
+            'side':'buy',
+            'type':'limit',
+            'tif':'day',
+            'updated_last': datetime.now()
+        }
     return orders
             
 

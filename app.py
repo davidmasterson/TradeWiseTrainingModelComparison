@@ -702,8 +702,15 @@ def purchase_stock():
        
 @app.route('/progress', methods=['GET'])
 def get_progress():
+    from database import progression_DAOIMPL
     global progress
-    return jsonify({'progress': progress})
+    try:
+        progress = progression_DAOIMPL.get_recommender_progress() or 0
+    except Exception as e:
+        app.logger.error("Failed to fetch progress: %s", str(e))
+        return jsonify({'error': 'Could not fetch progress'}), 500
+    logging.info(f'Progress is {progress[1]}')
+    return jsonify({'progress': progress[1]})
 
 
 

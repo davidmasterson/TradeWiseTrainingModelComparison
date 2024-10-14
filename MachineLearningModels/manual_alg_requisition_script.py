@@ -9,28 +9,29 @@ def get_positions_to_buy(assets):
     asset_list = []       
     count = 1
     if len(assets) > 0:
-        with tqdm(total=len(assets)) as pbar:
-            for asset in assets:
-                result = check_asset(asset,pbar,count)
-                if result:
-                    asset_list.append(result)
+        for asset in assets:
+            result = check_asset(asset)
+            if result:
+                asset_list.append(result)
+            count += 1
                     
     else:
         print("No assets available for trading, there was an issue getting them from the api.")
+        return []
+    return asset_list
 
-def check_asset(asset,pbar,count):
+def check_asset(asset):
     try:
         symbol = asset[0]
         price = asset[1]
         
         second_check = second_check_engulfing_candle_with_reversal(asset)
         if second_check[0] == True: 
-            last_25 = get_last_25_day_closes(symbol)
-            if third_check_fibonacci_condition(last_25,symbol):
-                print('passed all checks')
-                pbar.update(1)
-                return [symbol,price]
-            return False
+            # last_25 = get_last_25_day_closes(symbol)
+            # if third_check_fibonacci_condition(last_25,symbol):
+            print('passed all checks')
+            return [symbol,price]
+            #  Falsereturn
     except Exception as e:
         return False
     
@@ -133,7 +134,7 @@ def get_volume_list(position,sma_number,volumes,from_date,to_date,recursion_coun
         pass
     
 def get_last_4__closes_full_candle_detail(position):
-    symbol = position.symbol
+    symbol = position[0]
     sma_list = get_day_candles_with_main_account(symbol,4,[],(datetime.now() - timedelta(days=4)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
     if len(sma_list) != None and sma_list != []:
         return sma_list
@@ -160,12 +161,12 @@ def look_for_engulfing_candle_long_reversal(day_close_candle_list,symbol):
     reversal_candle = cand_4_open_price >= cand_3_close_price and cand_4_open_price < cand_4_close_price
 
     if engulfing_red_to_green_eng or engulfing_green_to_green_eng:
-        print(f"{symbol.symbol} passed engulfing check")
+        print(f"{symbol} passed engulfing check")
         if reversal_candle:
-            print(f"{symbol.symbol} passed reversal check")
-            upward_trend = first_condition_slope_checks(symbol,symbol.symbol)
+            print(f"{symbol} passed reversal check")
+            upward_trend = first_condition_slope_checks(symbol)
             if upward_trend:
-                print(f'{symbol.symbol} passed upward trend condition and has passed all checks, adding to recommendations.')
+                print(f'{symbol} passed upward trend condition and has passed all checks, adding to recommendations.')
                 return True
     return False
 
@@ -175,6 +176,7 @@ def get_sma_list(symbol,sma_number,closes,from_date,to_date,count = 0):
     '''A recursive method to get an accurate return amount of close values for a given stock based on the Moving average line declaration.
     This method I created because that api doesn't take into account non trade days when adding a to and from date.'''       
     closes = closes
+    symbol = symbol[0]
     api_connection = alpaca_request_methods.get_alpaca_connection()
     query_string = api_connection.get_bars(symbol,timeframe='1Day',start=from_date,end=to_date,limit=sma_number)
     try:
@@ -413,6 +415,7 @@ def get_5_days_prev_sma5(position):
         symbol = position
             
     finally:
+        symbol = symbol[0]
         sma_list = get_sma_list(symbol,10,[],(datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
@@ -510,8 +513,8 @@ def get_5_days_prev_sma20(position):
         symbol = position
     except Exception as e:
         symbol = position
-            
     finally:
+        symbol = symbol[0]    
         sma_list = get_sma_list(symbol,25,[],(datetime.now() - timedelta(days=25)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
@@ -529,8 +532,8 @@ def get_sma200(position,sma_list):
         symbol = position
     except Exception as e:
         symbol = position
-            
     finally:
+        symbol = symbol[0]   
         sma_list_copy = deepcopy(sma_list)
         if sma_list != None and sma_list != [] and None not in sma_list:
             sma_list.pop(0)
@@ -613,6 +616,7 @@ def get_5_days_prev_sma200(position):
         symbol = position
             
     finally:
+        symbol = symbol[0]
         sma_list = get_sma_list(symbol,205,[],(datetime.now() - timedelta(days=205)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
