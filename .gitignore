@@ -13,3 +13,7 @@ awscliv2.zip
 dataset.csv
 client_secrets.json
 token.pickle
+lstm_model.h5
+lstm_model.h5
+rf_classifier.pkl
+test.py
