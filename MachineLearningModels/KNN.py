@@ -1,3 +1,5 @@
+
+
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -30,7 +32,7 @@ def calculate_momentum(data, period=14):
     return data.diff(period)
 
 # Load dataset
-df = pd.read_csv('trans.csv')
+df = pd.read_csv('dataset.csv')
 
 # Remove features you specified earlier
 df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 
@@ -100,9 +102,15 @@ with open('knn_model.pkl', 'wb') as model_file:
 with open('knn_model.pkl', 'rb') as model_file:
     model_binary = model_file.read()
 
-new_model = model.Model('KNN Model', model_binary)
-model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
-
-# Insert metrics into the database
-new_metric = model_metrics_history.Model_Metrics_History(model_id, accuracy, precision, recall, f1, '{}', datetime.now())
-model_metrics_history_DAOIMPL.insert_metrics_history(new_metric)
+if len(sys.argv) > 1:
+        user_id = sys.argv[1]
+user_id = int(user_id)
+# Insert the model into the database
+new_model = model.Model("KNN", model_binary,user_id,selected = False)
+model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(new_model.model_name,user_id)
+if model_exists:
+    model_id = models_DAOIMPL.update_model_for_user(new_model,int(model_exists[0]))
+else:
+    model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
+new_history = model_metrics_history.Model_Metrics_History(model_id, accuracy, precision, recall, f1, '{}', datetime.now())
+model_metrics_history_DAOIMPL.insert_metrics_history(new_history)

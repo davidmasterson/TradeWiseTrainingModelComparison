@@ -1,6 +1,8 @@
 from Hypothetical_Predictor import CSV_Writer, stock_data_fetcher, predict_with_pre_trained_model
 import subprocess
 import logging
+from database import models_DAOIMPL
+from MachineLearningModels import manual_alg_requisition_script
 
 def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symbols=10):
     if symbols is None:
@@ -18,9 +20,12 @@ def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symb
 
         # Fetch the stock data
         stock_data_fetcher.fetch_stock_data()
+        
+              
+
 
         # Run preprocessing
-        subprocess.run(['python3', 'Hypothetical_Predictor/pre_processing.py'])
+        manual_alg_requisition_script.get_positions_to_buy(this_iter_list)
 
         # Get predictions from the model
         probs = predict_with_pre_trained_model.stock_predictor_using_pretrained_model()

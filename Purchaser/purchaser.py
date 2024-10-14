@@ -4,16 +4,17 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Finder import symbol_finder
 from Recommender import recommender
 from Purchaser import score_based_purchaser
-from database import user_DAOIMPL, user_preferences_DAOIMPL
+from Models import user
+from database import trade_settings_DAOIMPL
 
 
 def generate_recommendations_task(user_id):
-    user = user_DAOIMPL.get_user_by_username(user_id)[0]
-    user_preferences = user_preferences_DAOIMPL.get_user_preferences(user['id'])
-    min_spend = user_preferences[1]
-    max_spend = user_preferences[2]
-    min_total_spend = user_preferences[3]
-    max_total_spend = user_preferences[4]
+    user_id = user.User.get_id()
+    user_preferences = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)
+    min_spend = user_preferences[2]
+    max_spend = user_preferences[3]
+    min_total_spend = user_preferences[6]
+    max_total_spend = user_preferences[7]
     
     assets_list = symbol_finder.get_list_of_tradeable_stocks()
     assets_list = symbol_finder.fetch_price_data_concurrently(assets_list,min_spend,max_spend)

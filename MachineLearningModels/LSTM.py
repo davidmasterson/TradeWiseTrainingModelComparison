@@ -1,4 +1,8 @@
 
+
+
+
+
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -114,7 +118,7 @@ def evaluate_with_sell_data(df_test, predictions, time_steps):
 
 # Prepare data and train the model
 time_steps = 60  # 60 previous time steps for each prediction
-df = pd.read_csv('trans.csv')  # Load your dataset here
+df = pd.read_csv('dataset.csv')  # Load your dataset here
 
 # Prepare the input data (X) and target column (y)
 X, y, scaler = prepare_data(df, target_column=3, time_steps=time_steps)  # Example with 3rd column as target
@@ -136,7 +140,7 @@ lstm_model = train_lstm_model(lstm_model, X_train, y_train)
 predictions = predict_lstm_model(lstm_model, X_test, scaler, num_features=X_test.shape[2])
 
 # Reload the dataset for evaluation (to get sold_pps and date_sold)
-df_test = pd.read_csv('trans.csv')  # Reload the dataset for testing phase
+df_test = pd.read_csv('dataset.csv')  # Reload the dataset for testing phase
 
 # Evaluate the model using the actual future sell data
 avg_accuracy, avg_precision, avg_recall, avg_f1 = evaluate_with_sell_data(df_test, predictions, time_steps=60)
@@ -163,10 +167,15 @@ with open("lstm_model.h5", "rb") as model_file:
     model_binary = model_file.read()
     model_file.close()
     
-new_model = model.Model(model_name, model_binary )
-model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
-print(model_id)
-
-
-new_history = model_metrics_history.Model_Metrics_History(model_id, avg_accuracy, avg_precision, avg_recall, avg_f1, top_features, datetime.now())
+if len(sys.argv) > 1:
+        user_id = sys.argv[1]
+user_id = int(user_id)
+# Insert the model into the database
+new_model = model.Model("LSTM", model_binary,user_id,selected = False)
+model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(new_model.model_name,user_id)
+if model_exists:
+    model_id = models_DAOIMPL.update_model_for_user(new_model,int(model_exists[0]))
+else:
+    model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
+new_history = model_metrics_history.Model_Metrics_History(model_id, avg_accuracy, avg_precision, avg_recall, avg_f1, '{}', datetime.now())
 model_metrics_history_DAOIMPL.insert_metrics_history(new_history)

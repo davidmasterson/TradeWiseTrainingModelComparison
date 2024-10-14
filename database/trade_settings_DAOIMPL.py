@@ -13,6 +13,8 @@ def create_trade_settings_table(user_id):
                 max_price DECIMAL(10,2),
                 risk_tolerance ENUM('low', 'medium', 'high'),
                 confidence_threshold INT,
+                min_total float not null,
+                max_total float not null,
                 FOREIGN KEY (user_id) REFERENCES users(id)
                 ON DELETE CASCADE
             )'''
@@ -56,14 +58,19 @@ def insert_trade_setting(trade_setting):
                 min_price,
                 max_price,
                 risk_tolerance,
-                confidence_threshold)
-                VALUES(%s,%s,%s,%s,%s)'''
+                confidence_threshold,
+                min_total,
+                max_total)
+                
+                VALUES(%s,%s,%s,%s,%s,%s,%s)'''
     vals = [
         trade_setting.user_id,
         trade_setting.min_price,
         trade_setting.max_price,
         trade_setting.risk_tolerance,
-        trade_setting.confidence_threshold
+        trade_setting.confidence_threshold,
+        trade_setting.min_total,
+        trade_setting.max_total
     ]
     try:
         cur.execute(sql, vals)
@@ -176,13 +183,17 @@ def update_trade_settings_for_user(trade_settings, trade_settings_id):
                 min_price =%s,
                 max_price = %s,
                 risk_tolerance = %s,
-                confidence_threshold = %s
+                confidence_threshold = %s,
+                min_total = %s,
+                max_total = %s
                 WHERE id = %s'''
     vals = [trade_settings.user_id,
             trade_settings.min_price,
             trade_settings.max_price,
             trade_settings.risk_tolerance,
             trade_settings.confidence_threshold,
+            trade_settings.min_total,
+            trade_settings.max_total,
             trade_settings_id]
     try:
         cur.execute(sql, vals)

@@ -2,6 +2,7 @@ from database import database_connection_utility as dcu
 import logging 
 from datetime import datetime
 import tensorflow as tf
+from Models import user
 
 
 def create_models_table():
@@ -11,9 +12,11 @@ def create_models_table():
     sql2 = '''CREATE TABLE models(
             id INT AUTO_INCREMENT,
             model_name VARCHAR(100) NOT NULL,
-            model_data blob NOT NULL,
+            model_data MEDIUMBLOB NOT NULL,
+            user_id INT NOT NULL,
+            selected BOOLEAN DEFAULT FALSE,
             PRIMARY KEY (id),
-            selected BOOLEAN DEFAULT FALSE
+            FOREIGN KEY (user_id) REFERENCES users(id))
             '''
             
     try:
@@ -46,42 +49,73 @@ def load_model_from_db(model_id):
     # Load the model from the temporary file
     model = tf.keras.models.load_model("temp_model.h5")
     return model
+
+def get_model_from_db_by_model_name_and_user_id(model_name, user_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM models WHERE model_name = %s AND user_id = %s"
+    vals = [model_name, user_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchone()
+        if result:
+            return result
+        return False
+    except Exception as e:
+        return e
+    finally:
+        conn.close()
+        cursor.close()
+
+
         
 def insert_model_into_models_for_user(model):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''INSERT INTO models(
-                model_name,
-                model_data
-                )VALUES(
-                    %s,%s)'''
-    vals = [model.model_name,
-            model.model_data
-    ]
-    
     try:
-        cur.execute(sql,vals)
-        model_id = cur.lastrowid
-        conn.commit()
-        logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
-        return model_id
+        sql = '''INSERT INTO models(
+                    model_name,
+                    model_data,
+                    user_id,
+                    selected
+                    )VALUES(
+                        %s,%s,%s,%s)'''
+        vals = [model.model_name,
+                model.model_data,
+                model.user_id,
+                model.selected
+        ]
+        
+        try:
+            cur.execute(sql,vals)
+            model_id = cur.lastrowid
+            conn.commit()
+            logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+            return model_id
+        except Exception as e:
+            logging.info( f'{datetime.now()}:Unable to insert transaction {model.model_name}, for user  due to : {e}')
+        finally:
+            cur.close()
+            conn.close()
     except Exception as e:
-        logging.info( f'{datetime.now()}:Unable to insert transaction {model.model_name}, for user  due to : {e}')
-    finally:
-        cur.close()
-        conn.close()
+        return False
         
 def update_model_for_user(model, model_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE models SET
                 model_name = %s,
-                model_data = %s
+                model_data = %s,
+                user_id = %s,
+                selected = %s
             WHERE id = %s
             '''
     vals = [model.model_name,
             model.model_data,
-            model_id]
+            model.user_id,
+            model.selected,
+            model_id
+            ]
     try:
         cur.execute(sql, vals)
         conn.commit()
@@ -89,6 +123,7 @@ def update_model_for_user(model, model_id):
             logging.info(f"{cur.rowcount}, record(s) affected updated model {datetime.now()}id:{model_id}")
         else:
             logging.info(f"{datetime.now()}:No model record {model_id} has not been updated.")
+        return model_id
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to update model {model_id} due to : {e}')
     finally:
