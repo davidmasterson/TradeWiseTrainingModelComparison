@@ -302,10 +302,13 @@ def update_trade_settings():
             'min_price': request.form.get('min_price'),
             'max_price': request.form.get('max_price'),
             'risk_tolerance': request.form.get('risk_tolerance'),
-            'confidence_threshold': request.form.get('confidence_threshold')
+            'confidence_threshold': request.form.get('confidence_threshold'),
+            'min_total' : request.form.get('min_total'),
+            'max_total' : request.form.get('max_total')
         }
         trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(id)
-        new_trade_settings = trade_setting.TradeSetting(id,new_settings['min_price'],new_settings['max_price'],new_settings['risk_tolerance'],new_settings['confidence_threshold'])
+        new_trade_settings = trade_setting.TradeSetting(id,new_settings['min_price'],new_settings['max_price'],new_settings['risk_tolerance'],new_settings['confidence_threshold'],
+                                                        new_settings['min_total'], new_settings['max_total'])
         trade_settings_DAOIMPL.update_trade_settings_for_user(new_trade_settings,trade_settings[0])
         flash('Trade settings updated successfully!', 'success')
         return redirect(url_for('update_trade_settings'))
@@ -425,6 +428,58 @@ def update_user_role(user_id, role):
 
 # ---------------------------------------------------END ADMINISTRATION USER MANAGEMENT--------------------------------------------------------------------------------------
 # ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
+# ---------------------------------------------------------MODEL TRAINERS -------------------------------------------------------------------------------------
+
+@app.route('/train_<model_name>', methods=['POST'])
+def train_model(model_name):
+    user_id = user.User.get_id()
+    try:
+        # Ensuring the script runs in the background and control returns immediately to the application
+        subprocess.run(['python3', f'MachineLearningModels/{model_name}.py', str(user_id)])
+        flash('Training started successfully!', 'success')
+    except Exception as e:
+        flash(f'Error starting training: {e}', 'error')
+    
+    return redirect(url_for('dashboard'))
+
+# @app.route('/train_KNN', methods=['POST'])
+# def train_KNN():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'KNN.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# @app.route('/train_XGBoost_model', methods=['POST'])
+# def train_XGBoost_model():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'XGBoost_model.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# @app.route('/train_SupportVector_Machine', methods=['POST'])
+# def train_SupportVector_Machine():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'SupportVectorMachine.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# @app.route('/train_LSTM_model', methods=['POST'])
+# def train_LSTM_model():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'LSTM_model.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# @app.route('/train_Manual_Algorithm', methods=['POST'])
+# def train_Manual_Algorithm():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'Manual_Algorithm.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# @app.route('/train_Manual_Algorithm12day', methods=['POST'])
+# def train_Manual_Algorithm12day():
+#     user_id = user.User.get_id()
+#     subprocess.run(['python3', 'Manual_Algorithm12day.py',str(user_id)])
+#     return redirect(url_for('index'))
+
+# -------------------------------------------------------------END MODEL TRAINING -----------------------------------------------------------------
+
 
 
 @app.route('/create_rf_model', methods=['POST'])
@@ -459,36 +514,55 @@ def process_symbols():
 
 
 
+
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     if session.get('logged_in'):
-        user_id = session.get('user_id')
-        model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_for_user_selected_models(user_id)
-        # Get the latest metric by model name
-        model_metrics = model_metrics_history.Model_Metrics_History.get_most_recent_metric(model_metrics)
+        user_id = user.User.get_id()  # Make sure this line successfully retrieves the user ID
+        model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_ml_models() or []
+        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_models_sorted_by_model() or []
 
-        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_selected_models(user_id)
-        logging.info(f"historical_metrics {historical_metrics}")
+        logging.info(f"historical_metrics: {historical_metrics}")
         logging.info(f'model metrics: {model_metrics}')
-        if model_metrics:
-            metrics_data = []
-            for metric in [model_metrics]:
-                top_features_dict = json.loads(metric[6])  # Load JSON into a dictionary
-                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])  # Sort and limit to top 5
-                
-                metrics_data.append({
-                    'model_name': metric[1],
-                    'accuracy': float(metric[2]),
-                    'precision': float(metric[3]),
-                    'recall': float(metric[4]),
-                    'f1_score': float(metric[5]),
-                    'top_features': sorted_features,  # Now it contains sorted features
-                    'timestamp': metric[7]
-                })
-            logging.info(metrics_data)
-            return render_template('index.html', metrics_data=metrics_data, historical_metrics=historical_metrics)
-        
-        return render_template('index.html')  # If no metrics found
+
+        # Default metrics data with placeholders
+        metrics_data = [
+            {'model_name': 'Manual_Algorithm', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'Manual_Algorithm12day', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'RandomForestModel', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'KNN', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'XGBoost', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'SupportVectorMachine', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
+            {'model_name': 'LSTM', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()}
+        ]
+
+        # Update metrics_data if model_metrics is present
+        for metric in model_metrics:
+            try:
+                top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
+                top_features_dict = json.loads(top_features_str)
+                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])
+
+                # Update the existing dictionaries if the model name matches
+                for model in metrics_data:
+                    if model['model_name'] == metric[0]:
+                        model.update({
+                            'accuracy': float(metric[1]),
+                            'precision': float(metric[2]),
+                            'recall': float(metric[3]),
+                            'f1_score': float(metric[4]),
+                            'top_features': sorted_features,
+                            'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
+                        })
+            except json.JSONDecodeError as e:
+                logging.error(f"JSON parsing error: {e} for metric {metric}")
+
+        # Handling empty historical_metrics
+        if not historical_metrics:
+            historical_metrics = [{"date": "", "accuracy": 0, "precision": 0, "recall": 0, "f1_score": 0, "model_name": "No Data"}]
+
+        return render_template('index.html', metrics_data=metrics_data, historical_metrics=historical_metrics)
+
     return redirect(url_for('home'))
 
 
