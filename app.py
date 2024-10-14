@@ -517,6 +517,7 @@ def process_symbols():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
+    from collections import defaultdict
     if session.get('logged_in'):
         user_id = user.User.get_id()  # Make sure this line successfully retrieves the user ID
         model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_ml_models() or []
@@ -559,9 +560,24 @@ def dashboard():
 
         # Handling empty historical_metrics
         if not historical_metrics:
-            historical_metrics = [{"date": "", "accuracy": 0, "precision": 0, "recall": 0, "f1_score": 0, "model_name": "No Data"}]
+            historical_metrics = [{"date": "", "accuracy": 0, "precision": 0, "recall": 0, "f1_score": 0, "model_name": "No Data"}]  
+        else:
+            # Organize historical metrics by model for charting
+            chart_data = defaultdict(lambda: {'dates': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []})
+            for entry in historical_metrics:
+                model_name, accuracy, precision, recall, f1_score, _, timestamp = entry
+                chart_data[model_name]['dates'].append(timestamp.strftime('%Y-%m-%d %H:%M:%S'))
+                chart_data[model_name]['accuracy'].append(accuracy)
+                chart_data[model_name]['precision'].append(precision)
+                chart_data[model_name]['recall'].append(recall)
+                chart_data[model_name]['f1_score'].append(f1_score)
 
-        return render_template('index.html', metrics_data=metrics_data, historical_metrics=historical_metrics)
+            # Convert defaultdict to normal dict for JSON serialization
+            chart_data = dict(chart_data)
+            logging.info(f'ChartDataHistorical: {chart_data}')
+            logging.info(f'ChartDataJSON {json.dumps(chart_data)}')
+
+        return render_template('index.html', metrics_data=metrics_data, historical_metrics=json.dumps(chart_data))
 
     return redirect(url_for('home'))
 

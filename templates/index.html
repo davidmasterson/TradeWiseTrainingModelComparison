@@ -5,36 +5,34 @@
 {% block content %}
 <div class="dashboard-container">
     {% if metrics_data %}
-        {% for metric in metrics_data %}
+        {% for curmetric in metrics_data %}
         <div class="model-card">
             <div class="text-wrapper">
-                <h2>{{ metric.model_name }}</h2>
+                <h2>{{ curmetric.model_name }}</h2>
                 <p><strong>Performance:</strong></p>
-                <p>Accuracy: {{ metric.accuracy }}</p>
-                <p>Precision: {{ metric.precision }}</p>
-                <p>Recall: {{ metric.recall }}</p>
-                <p>F1-Score: {{ metric.f1_score }}</p>
+                <p>Accuracy: {{ curmetric.accuracy }}</p>
+                <p>Precision: {{ curmetric.precision }}</p>
+                <p>Recall: {{ curmetric.recall }}</p>
+                <p>F1-Score: {{ curmetric.f1_score }}</p>
             </div>
             <div class="button-container">
-                <form action="{{ url_for('train_model', model_name=metric.model_name) }}" method="POST">
+                <form action="{{ url_for('train_model', model_name=curmetric.model_name) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit">Train</button>
                 </form>
             </div>
             <div class="charts-container">
-                <div class="charts-grid">
-                    <div class="chart-wrapper">
-                        <canvas id="accuracyChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="precisionChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="recallChart"></canvas>
-                    </div>
-                    <div class="chart-wrapper">
-                        <canvas id="f1Chart"></canvas>
-                    </div>
+                <div class="chart-wrapper">
+                    <canvas id="{{ curmetric.model_name }}_accuracy_chart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="{{ curmetric.model_name }}_precision_chart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="{{ curmetric.model_name }}_recall_chart"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="{{ curmetric.model_name }}_f1_chart"></canvas>
                 </div>
             </div>
         </div>
@@ -143,57 +141,46 @@ button:hover {
 <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script> <!-- Add this for date support -->
 
 <script>
-    // Function to create the chart
-    function createChart(chartId, labels, data, labelName) {
-        const ctx = document.getElementById(chartId).getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,  // Timestamps or Dates
-                datasets: [{
-                    label: labelName,
-                    data: data,
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                    fill: true,
-                }]
-            },
-            options: {
-                scales: {
-                    x: {
-                        type: 'time',
-                        time: {
-                            unit: 'day'
-                        }
-                    },
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
+document.addEventListener('DOMContentLoaded', function() {
+    if(historicalMetrics) {
+        Object.keys(historicalMetrics).forEach(function(modelName) {
+            const modelData = historicalMetrics[modelName];
+            createChart(modelName + '_accuracy_chart', modelData.dates, modelData.accuracy, 'Accuracy');
+            createChart(modelName + '_precision_chart', modelData.dates, modelData.precision, 'Precision');
+            createChart(modelName + '_recall_chart', modelData.dates, modelData.recall, 'Recall');
+            createChart(modelName + '_f1_chart', modelData.dates, modelData.f1_score, 'F1-Score');
         });
     }
+});
 
-    // Data coming from the backend
-    
-    if(historical_metrics){
-        const historicalMetrics = {{ historical_metrics | tojson }};
-        console.log(historicalMetrics);
-
-        // Prepare labels (dates) and data for each metric
-        const labels = historicalMetrics.map(m => new Date(m[7]));  // Timestamp is at index 7
-        const accuracyData = historicalMetrics.map(m => parseFloat(m[2]));  // Accuracy is at index 2
-        const precisionData = historicalMetrics.map(m => parseFloat(m[3]));  // Precision is at index 3
-        const recallData = historicalMetrics.map(m => parseFloat(m[4]));  // Recall is at index 4
-        const f1ScoreData = historicalMetrics.map(m => parseFloat(m[5]));  // F1-Score is at index 5
-        
-        // Create the charts
-        createChart('accuracyChart', labels, accuracyData, 'Accuracy');
-        createChart('precisionChart', labels, precisionData, 'Precision');
-        createChart('recallChart', labels, recallData, 'Recall');
-        createChart('f1Chart', labels, f1ScoreData, 'F1-Score');
-        };
-    
-    
+function createChart(canvasId, labels, data, labelName) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: labelName,
+                data: data,
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+            }]
+        },
+        options: {
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'day'
+                    }
+                },
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
 </script>
 {% endblock %}
