@@ -8,6 +8,9 @@ import logging
 from datetime import datetime
 import order_methods
 from flask import session
+from MachineLearningModels import manual_alg_requisition_script
+from sector_finder import get_stock_sector, get_stock_company_name
+import app
 
 # with open('080724-transactiondata.csv', 'r') as trans_reader:
 #     lines = trans_reader.readlines()
@@ -104,4 +107,18 @@ from flask import session
 # models = model_metrics_history_DAOIMPL.get_most_recent_metric_for_user_selected_models(7)
 
 # print(models)
+# model_metrics_history_DAOIMPL.create_model_metrics_history_table(1)
+# models_DAOIMPL.create_models_table()
 
+# news =  manual_alg_requisition_script.request_articles('NVDA')
+# sent = manual_alg_requisition_script.process_phrase_for_sentiment(news)
+# for symbol in ['RKLB', 'CMP', 'CAE', 'RCEL']:
+#     company_name = get_stock_company_name(symbol)
+#     overall_sent = manual_alg_requisition_script.request_articles(symbol, company_name)
+#     overall_sent = manual_alg_requisition_script.process_phrase_for_sentiment(overall_sent, company_name)
+#     print(overall_sent)
+test = []
+if test:
+    print(True)
+else:
+    print(False)

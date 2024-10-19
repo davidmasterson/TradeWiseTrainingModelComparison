@@ -1,10 +1,11 @@
 import sector_finder
 import logging
+import yahoo_finance
 
 class transaction:
 
-    def __init__(self,symbol,dp,ppps,qty,total_buy,pstring,user_id,ds = 'N/A',spps = 'N/A',tsp = 'N/A',
-                 sstring = 'N/A',expected = 0.00,proi =0.0,actual = 'N/A',tp1 = 0.00, sop = 0.00, prediction=1, result = None):
+    def __init__(self,symbol,dp,ppps,qty,total_buy,pstring,user_id,sentiment,ds = None,spps = None,tsp = None,
+                 sstring = None,expected = 0.00,proi =0.0,actual = None,tp1 = 0.00, sop = 0.00, result = None):
         self.symbol = symbol
         self.dp = dp
         self.ppps = ppps
@@ -21,8 +22,9 @@ class transaction:
         self.actual = actual
         self.tp1 = tp1
         self.sop = sop
-        self.prediction = prediction
+        self.sentiment = sentiment
         self.result = result
+        self.sector = sector_finder.get_stock_sector(self.symbol)
 
     def aggregate_sectors_for_stock_symbols(symbols):
         sectors = {}

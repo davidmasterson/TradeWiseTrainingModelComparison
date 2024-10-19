@@ -33,34 +33,45 @@
 
         <!-- Table to display recommendations -->
         {% if orders %}
-        <table class="table table-bordered" id="recommendationsTable">
+        <table class="table table-bordered" id="recommendationsTable" style="border-color:black">
             <thead>
                 <tr>
                     <th>Symbol</th>
                     <th>Limit Price</th>
                     <th>Qty</th>
-                    <th>Updated Last</th>
-                    <th>Action</th>
+                    
+                    
                 </tr>
             </thead>
             <tbody>
-                {% for stock, details in orders.items() %}
-                <tr>
-                    <td>{{ details.symbol }}</td>
-                    <td>{{ details.limit_price }}</td>
-                    <td>{{ details.qty }}</td>
-                    <td>{{ details.updated_last }}</td>
+              {% for x in orders %}
+              {% set row_color = 'white' %}
+              {% if x.sentiment <= 40 %}
+                  {% set row_color = '#f9dfc5' %}
+              {% elif x.sentiment >= 41 and x.sentiment <= 59 %}
+                  {% set row_color = '#FFCCCB' %}
+              {% elif x.sentiment >= 60 and x.sentiment <= 79 %}
+                  {% set row_color = '#FFFBC8' %}
+              {% else %}
+                  {% set row_color = '#cefad0' %}
+              {% endif %}
+          
+              <tr style="background-color: {{ row_color }};border : 2px, solid-black;">
+                  <td>{{ x.symbol }}</td>
+                  <td>{{ x.limit_price }}</td>
+                  <td>{{ x.qty }}</td>
                     <td>
                         <!-- Purchase button with form -->
                         <form action="/purchase" method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="symbol" value="{{ details.symbol }}">
-                            <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
-                            <input type="hidden" name="qty" value="{{ details.qty }}">
+                            <input type="hidden" name="symbol" value="{{ x.symbol }}">
+                            <input type="hidden" name="limit_price" value="{{ x.limit_price }}">
+                            <input type="hidden" name="qty" value="{{ x.qty }}">
                             <button type="submit" class="btn btn-success">Purchase</button>
                         </form>
                     </td>
                 </tr>
+               
                 {% endfor %}
             </tbody>
         </table>

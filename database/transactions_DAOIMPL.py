@@ -97,7 +97,7 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
 def get_project_training_transactions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id}'''
+    sql = f'''SELECT * FROM transactions WHERE user_id={user_id}'''
     
     try:
         cur.execute(sql)
@@ -120,10 +120,10 @@ def get_project_training_transactions_for_user(user_id):
 def get_project_training_most_recent_5_transactions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'''SELECT * FROM transactions WHERE prediction IS NOT NULL AND user_id={user_id} ORDER BY id DESC LIMIT 5 '''
-    
+    sql = f'''SELECT * FROM transactions WHERE user_id=%s ORDER BY id DESC LIMIT 5 '''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         rows = cur.fetchall()  # Fetch all rows as tuples
         
         # Get the column names from the cursor description
@@ -166,7 +166,7 @@ def calculate_average_days_to_close_for_user(user_id):
 def calculate_cumulative_profit_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT sum(actual) from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id = {user_id}'
+    sql = f'SELECT sum(actual) from transactions WHERE actual > 0 and result = 1 AND user_id = {user_id}'
     try:
         cur.execute(sql)
         profit = cur.fetchone()
@@ -183,7 +183,7 @@ def calculate_cumulative_profit_for_user(user_id):
 def calculate_cumulative_loss_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT sum(actual) from transactions WHERE actual < 0 and prediction = 1 AND result = 0 AND user_id={user_id}'
+    sql = f'SELECT sum(actual) from transactions WHERE actual < 0 AND result = 0 AND user_id={user_id}'
     try:
         cur.execute(sql)
         loss = cur.fetchone()
@@ -201,8 +201,7 @@ def calculate_correct_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT COUNT(*) FROM transactions 
-            WHERE prediction IS NOT NULL
-            AND prediction = result AND user_id={user_id}'''
+            WHERE actual > 0 AND user_id={user_id}'''
     try:
         cur.execute(sql)
         count = cur.fetchone()
@@ -219,7 +218,7 @@ def calculate_correct_predictions_for_user(user_id):
 def calculate_incorrect_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT COUNT(*) FROM transactions WHERE prediction != result AND user_id={user_id}'
+    sql = f'SELECT COUNT(*) FROM transactions WHERE actual < 0 user_id={user_id}'
     try:
         cur.execute(sql)
         count = cur.fetchone()
@@ -241,6 +240,27 @@ def get_open_transactions_for_user(user_id):
                 AND user_id = %s
                 '''
     vals = ['N/A', user_id]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+def get_all_pstrings_for_open_transactions_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT pstring FROM transactions
+                WHERE ds=%s
+                AND user_id = %s
+                '''
+    vals = [None, user_id]
     try:
         cur.execute(sql, vals)
         trans = cur.fetchall()
@@ -278,7 +298,7 @@ def get_open_transaction_by_pstring_for_user(pstring,user_id):
 def select_model_sector_profits_symbols_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT symbol from transactions WHERE actual > 0 and prediction = 1 and result = 1 AND user_id={user_id}'
+    sql = f'SELECT symbol from transactions WHERE actual > 0 and result = 1 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchall()
@@ -295,7 +315,7 @@ def select_model_sector_profits_symbols_for_user(user_id):
 def select_model_sector_loss_symbols_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT symbol from transactions WHERE actual < 0 and prediction = 1 and result = 0 AND user_id={user_id}'
+    sql = f'SELECT symbol from transactions WHERE actual < 0 and result = 0 AND user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -312,7 +332,7 @@ def select_model_sector_loss_symbols_for_user(user_id):
 def select_model_sector_recommended_symbols(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT symbol from transactions WHERE prediction = 1 AND user_id={user_id}'
+    sql = f'SELECT symbol from transactions WHERE user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -329,7 +349,7 @@ def select_model_sector_recommended_symbols(user_id):
 def select_model_sector_not_recommended_symbols(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT symbol from transactions WHERE prediction = 0 AND user_id={user_id}'
+    sql = f'SELECT symbol from transactions WHERE user_id={user_id}'
     try:
         cur.execute(sql)
         symbols = cur.fetchone()
@@ -343,14 +363,31 @@ def select_model_sector_not_recommended_symbols(user_id):
         conn.close()
         cur.close()
 
-
-
+def get_last_transaction(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+            WHERE user_id = %s ORDER ASC
+            LIMIT 1'''
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        id = cur.fetchone()
+        if id:
+            return id
+        return None 
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to get transaction id due to : {e}')
+    finally:
+        cur.close()
+        conn.close()    
 def insert_transactions(transactions):
     for transaction in transactions:
         insert_transaction(transaction)
 
 
 def insert_transaction(transaction):
+    from database import pending_orders_DAOIMPL
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''
@@ -371,14 +408,15 @@ def insert_transaction(transaction):
             actual,
             tp1,
             sop,
-            prediction,
+            confidence,
             result,
-            user_id
+            user_id,
+            sector
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s,%s
+            %s,%s,%s,%s
             )
             '''
     vals = [transaction.symbol,
@@ -396,13 +434,16 @@ def insert_transaction(transaction):
             transaction.actual,
             transaction.tp1,
             transaction.sop,
-            transaction.prediction,
+            transaction.sentiment,
             transaction.result,
-            transaction.user_id]
+            transaction.user_id,
+            transaction.sector]
     try:
         cur.execute(sql,vals)
         conn.commit()
+        id = cur.lastrowid()
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+        pending_orders_DAOIMPL.delete_pending_order_after_fill(id)
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to insert transaction {transaction.symbol, transaction.ppps} due to : {e}')
     finally:

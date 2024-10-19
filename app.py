@@ -27,6 +27,8 @@ import asyncio
 from datetime import datetime
 import websocket
 import json
+from celery import Celery
+import cProfile
 
 
 app = Flask(__name__)
@@ -47,7 +49,23 @@ result_queue = queue.Queue()
 # security measures against crosssite scripting.
 csrf = CSRFProtect(app)
 
+# make celery to run background tasks
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
+    TaskBase = celery.Task
 
+    class ContextTask(TaskBase):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
+
+    celery.Task = ContextTask
+    return celery
 
 # Set up logging
 logging.basicConfig(
@@ -442,53 +460,21 @@ def train_model(model_name):
     
     return redirect(url_for('dashboard'))
 
-# @app.route('/train_KNN', methods=['POST'])
-# def train_KNN():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'KNN.py',str(user_id)])
-#     return redirect(url_for('index'))
 
-# @app.route('/train_XGBoost_model', methods=['POST'])
-# def train_XGBoost_model():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'XGBoost_model.py',str(user_id)])
-#     return redirect(url_for('index'))
-
-# @app.route('/train_SupportVector_Machine', methods=['POST'])
-# def train_SupportVector_Machine():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'SupportVectorMachine.py',str(user_id)])
-#     return redirect(url_for('index'))
-
-# @app.route('/train_LSTM_model', methods=['POST'])
-# def train_LSTM_model():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'LSTM_model.py',str(user_id)])
-#     return redirect(url_for('index'))
-
-# @app.route('/train_Manual_Algorithm', methods=['POST'])
-# def train_Manual_Algorithm():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'Manual_Algorithm.py',str(user_id)])
-#     return redirect(url_for('index'))
-
-# @app.route('/train_Manual_Algorithm12day', methods=['POST'])
-# def train_Manual_Algorithm12day():
-#     user_id = user.User.get_id()
-#     subprocess.run(['python3', 'Manual_Algorithm12day.py',str(user_id)])
-#     return redirect(url_for('index'))
 
 # -------------------------------------------------------------END MODEL TRAINING -----------------------------------------------------------------
-
-
-
-@app.route('/create_rf_model', methods=['POST'])
-def create_rf_model():
-    model_trainer_predictor_methods.model_trainer()
-    percent = 100
-    status = 'DONE'
-    return render_template('index.html', status=status)
-
+# ----------------------------------------------------------------START ORDERS --------------------------------------------------------------------
+from database import pending_orders_DAOIMPL
+@app.route('/pending_orders', methods=['GET','POST'])
+def pending_orders():
+    if user.User.check_logged_in():
+        id = user.User.get_id()
+        pending_orders = pending_orders_DAOIMPL.get_all_pending_orders(id)
+        if request.method == 'POST':
+            for order in pending_orders:
+                order_methods.check_for_filled_orders_by_order_id(order)   
+        return render_template('pending_orders.html', pending_orders=pending_orders)
+    return redirect(url_for('home'))  
 
 @app.route('/predict', methods=['POST'])
 def predict():
@@ -583,12 +569,13 @@ def dashboard():
 
 
 
+from Models import manual_metrics
 @app.route('/metrics_plots', methods=['GET'])
 def plot_metrics():
     if session.get('logged_in'):
-        metrics = metrics_DAOIMPL.get_metrics_by_user_id(session.get('user_id'))
+        metrics = manual_metrics_DAOIMPL.get_metrics_by_user_id(session.get('user_id'))
         if metrics:
-            metric.Metric.plot_model_metrics()
+            manual_metrics.Manual_metrics.plot_manual_metrics()
             # manual_metrics.Manual_metrics.plot_manual_metrics()
             return render_template('metrics_plots.html')
         message = 'There are not any metrics yet!'
@@ -656,7 +643,11 @@ def purchaser_page():
             # Generate recommendations and store them in the session
             orders = purchaser.generate_recommendations_task(user_name)
             session['orders'] = orders  # Store recommendations in session
-            return render_template('purchaser.html', orders=orders, user_cash=cash)
+            if orders:
+                return render_template('purchaser.html', orders=orders, user_cash=cash)
+            else:
+                error_message = 'No recommendations were found at that confidence level. Lower your confidence level and try again.'
+                return render_template('purchaser.html', error = error_message, user_cash=cash)
 
         # Load recommendations from session if they exist
         orders = session.get('orders', None)
@@ -713,18 +704,46 @@ def get_progress():
     return jsonify({'progress': progress[1]})
 
 
+async def run_alpaca_websocket(username):
+    """ Thread target function to handle websocket connection """
+    try:
+        logging.info("Attempting to connect to Alpaca WebSocket...")
+        conn = alpaca_request_methods.get_alpaca_stream_connection(username)
+        if conn is None:
+            logging.error("Failed to connect to Alpaca WebSocket. Retrying...")
+            return
+        logging.info("Subscribing to trade updates...")
+
+        # Subscribe and pass the async on_message directly
+        conn.subscribe_trade_updates(lambda ws, message: on_message(ws, message, username))
+
+        logging.info(f"Successfully subscribed to trade updates for user {username}")
+        logging.info("WebSocket connection running...")
+        await conn.run()  # Ensure the connection itself is awaited properly
+    except Exception as e:
+        logging.error(f"WebSocket connection error: {e}. Reconnecting...")
 
 
 
-
-
+async def on_message(ws, message, username):
+    data = json.loads(message)
+    logging.info(data['data'])
+    if data['stream'] == "trade_updates":
+        event = data['data']['event']
+        # Pass the action and price to your trade update handler
+        await alpaca_request_methods.handle_trade_updates(ws, data['data'], event)  # Make sure handle_trade_updates is also an async function
+    elif data['stream'] == 'authorization':
+        if data['data']['status'] == 'authorized':
+            logging.info('WebSocket authenticated successfully.')
+    else:
+        logging.info(data['data'])
 
 
 
 @app.route('/start_websocket/<username>')
 def start_websocket_route(username):
     # Start the WebSocket in a separate thread to avoid blocking Flask
-    thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,))
+    thread = threading.Thread(target=run_alpaca_websocket, args=(username,))
     thread.start()
     return "WebSocket connection initiated"
 
@@ -812,7 +831,8 @@ def log_event_loop_status(prefix=""):
 if __name__ == "__main__":
     app.run(debug=False)
     start_websocket_route(session.get('user_name'))
-
+    cProfile.run('generate_recommendations_task(user_id = session.get("user_id"))', 'profiling_output')
+    
     
    
     

@@ -12,7 +12,7 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 # Load your dataset
-df = pd.read_csv('dataset.csv')
+df = pd.read_csv('101524-transactiondata.csv')
 
 # Remove rows where 'date_sold' is '0000-00-00'
 df = df[df['date_sold'] != '0000-00-00']

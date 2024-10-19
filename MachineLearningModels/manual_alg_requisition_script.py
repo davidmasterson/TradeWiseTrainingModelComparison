@@ -1,42 +1,164 @@
 from copy import deepcopy
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
+from pprint import PrettyPrinter
+
 import tqdm
 import alpaca_request_methods
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+import requests as rq
+import time
+import os
+import json
+from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from database import trade_settings_DAOIMPL
+from Models import user
 
 
+def preprocess_phares_into_string_for_analysis(phrase):
+    phrase_output = phrase.lower()
+    phrase_output = phrase_output.split('.')
+    return phrase_output
 
-def get_positions_to_buy(assets): 
-    asset_list = []       
-    count = 1
-    if len(assets) > 0:
-        for asset in assets:
-            result = check_asset(asset)
-            if result:
-                asset_list.append(result)
-            count += 1
-                    
-    else:
-        print("No assets available for trading, there was an issue getting them from the api.")
+def process_phrase_for_sentiment(articles_list, company_name):
+    all_sentences = []
+    all_sentiments = []
+    for phrase in articles_list:
+        for sentence in phrase:
+            phrase_output = preprocess_phares_into_string_for_analysis(sentence)
+            all_sentences.append(phrase_output)
+    for array_of_sentences in all_sentences:
+        for sentence in array_of_sentences:
+            if company_name in sentence:
+                analyzer = SentimentIntensityAnalyzer()
+                results_dict = analyzer.polarity_scores(sentence)
+                negative_perc = results_dict['neg'] * 100
+                positive_perc = results_dict['pos'] * 100
+                overall = ((negative_perc + positive_perc) / 2)  
+                if overall != 0: 
+                    if negative_perc == 0:
+                        overall = positive_perc
+                    elif positive_perc == 0:
+                        overall = 0 - negative_perc       
+                    all_sentiments.append(overall)
+    if len(all_sentiments) > 0:
+        finalized_perc = int(sum(all_sentiments)/len(all_sentiments))
+        return finalized_perc
+    return 0
+def fetch_full_article(url):
+    res = rq.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+    res = res.text
+    
+    # Your HTML content
+    html_content = res
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(html_content, 'lxml')
+
+    # Find all paragraph tags and extract the text
+    article_text = ' '.join(p.get_text() for p in soup.find_all('p'))
+    if 'Founded in 1993' in article_text:
         return []
-    return asset_list
+    return(article_text)
+        
+    
+def request_articles(symbol, company_name):
+    # --------Polygon financial News API -------------------------
+    key = os.getenv('POLY_NEWS_KEY')
+    url = (f'https://api.polygon.io/v2/reference/news?ticker={symbol}')
+    full_url = url + key
+    res = rq.get(full_url, headers={'User-Agent': 'Mozilla/5.0'})
+    res = res.json()
+    
+    
+    res1 = [[article['description'], article['article_url']] for article in res['results'] if symbol in article['tickers']]
+    articles = []
+    for x, y in res1:
+        full = fetch_full_article(y)
+        if full:
+            articles.append(full)
+        
+        
+    #---------Financial New API 2----------------------------------
+    res2 = fetch_articles_from_Finlight(symbol, 'finance.yahoo.com', company_name)
+    res3 = fetch_articles_from_Finlight(symbol, 'cnbc.com', company_name)
+    res4 = fetch_articles_from_Finlight(symbol, 'nytimes.com', company_name) 
+    finlight_articles = [res2,res3,res4]
+    for text in finlight_articles:
+        if text:
+            articles.append(text)
+    return [articles]
 
-def check_asset(asset):
+def fetch_articles_from_Finlight(symbol, source, company_name):
+    from_date = date.today() - timedelta(days=7)
+    to_date = date.today()
+    api_key = os.getenv('FINLIGHT_NEWS_KEY')
+    
+    url = f"https://api.finlight.me/v1/articles/extended?query={symbol}&source={source}&from={from_date}&to={to_date}"
+    headers = {
+        'accept': 'application/json',
+        'X-API-KEY': api_key,
+    }
+    response = rq.get(url, headers=headers)
+    res = response.json()['articles']
+    content = [[article['content'], article['link']] for article in res if company_name in article['content'].lower()]
+    for x, y in content:
+        full = fetch_full_article(y)
+        if full:    
+            return full 
+        continue      
+            
+def get_positions_to_buy(assets):
+    user_id = user.User.get_id()
+    user_confidence_threshold = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)
+    
+    if not user_confidence_threshold:
+        print("No trade settings available.")
+        return []
+
+    user_confidence_threshold = user_confidence_threshold[5]
+
+    def process_asset(asset):
+        result = check_asset(asset, user_confidence_threshold)
+        if result:
+            return result
+
+    if assets:
+        asset_list = []
+        # Define the number of workers (threads) based on your needs or hardware
+        with ThreadPoolExecutor(max_workers=40) as executor:
+            # Map each asset to the executor to process them concurrently
+            future_to_asset = {executor.submit(process_asset, asset): asset for asset in assets}
+            for future in as_completed(future_to_asset):
+                result = future.result()
+                if result:
+                    asset_list.append(result)
+        return asset_list
+    else:
+        print("No assets available for trading, there was an issue getting them from the API.")
+        return []
+
+def check_asset(asset, confidence_threshold):
+    confidence_threshold = int(confidence_threshold)
     try:
         symbol = asset[0]
         price = asset[1]
-        
-        second_check = second_check_engulfing_candle_with_reversal(asset)
-        if second_check[0] == True: 
-            # last_25 = get_last_25_day_closes(symbol)
-            # if third_check_fibonacci_condition(last_25,symbol):
-            print('passed all checks')
-            return [symbol,price]
-            #  Falsereturn
+        score = 0
+        second_check_max = 20
+        first_check = first_condition_slope_checks(symbol)
+        if first_check:
+            score += 20
+            if 50 + score + second_check_max >= confidence_threshold:    
+                second_check = second_check_engulfing_candle_with_reversal(asset)
+                if second_check:
+                    score += 20
+                return [symbol,score]
+        return []
+           
     except Exception as e:
         return False
     
     
-    
+ # 5 points   
 def get_asset_7_day_volume_average(asset):
     volume_list = get_volume_list(asset,7,[],from_date=(datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d"),to_date=(datetime.now()).strftime("%Y-%m-%d"))
     if volume_list != None and len(volume_list) == 7:      
@@ -45,12 +167,13 @@ def get_asset_7_day_volume_average(asset):
         return float(avg_volume)
     else:
         return None
-    
+ 
+# 20 points   
 def second_check_engulfing_candle_with_reversal(asset):
     last_four_candles = get_last_4__closes_full_candle_detail(asset)
     try:
         reversal_present = look_for_engulfing_candle_long_reversal(last_four_candles,asset)
-        return [reversal_present,last_four_candles]
+        return reversal_present
     except Exception as e:
         print(e)
         pass
@@ -62,7 +185,7 @@ def get_last_25_day_closes(position):
         return sma_list
     
 
-
+# 30 points
 def third_check_fibonacci_condition(sma_list, symbol):
     if len(sma_list) < 5:
         print("Not enough data points for analysis.")
@@ -241,7 +364,7 @@ def get_day_candles_with_main_account(symbol,sma_number,closes,from_date,to_date
     finally:
         api_connection.close()
         
-        
+# 20 points        
 def first_condition_slope_checks(symbol):
     recommended200 = .02
     recommended20_5 = .1

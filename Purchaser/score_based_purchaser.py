@@ -53,7 +53,8 @@ def process_symbols_for_purchase(symbols_list, max_total_spend):
     
     
     orders = {}
-    for symbol in symbols_list: 
+    for symbol_set in symbols_list: 
+        symbol = symbol_set[0]
         limit_price = float(alpaca_request_methods.get_symbol_current_price(symbol))
          
         limit_price = round(limit_price,2)
@@ -64,7 +65,8 @@ def process_symbols_for_purchase(symbols_list, max_total_spend):
             'side':'buy',
             'type':'limit',
             'tif':'day',
-            'updated_last': datetime.now()
+            'updated_last': datetime.now(),
+            'sentiment' : symbol_set[1]
         }
     return orders
             

@@ -34,7 +34,7 @@ def calculate_momentum(data, period=14):
     return data.diff(period)
 
 # Load dataset
-df = pd.read_csv('dataset.csv')
+df = pd.read_csv('101524-transactiondata.csv')
 
 # Remove features you specified earlier
 df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 

@@ -39,7 +39,7 @@ def calculate_momentum(data, period=14):
     return data.diff(period)
 
 # Load dataset
-df = pd.read_csv('dataset.csv')
+df = pd.read_csv('101524-transactiondata.csv')
 
 # Assume you have columns 'tp1', 'sop', and a method to check if tp1 is hit before sop within 12 days
 def check_target_hit(row):

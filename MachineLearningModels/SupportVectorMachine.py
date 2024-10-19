@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 
 # Load dataset
-df = pd.read_csv('dataset.csv')
+df = pd.read_csv('101524-transactiondata.csv')
 
 # Remove unwanted features
 df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 

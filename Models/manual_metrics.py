@@ -56,23 +56,23 @@ class Manual_metrics:
           return inaccuracy
      
      def calculate_manual_algo_cumulative_correct():
-          correct = transactions_DAOIMPL.calculate_manual_algo_correct()
+          correct = manual_metrics_DAOIMPL.get_manual_metrics_cumlative_correct_predictions()
           return correct
      
      def calculate_manual_algo_cumulative_incorrect():
-          incorrect = transactions_DAOIMPL.calculate_manual_algo_incorrect()
+          incorrect = manual_metrics_DAOIMPL.get_manual_metrics_cumlative_incorrect_predictions()
           return incorrect
      
      def calculate_manual_algo_correct_pred_time_to_close():
-          days = transactions_DAOIMPL.calculate_manual_algo_time_to_close_correct_pred()
+          days = manual_metrics_DAOIMPL.get_manual_metrics_times_to_close()
           return days
      
      def calculate_manual_algo_cumulative_profit():
-          profit = transactions_DAOIMPL.calculate_manual_algo_cumulative_profit()
+          profit = manual_metrics_DAOIMPL.get_manual_metrics_cumlative_profits()
           return profit
      
      def calculate_manual_algo_cumulative_loss():
-          loss = transactions_DAOIMPL.calculate_manual_algo_cumulative_loss()
+          loss = manual_metrics_DAOIMPL.get_manual_metrics_cumlative_losses()
           return loss
     
 
