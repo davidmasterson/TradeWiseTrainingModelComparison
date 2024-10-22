@@ -239,7 +239,7 @@ def get_open_transactions_for_user(user_id):
                 WHERE ds=%s
                 AND user_id = %s
                 '''
-    vals = ['N/A', user_id]
+    vals = [None, user_id]
     try:
         cur.execute(sql, vals)
         trans = cur.fetchall()
@@ -252,6 +252,48 @@ def get_open_transactions_for_user(user_id):
     finally:
         cur.close()
         conn.close()
+
+def get_open_transactions_for_user_by_symbol(symbol,user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE ds=%s
+                AND user_id = %s
+                AND symbol = %s
+                '''
+    vals = [None, user_id, symbol]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+def get_open_transactions_for_user_by_symbol_with_db_conn(symbol,user_id, conn):
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE ds=%s
+                AND user_id = %s
+                AND symbol = %s
+                '''
+    vals = [None, user_id, symbol]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
 
 def get_all_pstrings_for_open_transactions_for_user(user_id):
     conn = dcu.get_db_connection()
@@ -289,6 +331,26 @@ def get_open_transaction_by_pstring_for_user(pstring,user_id):
         return []
     except Exception as e:
         logging.info(f'Unable to get_open_transaction_by_pstring({pstring}) due to : {e}')
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+def get_closed_transaction_by_sstring_for_user(sstring,user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = f'''SELECT * FROM transactions
+                WHERE sstring = %s
+                AND user_id={user_id}'''
+    vals = [sstring]
+    try:
+        cur.execute(sql,vals)
+        transaction = cur.fetchone()
+        if transaction:
+            return transaction
+        return []
+    except Exception as e:
+        logging.info(f'Unable to get_open_transaction_by_pstring({sstring}) due to : {e}')
         return []
     finally:
         cur.close()
@@ -386,7 +448,7 @@ def insert_transactions(transactions):
         insert_transaction(transaction)
 
 
-def insert_transaction(transaction):
+def insert_transaction(transaction, pending_order_id):
     from database import pending_orders_DAOIMPL
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -441,9 +503,9 @@ def insert_transaction(transaction):
     try:
         cur.execute(sql,vals)
         conn.commit()
-        id = cur.lastrowid()
+        id = cur.lastrowid
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
-        pending_orders_DAOIMPL.delete_pending_order_after_fill(id)
+        pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order_id)
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to insert transaction {transaction.symbol, transaction.ppps} due to : {e}')
     finally:

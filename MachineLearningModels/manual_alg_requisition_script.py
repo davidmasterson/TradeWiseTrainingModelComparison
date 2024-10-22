@@ -99,13 +99,16 @@ def fetch_articles_from_Finlight(symbol, source, company_name):
         'X-API-KEY': api_key,
     }
     response = rq.get(url, headers=headers)
-    res = response.json()['articles']
-    content = [[article['content'], article['link']] for article in res if company_name in article['content'].lower()]
-    for x, y in content:
-        full = fetch_full_article(y)
-        if full:    
-            return full 
-        continue      
+    try:
+        res = response.json()['articles']
+        content = [[article['content'], article['link']] for article in res if company_name in article['content'].lower()]
+        for x, y in content:
+            full = fetch_full_article(y)
+            if full:    
+                return full 
+            continue 
+    except Exception as e:
+        pass     
             
 def get_positions_to_buy(assets):
     user_id = user.User.get_id()
@@ -137,7 +140,9 @@ def get_positions_to_buy(assets):
         print("No assets available for trading, there was an issue getting them from the API.")
         return []
 
-def check_asset(asset, confidence_threshold):
+
+
+def check_asset(asset, confidence_threshold=20):
     confidence_threshold = int(confidence_threshold)
     try:
         symbol = asset[0]
@@ -156,6 +161,8 @@ def check_asset(asset, confidence_threshold):
            
     except Exception as e:
         return False
+
+
     
     
  # 5 points   
@@ -366,6 +373,7 @@ def get_day_candles_with_main_account(symbol,sma_number,closes,from_date,to_date
         
 # 20 points        
 def first_condition_slope_checks(symbol):
+    print(f' Trying to get slopes for {symbol}')
     recommended200 = .02
     recommended20_5 = .1
     try:

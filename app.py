@@ -5,7 +5,7 @@ from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, s
 import alpaca_request_methods
 # import threading
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history
+from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
@@ -27,8 +27,9 @@ import asyncio
 from datetime import datetime
 import websocket
 import json
-from celery import Celery
+
 import cProfile
+from Seller.tasks import check_positions_in_background
 
 
 app = Flask(__name__)
@@ -50,22 +51,6 @@ result_queue = queue.Queue()
 csrf = CSRFProtect(app)
 
 # make celery to run background tasks
-def make_celery(app):
-    celery = Celery(
-        app.import_name,
-        backend=app.config['CELERY_RESULT_BACKEND'],
-        broker=app.config['CELERY_BROKER_URL']
-    )
-    celery.conf.update(app.config)
-    TaskBase = celery.Task
-
-    class ContextTask(TaskBase):
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-
-    celery.Task = ContextTask
-    return celery
 
 # Set up logging
 logging.basicConfig(
@@ -90,6 +75,7 @@ def home():
 @app.route('/index', methods=['GET'])
 def index():
     if session.get('logged_in'):
+        
         return render_template('index.html')
     return redirect(url_for('home'))
 
@@ -177,6 +163,14 @@ def login():
                             url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
                             response = requests.get(url)
                             logging.info(f"WebSocket initiation response: {response.status_code}")
+                            background_thread = threading.Thread(target=check_positions_in_background, args=(username, user_id))
+                            background_thread.daemon = True  # Ensures thread exits when the main program exits
+                            background_thread.start()
+                            
+                            if background_thread.is_alive():
+                                logging.info("Background thread is running.")
+                            else:
+                                logging.info("Background thread failed to start.")
                         except Exception as e:
                             logging.error(f"Failed to start WebSocket: {e}")
                         return redirect(url_for('dashboard'))
@@ -471,8 +465,7 @@ def pending_orders():
         id = user.User.get_id()
         pending_orders = pending_orders_DAOIMPL.get_all_pending_orders(id)
         if request.method == 'POST':
-            for order in pending_orders:
-                order_methods.check_for_filled_orders_by_order_id(order)   
+            order_methods.check_for_filled_orders()   
         return render_template('pending_orders.html', pending_orders=pending_orders)
     return redirect(url_for('home'))  
 
@@ -704,46 +697,25 @@ def get_progress():
     return jsonify({'progress': progress[1]})
 
 
-async def run_alpaca_websocket(username):
-    """ Thread target function to handle websocket connection """
-    try:
-        logging.info("Attempting to connect to Alpaca WebSocket...")
-        conn = alpaca_request_methods.get_alpaca_stream_connection(username)
-        if conn is None:
-            logging.error("Failed to connect to Alpaca WebSocket. Retrying...")
-            return
-        logging.info("Subscribing to trade updates...")
-
-        # Subscribe and pass the async on_message directly
-        conn.subscribe_trade_updates(lambda ws, message: on_message(ws, message, username))
-
-        logging.info(f"Successfully subscribed to trade updates for user {username}")
-        logging.info("WebSocket connection running...")
-        await conn.run()  # Ensure the connection itself is awaited properly
-    except Exception as e:
-        logging.error(f"WebSocket connection error: {e}. Reconnecting...")
 
 
 
-async def on_message(ws, message, username):
-    data = json.loads(message)
-    logging.info(data['data'])
-    if data['stream'] == "trade_updates":
-        event = data['data']['event']
-        # Pass the action and price to your trade update handler
-        await alpaca_request_methods.handle_trade_updates(ws, data['data'], event)  # Make sure handle_trade_updates is also an async function
-    elif data['stream'] == 'authorization':
-        if data['data']['status'] == 'authorized':
-            logging.info('WebSocket authenticated successfully.')
-    else:
-        logging.info(data['data'])
+
+
 
 
 
 @app.route('/start_websocket/<username>')
 def start_websocket_route(username):
+    
+    this_user = user_DAOIMPL.get_user_by_username(username)
+    if this_user:
+        this_user = this_user[0]
+    alpaca_key = this_user['alpaca_key']
+    alpaca_secret = this_user['alpaca_secret']
+    user_id = this_user['id']
     # Start the WebSocket in a separate thread to avoid blocking Flask
-    thread = threading.Thread(target=run_alpaca_websocket, args=(username,))
+    thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,user_id,alpaca_key, alpaca_secret))
     thread.start()
     return "WebSocket connection initiated"
 

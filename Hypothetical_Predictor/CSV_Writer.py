@@ -5,7 +5,7 @@ import alpaca_request_methods
 class CSV_Writer:
 
     def write_temporary_csv(symbols):
-        with open('Hypothetical_Predictor/transactions.csv', 'w') as temporary_writer:
+        with open('/home/david/TradeWiseTrainingModelComparison/Hypothetical_Predictor/transactions.csv', 'w') as temporary_writer:
             temporary_writer.write(f'transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,tp1,sop\n')
             count = 0
             for symbol in symbols:

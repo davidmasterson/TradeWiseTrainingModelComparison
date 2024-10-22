@@ -117,8 +117,5 @@ import app
 #     overall_sent = manual_alg_requisition_script.request_articles(symbol, company_name)
 #     overall_sent = manual_alg_requisition_script.process_phrase_for_sentiment(overall_sent, company_name)
 #     print(overall_sent)
-test = []
-if test:
-    print(True)
-else:
-    print(False)
+# user_DAOIMPL.update_user_alpaca_keys('PKR4U0XGPVYK9NX08N5M','kfMap1ebZOcMnreCVLjwXjfOKpMnMjETiHhmdUhG',1)
+

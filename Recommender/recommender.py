@@ -20,7 +20,7 @@ def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symb
             break
 
         # Write temporary CSV file with stock data
-        CSV_Writer.CSV_Writer.write_temporary_csv(this_iter_list)
+        # CSV_Writer.CSV_Writer.write_temporary_csv(this_iter_list)
 
         # Fetch the stock data
         
@@ -52,3 +52,7 @@ def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symb
 
     logging.info('Finished processing symbols:', symbols)
     return symbols
+
+
+
+
