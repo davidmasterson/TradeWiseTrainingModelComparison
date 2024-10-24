@@ -67,6 +67,40 @@ def get_model_from_db_by_model_name_and_user_id(model_name, user_id):
         conn.close()
         cursor.close()
 
+def get_models_for_user_by_user_id(user_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM models WHERE user_id = %s"
+    vals = [user_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchall()
+        if result:
+            return result
+        return []
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
+def get_models_for_user_by_model_id(model_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM models WHERE id = %s"
+    vals = [model_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchone()
+        if result:
+            return result
+        return []
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
 
         
 def insert_model_into_models_for_user(model):
@@ -75,12 +109,14 @@ def insert_model_into_models_for_user(model):
     try:
         sql = '''INSERT INTO models(
                     model_name,
+                    model_description,
                     model_data,
                     user_id,
                     selected
                     )VALUES(
-                        %s,%s,%s,%s)'''
+                        %s,%s,%s,%s,%s)'''
         vals = [model.model_name,
+                model.model_description,
                 model.model_data,
                 model.user_id,
                 model.selected
@@ -105,12 +141,14 @@ def update_model_for_user(model, model_id):
     cur = conn.cursor()
     sql = '''UPDATE models SET
                 model_name = %s,
+                model_description = %s,
                 model_data = %s,
                 user_id = %s,
                 selected = %s
             WHERE id = %s
             '''
     vals = [model.model_name,
+            model.model_description,
             model.model_data,
             model.user_id,
             model.selected,
@@ -174,3 +212,25 @@ def update_selected_models_for_user( model_name1=None, model_name2=None):
     finally:
         cur.close()
         conn.close()
+        
+def update_selected_status(selected_status, model_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    selected_status = 1 if selected_status == '1' else 0
+    sql = '''UPDATE models
+                SET selected = %s
+            WHERE id = %s'''
+    vals = [selected_status, model_id]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, record(s) updated for user : {model_id}")
+        else:
+            logging.info(f"No model records updated for user ")
+    except Exception as e:
+        logging.error(f"Unable to update model for user  due to: {e}")
+    finally:
+        cur.close()
+        conn.close()
+    

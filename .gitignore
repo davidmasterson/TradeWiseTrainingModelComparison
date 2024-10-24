@@ -8,7 +8,6 @@ static/plots/*
 Model_Training/RandomForestModel.pkl
 app.log
 aws/*
-
 awscliv2.zip
 dataset.csv
 client_secrets.json
@@ -16,9 +15,7 @@ token.pickle
 lstm_model.h5
 rf_classifier.pkl
 test.py
-
 101524-transactiondata.csv
-
 access.log
 error.log
 svm_model.pkl

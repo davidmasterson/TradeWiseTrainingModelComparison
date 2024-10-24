@@ -13,6 +13,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from datetime import datetime
 
+
+if len(sys.argv) > 1:
+        user_id = sys.argv[1]
 # Function to calculate technical indicators
 def calculate_rsi(data, window=14):
     delta = data.diff()
@@ -32,7 +35,7 @@ def calculate_momentum(data, period=14):
     return data.diff(period)
 
 # Load dataset
-df = pd.read_csv('dataset.csv')
+df = pd.read_csv('/home/ubuntu/TradeWiseTrainingModelComparison/dataset.csv')
 
 # Remove features you specified earlier
 df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 
@@ -104,13 +107,15 @@ with open('knn_model.pkl', 'rb') as model_file:
 
 if len(sys.argv) > 1:
         user_id = sys.argv[1]
+model_name = 'KNN'
+model_description = 'Base metrics KNN model'
 user_id = int(user_id)
 # Insert the model into the database
-new_model = model.Model("KNN", model_binary,user_id,selected = False)
+new_model = model.Model(model_name,model_description, model_binary,user_id,selected = 1)
 model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(new_model.model_name,user_id)
 if model_exists:
     model_id = models_DAOIMPL.update_model_for_user(new_model,int(model_exists[0]))
 else:
     model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
-new_history = model_metrics_history.Model_Metrics_History(model_id, accuracy, precision, recall, f1, '{}', datetime.now())
+new_history = model_metrics_history.Model_Metrics_History(model_id, accuracy, precision, 1, f1, '{}', datetime.now())
 model_metrics_history_DAOIMPL.insert_metrics_history(new_history)

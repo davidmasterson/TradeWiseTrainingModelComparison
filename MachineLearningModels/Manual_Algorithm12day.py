@@ -12,7 +12,7 @@ import pandas as pd
 from datetime import datetime
 
 # Load the dataset
-df = pd.read_csv('101524-transactiondata.csv')
+df = pd.read_csv('/home/ubuntu/TradeWiseTrainingModelComparison/dataset.csv')
 
 # Convert date columns to datetime, invalid dates ('0000-00-00') will be set to NaT
 df['date_purchased'] = pd.to_datetime(df['date_purchased'], errors='coerce')
@@ -45,16 +45,20 @@ print(f"Manual Algorithm - F1-Score: {f1}")
 from datetime import datetime
 
 # Serialize model to binary
-with open("MachineLearningModels/Manual_Algorithm12day.py", "rb") as model_file:
+with open("/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/Manual_Algorithm12day.py", "rb") as model_file:
     model_binary = model_file.read()
+
+user_id = 1
 
 # Insert the model into the database
 if len(sys.argv) > 1:
         user_id = sys.argv[1]
 
 user_id = int(user_id)
+model_name = "Manual_Algorithm12day"
+model_description = 'Manual trading algorithm to see if position will close in 12 days or less.'
 # Insert the model into the database
-new_model = model.Model("Manual_Algorithm12day", model_binary,user_id,selected = False)
+new_model = model.Model(model_name,model_description, model_binary,user_id,selected = 1)
 model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(new_model.model_name,user_id)
 if model_exists:
     model_id = models_DAOIMPL.update_model_for_user(new_model,int(model_exists[0]))

@@ -2,8 +2,9 @@ import pickle
 from database import models_DAOIMPL
 class Model:
     
-    def __init__(self, model_name, model_data, user_id, selected):
+    def __init__(self, model_name, model_description, model_data, user_id, selected):
         self.model_name = model_name
+        self.model_description = model_description
         self.model_data = model_data
         self.user_id = user_id
         self.selected = selected

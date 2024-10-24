@@ -38,6 +38,7 @@ def check_positions_in_background(username, user_id):
         
         # Cancel any open orders at the end of the trading day
     conn.cancel_all_orders()
+    pending_orders_DAOIMPL.truncate_pending_orders_at_eod(db_conn)
 
     # Close the database connection at the end
     db_conn.close()

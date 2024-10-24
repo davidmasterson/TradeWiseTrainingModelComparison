@@ -4,13 +4,13 @@ import logging
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
 import alpaca_request_methods
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user
+from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user, model
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
@@ -49,15 +49,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# Attach logging to Flask's logger and configure it to log to the console as well
-app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-app.logger.setLevel(logging.ERROR)  # Logs errors only
+# logging.basicConfig(
+#     filename='app.log',
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+# # Attach logging to Flask's logger and configure it to log to the console as well
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+# app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -477,7 +477,7 @@ def train_model(model_name):
     user_id = user.User.get_id()
     try:
         # Ensuring the script runs in the background and control returns immediately to the application
-        subprocess.run(['python3', f'MachineLearningModels/{model_name}.py', str(user_id)])
+        subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', f'/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/{model_name}.py', str(user_id)])
         flash('Training started successfully!', 'success')
     except Exception as e:
         flash(f'Error starting training: {e}', 'error')
@@ -527,52 +527,49 @@ def process_symbols():
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from collections import defaultdict
+    
     if session.get('logged_in'):
-        user_id = user.User.get_id()  # Make sure this line successfully retrieves the user ID
-        model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_ml_models() or []
-        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_models_sorted_by_model() or []
+        user_id = user.User.get_id()  # Ensure this retrieves the correct user ID
+        
+        # Fetch model metrics and historical metrics for selected models only
+        model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_selected_ml_models() or []
+        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_selected_models_sorted_by_model() or []
 
         logging.info(f"historical_metrics: {historical_metrics}")
         logging.info(f'model metrics: {model_metrics}')
 
-        # Default metrics data with placeholders
-        metrics_data = [
-            {'model_name': 'Manual_Algorithm', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'Manual_Algorithm12day', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'RandomForestModel', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'KNN', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'XGBoost', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'SupportVectorMachine', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()},
-            {'model_name': 'LSTM', 'accuracy': 0.00, 'precision': 0.00, 'recall': 0.00, 'f1_score': 0.00, 'top_features': '{}', 'timestamp': datetime.now()}
-        ]
+        # Initialize an empty metrics_data to dynamically populate based on selected models
+        metrics_data = []
 
-        # Update metrics_data if model_metrics is present
+        # Populate metrics_data only with selected models from the database
         for metric in model_metrics:
             try:
                 top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
-                top_features_dict = json.loads(top_features_str)
-                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])
+                top_features_dict = json.loads(top_features_str)  # Convert to dictionary
+                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])  # Top 5 features
 
-                # Update the existing dictionaries if the model name matches
-                for model in metrics_data:
-                    if model['model_name'] == metric[0]:
-                        model.update({
-                            'accuracy': float(metric[1]),
-                            'precision': float(metric[2]),
-                            'recall': float(metric[3]),
-                            'f1_score': float(metric[4]),
-                            'top_features': sorted_features,
-                            'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
-                        })
+                # Append selected model's metrics to metrics_data
+                metrics_data.append({
+                    'model_name': metric[0],
+                    'accuracy': float(metric[1]),
+                    'precision': float(metric[2]),
+                    'recall': float(metric[3]),
+                    'f1_score': float(metric[4]),
+                    'top_features': sorted_features,
+                    'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
+                })
             except json.JSONDecodeError as e:
                 logging.error(f"JSON parsing error: {e} for metric {metric}")
 
+        # Initialize chart_data before processing historical metrics
+        chart_data = defaultdict(lambda: {'dates': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []})
+
         # Handling empty historical_metrics
         if not historical_metrics:
+            # If no historical data, use a placeholder for visualization
             historical_metrics = [{"date": "", "accuracy": 0, "precision": 0, "recall": 0, "f1_score": 0, "model_name": "No Data"}]  
         else:
             # Organize historical metrics by model for charting
-            chart_data = defaultdict(lambda: {'dates': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []})
             for entry in historical_metrics:
                 model_name, accuracy, precision, recall, f1_score, _, timestamp = entry
                 chart_data[model_name]['dates'].append(timestamp.strftime('%Y-%m-%d %H:%M:%S'))
@@ -581,14 +578,19 @@ def dashboard():
                 chart_data[model_name]['recall'].append(recall)
                 chart_data[model_name]['f1_score'].append(f1_score)
 
-            # Convert defaultdict to normal dict for JSON serialization
-            chart_data = dict(chart_data)
-            logging.info(f'ChartDataHistorical: {chart_data}')
-            logging.info(f'ChartDataJSON {json.dumps(chart_data)}')
+        # Convert defaultdict to a normal dict for JSON serialization
+        chart_data = dict(chart_data)
+        logging.info(f'ChartDataHistorical: {chart_data}')
+        logging.info(f'ChartDataJSON: {json.dumps(chart_data)}')
 
+        # Render the dashboard template and pass metrics and historical data
         return render_template('index.html', metrics_data=metrics_data, historical_metrics=json.dumps(chart_data))
 
+    # Redirect to home if the user is not logged in
     return redirect(url_for('home'))
+
+
+
 
 
 
@@ -606,6 +608,42 @@ def plot_metrics():
     return redirect(url_for('home'))
 
 
+
+@app.route('/upload_models', methods = ['GET','POST'])
+def upload_models():
+    import pickle
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        if request.method == 'POST':
+            model_name = request.form['model_name']
+            model_description = request.form['model_description']
+            model_file = request.files['model_file']
+
+        # Save the uploaded file to the specified folder
+            if model_file and model_name and model_description:
+                file_data = model_file.read()  # Read file content
+                model_binary = pickle.dumps(file_data)  # Convert to binary object
+
+                # Save binary model data to the database.
+                new_model = model.Model(model_name, model_description, model_binary,user_id,0)
+                models_DAOIMPL.insert_model_into_models_for_user(new_model)
+                flash('Model has been uploaded successfully','info')
+                return redirect(url_for('upload_models'))
+
+    # If GET request, render the upload form
+        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
+        if models:
+            models = models
+        return render_template('models.html', models=models)
+
+@app.route('/select_model/<int:model_id>', methods=['POST'])
+def select_model(model_id):
+    selected = request.form.get('selected', '0')
+    mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
+    if mod:
+        mod = mod[0]
+    models_DAOIMPL.update_selected_status(selected,model_id)
+    return redirect(url_for('upload_models'))       
 
 
 

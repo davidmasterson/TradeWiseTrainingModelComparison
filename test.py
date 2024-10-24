@@ -117,5 +117,22 @@ import app
 #     overall_sent = manual_alg_requisition_script.request_articles(symbol, company_name)
 #     overall_sent = manual_alg_requisition_script.process_phrase_for_sentiment(overall_sent, company_name)
 #     print(overall_sent)
-# user_DAOIMPL.update_user_alpaca_keys('PKR4U0XGPVYK9NX08N5M','kfMap1ebZOcMnreCVLjwXjfOKpMnMjETiHhmdUhG',1)
+# user_DAOIMPL.update_user_alpaca_keys('PKMIFIY4HCKE8FLGXQQB','FTs9KihbSjihd2bFlEs9Vit1pY15HFdorYZ2W4Q7',1)
 
+
+# conn = alpaca_request_methods.create_alpaca_api('shadow073180')
+# poss = conn.list_positions()
+# for pos in poss:
+#     transact = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol(pos.symbol, 1)
+#     if transact:
+#         for trans in transact:
+#             tp1 = float(trans[14])
+#             sop = float(trans[15])
+#             qty = int(trans[4])
+#             buy_string = trans[6]
+#             print(f'Position: {pos.symbol}, Price: {pos.current_price}, Take Profit: {tp1}, Stop Out: {sop}')
+#             if float(pos.current_price) >= tp1 or float(pos.current_price) <= sop:
+#                 order_methods.place_sell_order(pos.symbol,qty,pos.current_price,'shadow073180',buy_string )
+from database import pending_orders_DAOIMPL
+
+pending_orders_DAOIMPL.truncate_pending_orders_at_eod()

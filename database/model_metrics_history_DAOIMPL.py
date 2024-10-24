@@ -56,6 +56,30 @@ def get_most_recent_metric_history_for_all_ml_models():
     finally:
         conn.close()
         cur.close()
+
+def get_most_recent_metric_history_for_all_selected_ml_models():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+        SELECT m.model_name, mmh.accuracy, mmh.precision, mmh.recall, mmh.f1_score, mmh.top_features, mmh.timestamp
+        FROM model_metrics_history mmh
+        JOIN models m ON mmh.model_id = m.id
+        WHERE m.selected = 1 AND mmh.id IN (
+            SELECT MAX(id) FROM model_metrics_history GROUP BY model_id
+        )
+        ORDER BY mmh.timestamp DESC
+    '''
+    try:
+        cur.execute(sql)
+        results = cur.fetchall()
+        logging.info(f'{datetime.now()} - Successfully retrieved most recent metric history for all ML models')
+        return results
+    except Exception as e:
+        logging.error(f'{datetime.now()} - Failed to retrieve most recent metric history due to: {e}')
+        return []
+    finally:
+        conn.close()
+        cur.close()
         
 def get_all_metrics_history_for_all_models_sorted_by_model():
     conn = dcu.get_db_connection()
@@ -64,6 +88,28 @@ def get_all_metrics_history_for_all_models_sorted_by_model():
         SELECT m.model_name, mmh.accuracy, mmh.precision, mmh.recall, mmh.f1_score, mmh.top_features, mmh.timestamp
         FROM model_metrics_history mmh
         JOIN models m ON mmh.model_id = m.id
+        ORDER BY m.model_name, mmh.timestamp DESC
+    '''
+    try:
+        cur.execute(sql)
+        results = cur.fetchall()
+        logging.info(f'{datetime.now()} - Successfully retrieved all metric history for all ML models sorted by model')
+        return results
+    except Exception as e:
+        logging.error(f'{datetime.now()} - Failed to retrieve all metric history due to: {e}')
+        return []
+    finally:
+        conn.close()
+        cur.close()
+        
+def get_all_metrics_history_for_all_selected_models_sorted_by_model():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+        SELECT m.model_name, mmh.accuracy, mmh.precision, mmh.recall, mmh.f1_score, mmh.top_features, mmh.timestamp
+        FROM model_metrics_history mmh
+        JOIN models m ON mmh.model_id = m.id
+        WHERE m.selected = 1
         ORDER BY m.model_name, mmh.timestamp DESC
     '''
     try:

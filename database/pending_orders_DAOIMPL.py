@@ -116,3 +116,17 @@ def delete_pending_order_after_fill(id):
     finally:
         conn.close()
         cur.close()
+
+
+def truncate_pending_orders_at_eod(connection):
+    cur = connection.cursor()
+    sql = '''TRUNCATE table pending_orders'''
+    try:
+        cur.execute(sql)
+        connection.commit()
+        logging.info(f'{datetime.now()}: Pending oders have been deleted ')
+    except Exception as e:
+        logging.info(f'{datetime.now()}: Unable to delete Pending orders due to {e}')
+        return None
+    finally:
+        cur.close()
