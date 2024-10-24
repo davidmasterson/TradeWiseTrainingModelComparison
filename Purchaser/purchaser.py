@@ -52,7 +52,7 @@ def generate_recommendations_task(user_id):
 
 def get_and_set_progress(prog_percent):
     prog_id = progression_DAOIMPL.get_recommender_progress()
-    if prog_id[1] > -1 and  not type(prog_id) == bool:
+    if not type(prog_id) == bool and prog_id[1] > -1:
         progression_DAOIMPL.update_recommender_progress(prog_percent,prog_id[0])
     else:
         progression_DAOIMPL.insert_recommender_progress(0)
