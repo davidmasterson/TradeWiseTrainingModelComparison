@@ -99,6 +99,23 @@ def get_user_by_user_id(user_id):
         cur.close()
         conn.close()
 
+def get_username_by_user_id_with_db_conn(user_id, conn):
+    cur = conn.cursor()
+    sql = '''SELECT user_name FROM users WHERE id = %s'''
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        id = cur.fetchone()
+        if id:
+            return id
+        return None
+        
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+
 def get_all_users():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
