@@ -3,7 +3,6 @@ from flask import Flask, render_template, request, jsonify, Response, redirect, 
 import logging
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
 import alpaca_request_methods
-# import threading
 import model_trainer_predictor_methods
 from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user
 # from asyncio import sleep
@@ -15,17 +14,14 @@ from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOI
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
-import time
-from Finder import symbol_finder
-from Recommender import recommender
-from Purchaser import score_based_purchaser, purchaser
+
+from Purchaser import  purchaser
 import queue
 import order_methods
 import requests
 from flask_cors import CORS
 import asyncio
 from datetime import datetime
-import websocket
 import json
 
 import cProfile
@@ -118,6 +114,12 @@ def signup():
         email = request.form['email']
         alpaca_key = request.form['alpaca_key']
         alpaca_secret = request.form['alpaca_secret_key']
+        minpps = request.form['minpps']
+        maxpps = request.form['maxpps']
+        risk = request.form['risk']
+        conf_thresh = request.form['conf_thresh']
+        mints = request.form['mints']
+        maxts =  request.form['maxts']
         password = user.User.hash_password(password)
         #check for existing user
         user_found = user_DAOIMPL.get_user_by_username(user_name)
@@ -129,6 +131,8 @@ def signup():
         if admin_id:
             admin_id = admin_id[0]['id']
         new_user_id = user_DAOIMPL.insert_user(new_user)
+        user_sign_up_trade_settings = trade_setting.TradeSetting(new_user_id,minpps,maxpps,risk,conf_thresh,mints,maxts)
+        trade_settings_DAOIMPL.insert_trade_setting(user_sign_up_trade_settings)
         role_id = roles_DAOIMPL.get_role_id_by_role_name('retail investor',admin_id)
         new_user_roll = user_role.UserRole(new_user_id,role_id)
         user_roles_DAOIMPL.insert_user_role(new_user_roll, admin_id)
@@ -143,15 +147,26 @@ def login():
         # Get form data and validate
         username = request.form.get('username')
         password = request.form.get('password')
-        # Fetch user from the database
-        user_data = user_DAOIMPL.get_user_by_username(username)[0]
-        logging.info( f'this is the {user_data}')
-        if user_data is not None:
+        
+        # Ensure form fields are not empty
+        if not username or not password:
+            return render_template('login.html', error='Username and password are required.')
+
+        try:
+            # Fetch user from the database
+            user_data = user_DAOIMPL.get_user_by_username(username)
+            if not user_data:
+                return render_template('login.html', error='Invalid username or password.')
+            
+            user_data = user_data[0]  # Assuming user_DAOIMPL returns a list of results
+            
+            # Validate password using bcrypt
             if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
                 session['logged_in'] = True
                 session['user_name'] = user_data['user_name']
                 session['user_id'] = user_data['id']
-                #Try users Alpaca API Keys
+
+                # Try users Alpaca API Keys
                 conn = alpaca_request_methods.create_alpaca_api(username)
                 try:
                     account = conn.get_account()
@@ -160,26 +175,41 @@ def login():
                         try:
                             username = user_data['user_name']
                             user_id = user_data['id']
-                            url = url_for('start_websocket_route', username=username, user_id=user_id, _external=True)
+                            alpaca_key = user_data['alpaca_key']
+                            alpaca_secret = user_data['alpaca_secret']
+                            url = url_for('start_websocket_route', username=username, user_id=user_id, alpaca_key=alpaca_key,alpaca_secret=alpaca_secret, _external=True)
                             response = requests.get(url)
                             logging.info(f"WebSocket initiation response: {response.status_code}")
+                            
+                            # Start background thread
                             background_thread = threading.Thread(target=check_positions_in_background, args=(username, user_id))
                             background_thread.daemon = True  # Ensures thread exits when the main program exits
                             background_thread.start()
-                            
+
                             if background_thread.is_alive():
                                 logging.info("Background thread is running.")
                             else:
                                 logging.info("Background thread failed to start.")
+
                         except Exception as e:
                             logging.error(f"Failed to start WebSocket: {e}")
+
                         return redirect(url_for('dashboard'))
-                except:
-                    # render api key update form for user to resubmit their keys
-                    render_template('APIKeys_resubmission.html', user=username, first=user_data['first'], last=user_data['last'], email=user_data['email'])
-        else:
-            return render_template('login.html', error='Invalid username or password')
+                except Exception as e:
+                    logging.error(f"Error with Alpaca API: {e}")
+                    # Render API key update form for user to resubmit their keys
+                    return render_template('APIKeys_resubmission_form.html', user=username, first=user_data['first'], 
+                                           last=user_data['last'], email=user_data['email'])
+            else:
+                # Invalid password
+                return render_template('login.html', error='Invalid username or password.')
+        except Exception as e:
+            logging.error(f"Error during login process: {e}")
+            return render_template('login.html', error='An unexpected error occurred. Please try again.')
+    
+    # For GET request, simply render the login page
     return render_template('login.html')
+
 
 @app.route('/update_user_api_keys', methods=['POST'])
 def update_api_keys():
@@ -707,13 +737,11 @@ def get_progress():
 
 @app.route('/start_websocket/<username>')
 def start_websocket_route(username):
+    user_id = request.args.get('user_id')  # Extract from query string
+    alpaca_key = request.args.get('alpaca_key')  # Extract from query string
+    alpaca_secret = request.args.get('alpaca_secret')  # Extract from query string
     
-    this_user = user_DAOIMPL.get_user_by_username(username)
-    if this_user:
-        this_user = this_user[0]
-    alpaca_key = this_user['alpaca_key']
-    alpaca_secret = this_user['alpaca_secret']
-    user_id = this_user['id']
+    
     # Start the WebSocket in a separate thread to avoid blocking Flask
     thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,user_id,alpaca_key, alpaca_secret))
     thread.start()
