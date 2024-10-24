@@ -257,7 +257,7 @@ def get_open_transactions_for_user_by_symbol(symbol,user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
-                WHERE ds=%s
+                WHERE ds IS %s
                 AND user_id = %s
                 AND symbol = %s
                 '''
@@ -278,7 +278,7 @@ def get_open_transactions_for_user_by_symbol(symbol,user_id):
 def get_open_transactions_for_user_by_symbol_with_db_conn(symbol,user_id, conn):
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
-                WHERE ds=%s
+                WHERE ds IS %s
                 AND user_id = %s
                 AND symbol = %s
                 '''
