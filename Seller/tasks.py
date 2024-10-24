@@ -3,7 +3,7 @@ import os
 import time
 import threading
 from datetime import date, datetime
-from database import transactions_DAOIMPL, database_connection_utility, pending_orders_DAOIMPL
+from database import transactions_DAOIMPL, database_connection_utility, pending_orders_DAOIMPL, user_DAOIMPL
 import alpaca_request_methods
 from flask import session
 import order_methods
@@ -18,23 +18,25 @@ def check_positions_in_background(username, user_id):
     db_conn = database_connection_utility.get_db_connection()
     
     while datetime.now() <= datetime(today.year, today.month, today.day, 15, 30, 0):
-        positions = conn.list_positions()
-        for position in positions:
-            transactions = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol_with_db_conn(position.symbol, user_id, db_conn)
-            position_price_now = float(position.current_price)
-            for transaction in transactions:
-                transaction_sell_price = float(transaction[14])
-                transaction_stop_price = float(transaction[15])
-                trans_qty = int(transaction[4])
-                trans_purchase_string = transaction[6]
-                
-                if position_price_now >= transaction_sell_price or position_price_now <= transaction_stop_price:
-                    order_methods.place_sell_order(position.symbol, trans_qty, position_price_now, transaction[0], username, trans_purchase_string)
+        poss = conn.list_poss()
+        if poss:
+            for pos in poss:
+                transactions = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol_with_db_conn(pos.symbol, user_id, db_conn)
+                pos_price_now = float(pos.current_price)
+                for trans in transactions:
+                    tp1 = float(trans[14])
+                    sop = float(trans[15])
+                    qty = int(trans[4])
+                    buy_string = trans[6]
+                    user_id = int(trans[18])
+                    print(f'Position: {pos.symbol}, Price: {pos.current_price}, Take Profit: {tp1}, Stop Out: {sop}')
+                    if pos_price_now >= tp1 or pos_price_now <= sop:
+                        order_methods.place_sell_order(pos.symbol, qty, pos_price_now, username, buy_string)
+            
+            # Wait for 60 seconds before checking positions again
+            time.sleep(60)
         
-        # Wait for 60 seconds before checking positions again
-        time.sleep(60)
-    
-    # Cancel any open orders at the end of the trading day
+        # Cancel any open orders at the end of the trading day
     conn.cancel_all_orders()
 
     # Close the database connection at the end
