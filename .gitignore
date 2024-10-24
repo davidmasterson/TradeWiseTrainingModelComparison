@@ -20,3 +20,5 @@ test.py
 
 101524-transactiondata.csv
 
+access.log
+error.log
