@@ -62,7 +62,7 @@ def fetch_price_data_concurrently(symbols_list,min_price,max_price, max_workers=
         return None
 
     # Thread pool for parallel execution
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
         future_to_symbol = {executor.submit(fetch_price, symbol, min_price, max_price): symbol for symbol in symbols_list}
 
         # Iterate over completed futures
