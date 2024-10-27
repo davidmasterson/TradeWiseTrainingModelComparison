@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h1>Upload PreProcessing Scripts</h1>
+    <p>Use the form below to upload PreProcessing scripts to the database.</p>
+
+    <!-- Form to upload model training files -->
+    <form action="{{ url_for('upload_preprocessing_scripts') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+            <label for="scriptName">Script Name</label>
+            <input type="text" id="scriptName" name="script_name" class="form-control" placeholder="Enter script Name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="scriptDescription">Script Description</label>
+            <textarea id="scriptDescription" name="script_description" class="form-control" placeholder="Describe the script" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="scriptFile">PreProcessing Script (.h5, .json, or other format)</label>
+            <input type="file" id="scriptFile" name="script_file" class="form-control-file" accept=".h5,.json,.pkl" required>
+        </div>
+        <!-- Dropdown to select dataset ID for association -->
+        <div class="form-group">
+            <label for="dataset_id">Select Dataset</label>
+            <select id="dataset_id" name="dataset_id" class="form-control" required>
+                <option value="" disabled selected>Select a dataset</option>
+                {% for dataset in datasets %}
+                    <option value="{{ dataset[0] }}">{{ dataset[1] }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Upload script</button>
+    </form>
+
+    <!-- Optional Section to display list of uploaded scripts -->
+    <hr>
+    <h2>Uploaded scripts</h2>
+    <div class="row">
+        {% for script in scripts %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ script[1] }}</h5> <!-- script Name -->
+                    <p class="card-text">{{ script[2] }}</p> <!-- script Description -->
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

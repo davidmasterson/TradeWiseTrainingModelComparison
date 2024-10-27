@@ -4,17 +4,17 @@ import logging
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
 import alpaca_request_methods
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user, model
+from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user, model, training_script, dataset
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
-
+import pandas as pd
 from Purchaser import  purchaser
 import queue
 import order_methods
@@ -472,20 +472,329 @@ def update_user_role(user_id, role):
 # ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
 # ---------------------------------------------------------MODEL TRAINERS -------------------------------------------------------------------------------------
 
+@app.route('/upload_models', methods = ['GET','POST'])
+def upload_models():
+    import pickle
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        if request.method == 'POST':
+            model_name = request.form['model_name']
+            model_description = request.form['model_description']
+            model_file = request.files['model_file']
+
+        # Save the uploaded file to the specified folder
+            if model_file and model_name and model_description:
+                file_data = model_file.read()  # Read file content
+                model_binary = pickle.dumps(file_data)  # Convert to binary object
+
+                # Save binary model data to the database.
+                new_model = model.Model(model_name, model_description, model_binary,user_id,0)
+                models_DAOIMPL.insert_model_into_models_for_user(new_model)
+                flash('Model has been uploaded successfully','info')
+                return redirect(url_for('upload_models'))
+
+    # If GET request, render the upload form
+        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
+        if models:
+            models = models
+        return render_template('models.html', models=models)
+
+@app.route('/select_model/<int:model_id>', methods=['POST'])
+def select_model(model_id):
+    selected = request.form.get('selected', '0')
+    mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
+    if mod:
+        mod = mod[0]
+    models_DAOIMPL.update_selected_status(selected,model_id)
+    return redirect(url_for('upload_models'))  
+
+
 @app.route('/train_<model_name>', methods=['POST'])
 def train_model(model_name):
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+    import pickle
+    import logging
+    from database import models_training_scripts_DAOIMPL
+    logging.debug(f"Starting training process for model: {model_name}")
+
+    # Get user ID
     user_id = user.User.get_id()
-    try:
-        # Ensuring the script runs in the background and control returns immediately to the application
-        subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', f'/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/{model_name}.py', str(user_id)])
-        flash('Training started successfully!', 'success')
-    except Exception as e:
-        flash(f'Error starting training: {e}', 'error')
+    logging.info(f"Retrieved user ID: {user_id}")
     
+
+    # Retrieve form inputs and convert to integers
+    try:
+        selected_preprocessing_script_id = int(request.form.get('preprocessed_data'))
+        selected_training_script_id = int(request.form.get('training_script'))
+        model_name = models_training_scripts_DAOIMPL.get_model_name_by_training_script_id(selected_training_script_id)
+        selected_dataset_id = int(request.form.get('dataset_data'))
+        logging.info(f"Selected preprocessing script ID: {selected_preprocessing_script_id}, "
+                     f"training script ID: {selected_training_script_id}, dataset ID: {selected_dataset_id}")
+    except Exception as e:
+        logging.error(f"Error parsing form data: {e}")
+        flash("Error processing form data.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Retrieve preprocessed data and training script content from the database
+    try:
+        _, preprocessed_data_binary = preprocessing_scripts_DAOIMPL.get_preprocessed_script_and_data_by_id(selected_preprocessing_script_id)
+        training_script_content = training_scripts_DAOIMPL.get_training_script_data_by_id(selected_training_script_id)
+        logging.info("Retrieved preprocessed data and training script content from the database.")
+    except Exception as e:
+        logging.error(f"Error retrieving scripts or data from database: {e}")
+        flash("Error: Missing preprocessed or training script data.", "error")
+        return redirect(url_for('dashboard'))
+
+    if not preprocessed_data_binary or not training_script_content:
+        logging.warning("Preprocessed data or training script content is missing.")
+        flash("Error: Missing preprocessed or training script data.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Deserialize preprocessed data
+    try:
+        preprocessed_data = pickle.loads(preprocessed_data_binary)
+        X_train = preprocessed_data.get('X_train')
+        X_test = preprocessed_data.get('X_test')
+        y_train = preprocessed_data.get('y_train')
+        y_test = preprocessed_data.get('y_test')
+        logging.info("Successfully deserialized preprocessed data.")
+    except Exception as e:
+        logging.error(f"Error deserializing preprocessed data: {e}")
+        flash("Error processing preprocessed data.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Verify completeness of preprocessed data
+    if any(data is None for data in [X_train, X_test, y_train, y_test]):
+        logging.error("Preprocessed data is incomplete: one or more data components are None.")
+        flash("Error: Incomplete preprocessed data.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Set up environment for executing the training script
+    globals_dict = globals()
+    locals_dict = {}
+
+    try:
+        # Execute the training script content
+        exec(training_script_content, globals_dict, locals_dict)
+        logging.info("Executed training script content.")
+
+        # Check for 'train_model' function in script
+        train_model_func = locals_dict.get('train_model')
+        if not train_model_func:
+            raise ValueError("The training script does not define a 'train_model' function.")
+        logging.info("Found 'train_model' function in training script.")
+
+        # Train the model using the preprocessed data
+        trained_model = train_model_func(X_train, y_train)
+        logging.info("Model training completed.")
+
+        # Calculate model performance metrics
+        y_pred = trained_model.predict(X_test)
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average='weighted')
+        recall = recall_score(y_test, y_pred, average='weighted')
+        f1 = f1_score(y_test, y_pred, average='weighted')
+        logging.info(f"Calculated model metrics - Accuracy: {accuracy}, Precision: {precision}, "
+                     f"Recall: {recall}, F1-Score: {f1}")
+    except Exception as e:
+        logging.error(f"Error during model training or metrics calculation: {e}")
+        flash(f"Error during training: {e}", "error")
+        return redirect(url_for('dashboard'))
+
+    # Serialize and save the updated model in the database
+    try:
+        model_data = pickle.dumps(trained_model)
+        models_DAOIMPL.update_model_data_by_name(model_name, model_data, user_id)
+        curr_model = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(model_name, user_id)
+        logging.info("Model data serialized and updated in database.")
+    except Exception as e:
+        logging.error(f"Error saving model to database: {e}")
+        flash("Error saving model to database.", "error")
+        return redirect(url_for('dashboard'))
+
+    # Insert metrics into model_metrics_history table
+    try:
+        logging.info(f'model_id: {curr_model}, accuracy: {accuracy}, precision: {precision}, recall: {recall}, f1: {f1}, {datetime.now()}')
+        new_metrics = model_metrics_history.Model_Metrics_History(curr_model, accuracy, precision, recall, f1, '{}', datetime.now())
+        model_metrics_history_DAOIMPL.insert_metrics_history(new_metrics)
+        logging.info("Model metrics inserted into metrics history table.")
+        flash("Model trained and metrics updated successfully!", "success")
+    except Exception as e:
+        logging.error(f"Error saving metrics to database: {e}")
+        flash("Error saving metrics to database.", "error")
+
+    logging.info("Training process completed, redirecting to dashboard.")
     return redirect(url_for('dashboard'))
 
 
+    
+    
 
+# ------------------------------------------------------------END MODEL --------------------------------------------------------------------------
+
+from flask import request, redirect, url_for, flash, render_template
+import pickle
+import os
+from datetime import datetime
+import tempfile
+import subprocess
+
+def validate_preprocessed_data(data):
+    structure = data.get('structure')
+    if structure == 'train_test_split':
+        required_keys = ['X_train', 'X_test', 'y_train', 'y_test', 'scaler']
+    elif structure == 'scaled':
+        required_keys = ['X_scaled', 'y', 'scaler']
+    else:
+        raise ValueError(f"Unknown data structure format: {structure}")
+    return all(key in data for key in required_keys)
+
+
+@app.route('/upload_preprocessing_scripts', methods=['GET', 'POST'])
+def upload_preprocessing_scripts():
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        if request.method == 'POST':
+            script_name = request.form['script_name']
+            description = request.form['script_description']
+            script_file = request.files['script_file']
+            dataset_id = int(request.form['dataset_id'])  # Get dataset ID from the form
+
+            if script_file and script_name and description and dataset_id:
+                script_content = script_file.read().decode('utf-8')
+
+                # Insert script data into the database
+                new_script = preprocessing_script.Preprocessing_Script(
+                    script_name, description, script_content, datetime.now(), user_id, None
+                )
+                script_id = preprocessing_scripts_DAOIMPL.insert_preprocessing_script_for_user(new_script)
+
+                # Save the script to a specific directory
+                project_root = '/home/ubuntu/TradeWiseTrainingModelComparison'
+                script_path = os.path.join(project_root, 'uploaded_scripts', f'{script_name}.py')
+
+                os.makedirs(os.path.dirname(script_path), exist_ok=True)
+
+                with open(script_path, 'w') as temp_script_file:
+                    temp_script_file.write(script_content)
+
+                output_file = os.path.join(project_root, 'preprocessed_data.pkl')
+
+                try:
+                    python_path = sys.executable
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = '/home/ubuntu/miniconda3/envs/tf-env/bin/python'
+                    
+                    # Pass dataset_id as an argument to the script using subprocess
+                    result = subprocess.run(
+                        [python_path, script_path, output_file, str(dataset_id)],
+                        capture_output=True, text=True, env=env, cwd=project_root
+                    )
+                    if result.returncode != 0:
+                        print(f"Stdout: {result.stdout}")
+                        raise RuntimeError(f"Script error: {result.stderr}")
+
+                    # Load preprocessed data from the output file
+                    with open(output_file, 'rb') as f:
+                        preprocessed_data = pickle.load(f)
+
+                    # Validate data structure
+                    if validate_preprocessed_data(preprocessed_data):
+                        preprocessed_data_binary = pickle.dumps(preprocessed_data)
+                        preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_name, user_id, preprocessed_data_binary)
+                        flash('Preprocessing script uploaded and executed successfully.', 'info')
+                    else:
+                        raise ValueError("The preprocessing script did not produce the required data structure.")
+
+                except Exception as e:
+                    flash(f"Error during preprocessing: {e}", 'danger')
+                
+                finally:
+                    os.remove(script_path)
+                    if os.path.exists(output_file):
+                        os.remove(output_file)
+
+                return redirect(url_for('upload_preprocessing_scripts'))
+        
+        datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
+        scripts = preprocessing_scripts_DAOIMPL.get_scripts_by_user_id(user_id)
+        return render_template('preprocessing_scripts.html', scripts=scripts, datasets=datasets)
+
+
+
+
+
+
+
+
+
+
+@app.route('/upload_training_scripts', methods=['GET', 'POST'])
+def upload_training_scripts():
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        username = session.get('user_name')
+        if request.method == 'POST':
+            model_type = request.form['model_type']
+            script_name = request.form['script_name']
+            description = request.form['script_description']
+            script_file = request.files['script_file']
+
+            # Save the uploaded file to the database without executing
+            if script_file and model_type and script_name and description:
+                script_content = script_file.read().decode('utf-8')  # Read and decode script content
+
+                # Insert script data into the database
+                new_script = training_script.TrainingScript(
+                    model_type=model_type,
+                    script_name=script_name,
+                    script_description=description,
+                    script_data=script_content,
+                    created_at=datetime.now(),
+                    user_id=user_id
+                )
+                
+                training_scripts_DAOIMPL.insert_training_script(new_script)
+                flash('Training script uploaded successfully', 'info')
+                return redirect(url_for('upload_training_scripts'))
+
+        # If GET request, render the upload form
+        scripts = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        return render_template('training_scripts.html', scripts=scripts)
+
+
+
+@app.route('/upload_dataset', methods=['GET', 'POST'])
+def upload_dataset():
+    
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+
+        if request.method == 'POST':
+            dataset_name = request.form['dataset_name']
+            description = request.form['dataset_description']
+            dataset_file = request.files['dataset_file']
+
+            if dataset_file and dataset_name and description:
+                # Load dataset content into a DataFrame
+                dataset_data = pickle.dumps(dataset_file)
+
+                # Store dataset metadata in database
+                new_dataset = dataset.Dataset(
+                    dataset_name=dataset_name,
+                    dataset_description=description,
+                    dataset_data=dataset_data,
+                    uploaded_at=datetime.now(),
+                    user_id=user_id
+                )
+                dataset_id = dataset_DAOIMPL.insert_dataset(new_dataset)
+
+                flash('Dataset uploaded successfully.', 'info')
+                return redirect(url_for('upload_dataset'))
+
+        # Fetch datasets to display
+        datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
+        return render_template('datasets.html', datasets=datasets)
 # -------------------------------------------------------------END MODEL TRAINING -----------------------------------------------------------------
 # ----------------------------------------------------------------START ORDERS --------------------------------------------------------------------
 from database import pending_orders_DAOIMPL
@@ -527,11 +836,14 @@ def process_symbols():
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
     from collections import defaultdict
-    
+
     if session.get('logged_in'):
-        user_id = user.User.get_id()  # Ensure this retrieves the correct user ID
-        
-        # Fetch model metrics and historical metrics for selected models only
+        user_id = user.User.get_id()
+
+        # Fetch selected models separately from model metrics
+        selected_models = models_DAOIMPL.get_selected_models_for_user(user_id)  # New function to fetch selected models
+
+        # Fetch model metrics and historical metrics
         model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_selected_ml_models() or []
         historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_selected_models_sorted_by_model() or []
 
@@ -541,14 +853,20 @@ def dashboard():
         # Initialize an empty metrics_data to dynamically populate based on selected models
         metrics_data = []
 
-        # Populate metrics_data only with selected models from the database
-        for metric in model_metrics:
-            try:
-                top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
-                top_features_dict = json.loads(top_features_str)  # Convert to dictionary
-                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])  # Top 5 features
+        # Prepare a set of model names that have metrics
+        model_names_with_metrics = {metric[0] for metric in model_metrics}
 
-                # Append selected model's metrics to metrics_data
+        # Populate metrics_data with actual metrics and placeholders for selected models
+        for model in selected_models:
+            model_name = model[1]
+
+            # If metrics exist for this model, add them
+            metric = next((m for m in model_metrics if m[0] == model_name), None)
+            if metric:
+                top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
+                top_features_dict = json.loads(top_features_str)
+                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])
+
                 metrics_data.append({
                     'model_name': metric[0],
                     'accuracy': float(metric[1]),
@@ -558,18 +876,24 @@ def dashboard():
                     'top_features': sorted_features,
                     'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
                 })
-            except json.JSONDecodeError as e:
-                logging.error(f"JSON parsing error: {e} for metric {metric}")
+            else:
+                # Placeholder metrics for models without existing metrics
+                metrics_data.append({
+                    'model_name': model_name,
+                    'accuracy': None,
+                    'precision': None,
+                    'recall': None,
+                    'f1_score': None,
+                    'top_features': {},
+                    'timestamp': "No data - Run training"
+                })
 
-        # Initialize chart_data before processing historical metrics
+        # Process historical metrics
         chart_data = defaultdict(lambda: {'dates': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []})
 
-        # Handling empty historical_metrics
         if not historical_metrics:
-            # If no historical data, use a placeholder for visualization
-            historical_metrics = [{"date": "", "accuracy": 0, "precision": 0, "recall": 0, "f1_score": 0, "model_name": "No Data"}]  
+            logging.info("No historical metrics found; using placeholders.")
         else:
-            # Organize historical metrics by model for charting
             for entry in historical_metrics:
                 model_name, accuracy, precision, recall, f1_score, _, timestamp = entry
                 chart_data[model_name]['dates'].append(timestamp.strftime('%Y-%m-%d %H:%M:%S'))
@@ -583,11 +907,18 @@ def dashboard():
         logging.info(f'ChartDataHistorical: {chart_data}')
         logging.info(f'ChartDataJSON: {json.dumps(chart_data)}')
 
-        # Render the dashboard template and pass metrics and historical data
-        return render_template('index.html', metrics_data=metrics_data, historical_metrics=json.dumps(chart_data))
+        # Fetch options for preprocessed data and training scripts
+        preprocessed_data_options = preprocessing_scripts_DAOIMPL.get_all_preprocessed_data_for_user(user_id)
+        training_script_options = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        dataset_options = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
 
-    # Redirect to home if the user is not logged in
+        # Render the dashboard template and pass metrics and historical data
+        return render_template('index.html', metrics_data=metrics_data, historical_metrics=json.dumps(chart_data),
+                               preprocessed_data_options=preprocessed_data_options, training_script_options=training_script_options,
+                               dataset_options = dataset_options)
+
     return redirect(url_for('home'))
+
 
 
 
@@ -609,41 +940,7 @@ def plot_metrics():
 
 
 
-@app.route('/upload_models', methods = ['GET','POST'])
-def upload_models():
-    import pickle
-    if user.User.check_logged_in():
-        user_id = user.User.get_id()
-        if request.method == 'POST':
-            model_name = request.form['model_name']
-            model_description = request.form['model_description']
-            model_file = request.files['model_file']
-
-        # Save the uploaded file to the specified folder
-            if model_file and model_name and model_description:
-                file_data = model_file.read()  # Read file content
-                model_binary = pickle.dumps(file_data)  # Convert to binary object
-
-                # Save binary model data to the database.
-                new_model = model.Model(model_name, model_description, model_binary,user_id,0)
-                models_DAOIMPL.insert_model_into_models_for_user(new_model)
-                flash('Model has been uploaded successfully','info')
-                return redirect(url_for('upload_models'))
-
-    # If GET request, render the upload form
-        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
-        if models:
-            models = models
-        return render_template('models.html', models=models)
-
-@app.route('/select_model/<int:model_id>', methods=['POST'])
-def select_model(model_id):
-    selected = request.form.get('selected', '0')
-    mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
-    if mod:
-        mod = mod[0]
-    models_DAOIMPL.update_selected_status(selected,model_id)
-    return redirect(url_for('upload_models'))       
+     
 
 
 
@@ -867,7 +1164,7 @@ def log_event_loop_status(prefix=""):
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    app.run(debug=True)
     start_websocket_route(session.get('user_name'))
     cProfile.run('generate_recommendations_task(user_id = session.get("user_id"))', 'profiling_output')
     

@@ -27,3 +27,6 @@ MachineLearningModels/Manual_Algorithm12day.py
 MachineLearningModels/RandomForestModel.py
 MachineLearningModels/SupportVectorMachine.py
 MachineLearningModels/XGBoost.py
+app_debug.log
+Unprocessed_Data/stock_trans_data.csv
+Unprocessed_Data/transactions.csv

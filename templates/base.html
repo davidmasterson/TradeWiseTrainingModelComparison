@@ -12,28 +12,36 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
          /* Custom CSS for the sidebar */
+         .sidebar h3 {
+            color: orange;
+            padding-left: 15px;
+            margin-top: 20px;
+            font-size: 16px;
+            text-transform: uppercase;
+        }
+         
          .sidebar {
-            height: 100vh; /* Full height */
-            position: fixed; /* Fixed Sidebar (stay in place) */
+            height: 100vh;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 250px; /* Sidebar width */
-            background-color: #343a40; /* Dark background */
+            width: 250px;
+            background-color: #343a40;
             padding-top: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            justify-content: flex-start;
             text-align: center;
         }
         .sidebar a {
-            padding: 15px 10px;
+            padding: 8px 15px;
             text-decoration: none;
-            font-size: 18px;
+            font-size: 16px;
             color: white;
             display: block;
         }
         .sidebar a:hover {
-            background-color: #575d63;
+            background-color: #575757;
         }
         .content {
             margin-left: 250px; /* Same width as the sidebar */
@@ -69,28 +77,35 @@
     </style>
 </head>
 <body>
+    <div class="sidebar">
+        {% if request.path != '/index' %}
+            <a href="/">Home</a>
+        {% endif %}
+        
+        <!-- Category: Setup -->
+        <h3>Setup</h3>
+        <a href="/upload_preprocessing_scripts">PreProcessing Scripts</a>
+        <a href="/upload_training_scripts">Training Scripts</a>
 
-<div class="sidebar">
-    {% if request.path != '/index' %}
-    <a href="/">Home</a>
-    {% endif %}
-    <a href="/metrics_plots">Metrics</a>
-    <a href="/upload_models">Models</a>
-    <a href="/pending_orders">Pending Orders</a>
-    <a href="/user_profile">Profile</a>
-    <a href="/purchaser">Purchaser</a>
-    <a href="/transactions">Transactions</a>
-    
-    <br>
-    <br>
-    <br>
-    <br>
-    <a href="/logout">Logout</a>
-    <!-- Copyright notice -->
-    <div class="copyright">
-        © MasterTradeTools, Inc. 2024
+        <!-- Category: Models and Analytics -->
+        <h3>Models and Analytics</h3>
+        <a href="/upload_models">Models</a>
+        <a href="/metrics_plots">Metrics</a>
+        <a href="/upload_dataset">Datasets</a>
+
+        <!-- Category: Orders and Transactions -->
+        <h3>Orders and Transactions</h3>
+        <a href="/pending_orders">Pending Orders</a>
+        <a href="/purchaser">Purchaser</a>
+        <a href="/transactions">Transactions</a>
+
+        <!-- Profile and Logout -->
+        <h3>Account</h3>
+        <a href="/user_profile">Profile</a>
+        <a href="/logout">Logout</a>
     </div>
-</div>
+
+
 
 <div class="content">
     {% if get_flashed_messages() %}

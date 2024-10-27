@@ -24,18 +24,17 @@ def submit_limit_order(username, incoming_order):
         )
         coid = order.id
         logging.info(f"Order submitted: {incoming_order}, order_id {order}")
-        # pending_orders_DAOIMPL.insert_pending_order(coid,user_id)
+        # pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
     except Exception as e:
         logging.info(f"Error placing order: {e}")
  
-def place_sell_order(symbol, qty, price, username, buystring):
+def place_sell_order(symbol, qty, price, username, buystring, user_id):
     """
     Place a sell order on Alpaca with a unique client_order_id based on transaction_id.
     """
     
     try:
         api = alpaca_request_methods.create_alpaca_api(username)
-        user_id = session.get('user_id')
         limit_price = alpaca_request_methods.get_symbol_current_price(symbol)
         sell_order = api.submit_order(
             symbol=symbol,

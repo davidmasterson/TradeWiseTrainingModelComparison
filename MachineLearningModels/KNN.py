@@ -110,6 +110,10 @@ if len(sys.argv) > 1:
 model_name = 'KNN'
 model_description = 'Base metrics KNN model'
 user_id = int(user_id)
+
+# Retrieve blob from database and 
+stored_model = models_DAOIMPL.get_model_blob_from_db_by_model_name_and_user_id(model_name, user_id)
+
 # Insert the model into the database
 new_model = model.Model(model_name,model_description, model_binary,user_id,selected = 1)
 model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(new_model.model_name,user_id)

@@ -14,17 +14,24 @@ from sklearn.metrics import accuracy_score, classification_report
 from datetime import date
 from Models.metric import calculate_daily_metrics_values
 from Models.manual_metrics import calculate_manual_metrics
-from database import manual_metrics_DAOIMPL, metrics_DAOIMPL
-import logging
-from flask import session
-import json
+from database import transactions_DAOIMPL
+
+
 
 
 # In[201]:
 
+user_id = 1
+# user_id = int(sys.argv[1])
+# create csv from transactions
+transactions_DAOIMPL.get_transactions_from_db()
+data_return = transactions_DAOIMPL.read_in_transactions(f'transactions.csv')
+
+# get all data columns and data needed for initial dataframe
+alpaca_request_methods.fetch_stock_data()
 
 # Read in and look at the data
-df = pd.read_csv('Model_Training/stock_trans_data.csv')
+df = pd.read_csv('Unprocessed_Data/stock_trans_data.csv')
 
 df.head()
 
@@ -240,77 +247,77 @@ rf_base = RandomForestClassifier(
 
 # Train-test split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-rf_base.fit(X_train,y_train)
-# grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
-#                            cv=2, n_jobs=-1, scoring='accuracy', verbose=2)
-# # Train the Random Forest model
-# grid_search.fit(X_train,y_train)
+# rf_base.fit(X_train,y_train)
+# # grid_search = GridSearchCV(estimator=rf_base, param_grid=param_grid, 
+# #                            cv=2, n_jobs=-1, scoring='accuracy', verbose=2)
+# # # Train the Random Forest model
+# # grid_search.fit(X_train,y_train)
 
-# Make predictions and evaluate the model
-y_pred = rf_base.predict(X_test)
-accuracy = accuracy_score(y_test, y_pred)
-classification_rep = classification_report(y_test, y_pred, output_dict=True)
+# # Make predictions and evaluate the model
+# y_pred = rf_base.predict(X_test)
+# accuracy = accuracy_score(y_test, y_pred)
+# classification_rep = classification_report(y_test, y_pred, output_dict=True)
 
-logging.info(f"Accuracy: {accuracy}")
-logging.info("Classification Report:\n", classification_rep)
+# logging.info(f"Accuracy: {accuracy}")
+# logging.info("Classification Report:\n", classification_rep)
 
-# calculate and insert or update model metrics
-today = date.today().strftime('%Y-%m-%d')
-user_id = int(sys.argv[1])
-metric = calculate_daily_metrics_values(user_id)
-metric_exists = metrics_DAOIMPL.get_metric_by_date_by_user(today,user_id)
-metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
-# calculate and insert or update manual metrics
-# manual_metric = calculate_manual_metrics()
-# manual_metric_exists = manual_metrics_DAOIMPL.get_metric_by_date(today)
-# manual_metrics_DAOIMPL.update_metric(manual_metric, manual_metric_exists[0]) if manual_metric_exists else manual_metrics_DAOIMPL.insert_metric(manual_metric)
-
-
-future_df.to_csv('Model_Training/pre_future_predictions.csv', index=False)
-# Create historical model metrics object to input to database
-from sklearn.metrics import accuracy_score
-from sklearn.metrics import precision_score, recall_score, f1_score
-from sklearn.metrics import classification_report
-from Models import model_metrics_history
+# # calculate and insert or update model metrics
+# today = date.today().strftime('%Y-%m-%d')
+# user_id = int(sys.argv[1])
+# metric = calculate_daily_metrics_values(user_id)
+# metric_exists = metrics_DAOIMPL.get_metric_by_date_by_user(today,user_id)
+# metrics_DAOIMPL.update_metric(metric, metric_exists[0]) if metric_exists else metrics_DAOIMPL.insert_metric(metric)
+# # calculate and insert or update manual metrics
+# # manual_metric = calculate_manual_metrics()
+# # manual_metric_exists = manual_metrics_DAOIMPL.get_metric_by_date(today)
+# # manual_metrics_DAOIMPL.update_metric(manual_metric, manual_metric_exists[0]) if manual_metric_exists else manual_metrics_DAOIMPL.insert_metric(manual_metric)
 
 
-import pickle
-import json
-from Models import model
-from database import models_DAOIMPL, model_metrics_history_DAOIMPL
-from datetime import datetime
-model_pkl_file = "Model_Training/RandomForestModel.pkl"  
+# future_df.to_csv('Model_Training/pre_future_predictions.csv', index=False)
+# # Create historical model metrics object to input to database
+# from sklearn.metrics import accuracy_score
+# from sklearn.metrics import precision_score, recall_score, f1_score
+# from sklearn.metrics import classification_report
+# from Models import model_metrics_history
 
 
-with open(model_pkl_file, 'wb') as file:  
-    pickle.dump(rf_base, file)
+# import pickle
+# import json
+# from Models import model
+# from database import models_DAOIMPL, model_metrics_history_DAOIMPL
+# from datetime import datetime
+# model_pkl_file = "Model_Training/RandomForestModel.pkl"  
+
+
+# with open(model_pkl_file, 'wb') as file:  
+#     pickle.dump(rf_base, file)
     
-model_name = ''    
-with open(model_pkl_file, 'rb') as file2:
-    model_data = file2.read()
-    model_name = f'RandomForestModel'
-    new_model = model.Model(model_name,model_data,user_id)
-    existing_model = models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, model_name)
-    if existing_model:
-        models_DAOIMPL.update_model_for_user(new_model,existing_model[0])
-    else:
-        models_DAOIMPL.insert_model_into_models_for_user(new_model)
+# model_name = ''    
+# with open(model_pkl_file, 'rb') as file2:
+#     model_data = file2.read()
+#     model_name = f'RandomForestModel'
+#     new_model = model.Model(model_name,model_data,user_id)
+#     existing_model = models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, model_name)
+#     if existing_model:
+#         models_DAOIMPL.update_model_for_user(new_model,existing_model[0])
+#     else:
+#         models_DAOIMPL.insert_model_into_models_for_user(new_model)
 
 
-accuracy = accuracy_score(y_test, y_pred)
-precision = precision_score(y_test, y_pred)
-recall = recall_score(y_test, y_pred)
-f1 = f1_score(y_test, y_pred)
-feature_importance = rf_base.feature_importances_
-feature_names = X.columns  # or use the feature names in case you have them
-feature_importance_dict = {feature_names[i]: feature_importance[i] for i in range(len(feature_importance))}
+# accuracy = accuracy_score(y_test, y_pred)
+# precision = precision_score(y_test, y_pred)
+# recall = recall_score(y_test, y_pred)
+# f1 = f1_score(y_test, y_pred)
+# feature_importance = rf_base.feature_importances_
+# feature_names = X.columns  # or use the feature names in case you have them
+# feature_importance_dict = {feature_names[i]: feature_importance[i] for i in range(len(feature_importance))}
 
-# Convert to JSON format
-top_features = json.dumps(feature_importance_dict)
-# get model from database by model name and user_id
-model_id = models_DAOIMPL.get_trained_models_id_for_user_by_name(user_id,model_name)
-new_history_object = model_metrics_history.Model_Metrics_History(model_id,accuracy,precision,recall,f1,top_features,timestamp=datetime.now(),user_id=user_id)
-model_metrics_history_DAOIMPL.insert_metrics_history(new_history_object)
+# # Convert to JSON format
+# top_features = json.dumps(feature_importance_dict)
+# # get model from database by model name and user_id
+# model_id = models_DAOIMPL.get_trained_models_id_for_user_by_name(user_id,model_name)
+# new_history_object = model_metrics_history.Model_Metrics_History(model_id,accuracy,precision,recall,f1,top_features,timestamp=datetime.now(),user_id=user_id)
+# model_metrics_history_DAOIMPL.insert_metrics_history(new_history_object)
 
 
 

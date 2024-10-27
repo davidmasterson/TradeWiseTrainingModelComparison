@@ -53,7 +53,7 @@ def get_alpaca_stream_connection(username):
 # Function to get historical data for a list of symbols
 def fetch_stock_data(years=5):
     percent = 0
-    trans = transactions_DAOIMPL.read_in_transactions('/Model_Training/transactions.csv')
+    trans = transactions_DAOIMPL.read_in_transactions('transactions.csv')
     trans_data = transactions_DAOIMPL.convert_lines_to_transaction_info_for_DF(trans[0], trans[1])
     df_data = {
             'symbol':[],
@@ -72,10 +72,8 @@ def fetch_stock_data(years=5):
             'sector':[]
         }
     
-    total_iterations = len(trans_data)
     for i, trans in enumerate(trans_data):
         logging.info(trans)
-        percent = int((i / total_iterations) * 100)
       
         
         end_date = trans[3]
@@ -86,7 +84,7 @@ def fetch_stock_data(years=5):
         sell_price = trans[4]
         actual_return = trans[5]
         logging.info(type(end_date))
-        if sell_date == 'N/A':
+        if sell_date is None:
             start_date = date.today() - timedelta(days=years*365)
             end_date = date.today()
         else:
@@ -95,7 +93,7 @@ def fetch_stock_data(years=5):
         take_profit = trans[7]
         stop_price = trans[8]
         hit_take_profit = trans[9]
-        sector = sector_finder.get_stock_sector(symbol)
+        sector = trans[10]
         connection = get_alpaca_connection()
 
         
@@ -130,7 +128,7 @@ def fetch_stock_data(years=5):
         connection.close()
     
     df = pd.DataFrame(df_data)
-    df.to_csv('Model_Training/stock_trans_data.csv', index=False)
+    df.to_csv('Unprocessed_Data/stock_trans_data.csv', index=False)
     
     return df_data
 
@@ -225,7 +223,7 @@ def handle_trade_updates(ws, event, data, username, user_id):
             if pending_order:
                 purchase_string = pending_order[4]
                 pending_order_id = pending_order[0]
-            transaction2 = transactions_DAOIMPL.get_transaction_by_bstring(purchase_string)
+            transaction2 = transactions_DAOIMPL.get_open_transaction_by_pstring_for_user(purchase_string, user_id)
             if transaction2:
                 ds = date.today()
                 spps = filled_avg_price
@@ -238,7 +236,7 @@ def handle_trade_updates(ws, event, data, username, user_id):
                 transaction_id = int(transaction2[0])
                 values = [ds, spps, tsp, sstring, proi, actual, result]
                 transactions_DAOIMPL.update_transaction(transaction_id, values)
-                pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order_id)
+                pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0])
     else:
         logging.warning(f"Unhandled event: {event}")
 

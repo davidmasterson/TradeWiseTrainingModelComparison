@@ -104,7 +104,7 @@ def delete_pending_order_after_fill(id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''DELETE FROM pending_orders
-            WHERE id = %s'''
+            WHERE id = %s AND side = %s'''
     vals = [id]
     try:
         cur.execute(sql, vals)
@@ -124,7 +124,7 @@ def truncate_pending_orders_at_eod(connection):
     try:
         cur.execute(sql)
         connection.commit()
-        logging.info(f'{datetime.now()}: Pending oders have been deleted ')
+        logging.info(f'{datetime.now()}: Pending orders have been deleted ')
     except Exception as e:
         logging.info(f'{datetime.now()}: Unable to delete Pending orders due to {e}')
         return None

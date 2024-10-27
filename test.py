@@ -117,22 +117,28 @@ import app
 #     overall_sent = manual_alg_requisition_script.request_articles(symbol, company_name)
 #     overall_sent = manual_alg_requisition_script.process_phrase_for_sentiment(overall_sent, company_name)
 #     print(overall_sent)
-# user_DAOIMPL.update_user_alpaca_keys('PKMIFIY4HCKE8FLGXQQB','FTs9KihbSjihd2bFlEs9Vit1pY15HFdorYZ2W4Q7',1)
+# user_DAOIMPL.update_user_alpaca_keys('PKD49UNWI3G7Y8E9708Y','PvbKSjLdZtWPOev6i6tzXRf0086gnAjRhxPDolYZ',1)
 
 
-# conn = alpaca_request_methods.create_alpaca_api('shadow073180')
-# poss = conn.list_positions()
-# for pos in poss:
-#     transact = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol(pos.symbol, 1)
-#     if transact:
-#         for trans in transact:
-#             tp1 = float(trans[14])
-#             sop = float(trans[15])
-#             qty = int(trans[4])
-#             buy_string = trans[6]
-#             print(f'Position: {pos.symbol}, Price: {pos.current_price}, Take Profit: {tp1}, Stop Out: {sop}')
-#             if float(pos.current_price) >= tp1 or float(pos.current_price) <= sop:
-#                 order_methods.place_sell_order(pos.symbol,qty,pos.current_price,'shadow073180',buy_string )
-from database import pending_orders_DAOIMPL
+conn = alpaca_request_methods.create_alpaca_api('shadow073180')
+user = user_DAOIMPL.get_user_by_username('shadow073180')
+if user:
+    user = user[0]
+user_id = int(user['id'])
+poss = conn.list_positions()
 
-pending_orders_DAOIMPL.truncate_pending_orders_at_eod()
+db_conn = dcu.get_db_connection()
+for pos in poss:
+    transact = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol_with_db_conn(pos.symbol, 1,db_conn)
+    if transact:
+        for trans in transact:
+            tp1 = float(trans[14])
+            sop = float(trans[15])
+            qty = int(trans[4])
+            buy_string = trans[6]
+            print(f'Position: {pos.symbol}, Price: {pos.current_price}, Take Profit: {tp1}, Stop Out: {sop}')
+            if float(pos.current_price) >= tp1 or float(pos.current_price) <= sop:
+                order_methods.place_sell_order(pos.symbol,qty,round(float(pos.current_price),2),'shadow073180',buy_string ,user_id)
+# from database import pending_orders_DAOIMPL
+
+# pending_orders_DAOIMPL.truncate_pending_orders_at_eod()

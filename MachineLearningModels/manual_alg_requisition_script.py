@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from database import trade_settings_DAOIMPL
 from Models import user
-
+import logging
 
 def preprocess_phares_into_string_for_analysis(phrase):
     phrase_output = phrase.lower()
@@ -69,13 +69,17 @@ def request_articles(symbol, company_name):
     res = rq.get(full_url, headers={'User-Agent': 'Mozilla/5.0'})
     res = res.json()
     
-    
-    res1 = [[article['description'], article['article_url']] for article in res['results'] if symbol in article['tickers']]
     articles = []
-    for x, y in res1:
-        full = fetch_full_article(y)
-        if full:
-            articles.append(full)
+    try:
+        res1 = [[article['description'], article['article_url']] for article in res['results'] if symbol in article['tickers']]
+        for x, y in res1:
+            full = fetch_full_article(y)
+            if full:
+                articles.append(full)
+    except Exception as e:
+        logging.error(f'Unable to fetch article from Polygon API due to {e}')
+        pass
+    
         
         
     #---------Financial New API 2----------------------------------

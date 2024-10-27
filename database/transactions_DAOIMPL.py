@@ -25,6 +25,25 @@ def get_qty_for_transaction(pstring,user_id):
         cur.close()
         conn.close()
 
+def get_all_transaction():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                '''
+    
+    try:
+        cur.execute(sql)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
 def get_transactions_from_db():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -39,7 +58,7 @@ def get_transactions_from_db():
             column_names = [i[0] for i in cur.description]
             
             # Write data to CSV
-            with open('Model_Training/transactions.csv', 'w', newline='') as csvfile:
+            with open('Unprocessed_Data/transactions.csv', 'w', newline='') as csvfile:
                 csvwriter = csv.writer(csvfile)
                 
                 # Write the header (column names)
@@ -63,7 +82,7 @@ def get_transactions_from_db():
 def read_in_transactions(file):
     global progress
     get_transactions_from_db()
-    path = '/home/ubuntu/LSTMStockPricePredictor'
+    path = '/home/ubuntu/TradeWiseTrainingModelComparison/Unprocessed_Data/'
     filepath = path+file
     with open(filepath, 'r') as trans_reader:
         lines = trans_reader.readlines()
@@ -79,17 +98,21 @@ def convert_lines_to_transaction_info_for_DF(reader, lines):
             symbol = seperated_line[1]
             purchase_date_string = seperated_line[2].split('-')
             purchase_price = float(seperated_line[3])
-            sell_date_string = seperated_line[7].split('-') if seperated_line[8] != 'N/A' else 'N/A'
-            sell_price = float(seperated_line[8]) if seperated_line[8] != 'N/A' else 'N/A'
-            actual = float(seperated_line[13]) if seperated_line[8] != 'N/A' else 'N/A'
+            sell_date_string = seperated_line[7].split('-') if seperated_line[8] != '' else None
+            sell_price = float(seperated_line[8]) if seperated_line[8] != '' else None
+            actual = float(seperated_line[13]) if seperated_line[8] != '' else None
             purchase_date = date(int(purchase_date_string[0]),int(purchase_date_string[1]), int(purchase_date_string[2]))
-            sell_date = date(int(sell_date_string[0]), int(sell_date_string[1]), int(sell_date_string[2])) if sell_price != 'N/A' else 'N/A'
-            days_to_sell = (sell_date - purchase_date).days if seperated_line[8] != 'N/A' else 'N/A'
-            take_profit = float(purchase_price + (purchase_price * .03))
-            stop_price = float(purchase_price - (purchase_price * .01))
-            hit_take_profit = 1 if actual != 'N/A' and actual > 0.00 else 0
+            sell_date = date(int(sell_date_string[0]), int(sell_date_string[1]), int(sell_date_string[2])) if sell_price is not None else None
+            days_to_sell = None
+            if seperated_line[8] != '':
+                    days_to_sell = (sell_date - purchase_date).days
+            take_profit = round(float(purchase_price + (purchase_price * .03)),2)
+            stop_price = round(float(purchase_price - (purchase_price * .01)),2)
+            hit_take_profit = 1 if actual is not None and actual != 'loss' else 0
+            confidence = int(seperated_line[16])
+            sector = seperated_line[19]
             trans_df_initial_data.append([symbol,purchase_date,purchase_price,sell_date,sell_price,actual,days_to_sell,
-                                        take_profit,stop_price,hit_take_profit])
+                                        take_profit,stop_price,hit_take_profit,confidence,sector])
         count += 1
     reader.close()
     return trans_df_initial_data

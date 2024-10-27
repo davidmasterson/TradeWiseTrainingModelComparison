@@ -59,7 +59,24 @@ def get_model_from_db_by_model_name_and_user_id(model_name, user_id):
         cursor.execute(query, vals)
         result = cursor.fetchone()
         if result:
-            return result
+            return result[0]
+        return False
+    except Exception as e:
+        return e
+    finally:
+        conn.close()
+        cursor.close()
+
+def get_model_blob_from_db_by_model_name_and_user_id(model_name, user_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT model_data FROM models WHERE model_name = %s AND user_id = %s"
+    vals = [model_name, user_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchone()
+        if result:
+            return result[0]
         return False
     except Exception as e:
         return e
@@ -71,6 +88,23 @@ def get_models_for_user_by_user_id(user_id):
     conn = dcu.get_db_connection()
     cursor = conn.cursor()
     query = "SELECT * FROM models WHERE user_id = %s"
+    vals = [user_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchall()
+        if result:
+            return result
+        return []
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
+def get_selected_models_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT * FROM models WHERE user_id = %s AND selected = 1"
     vals = [user_id]
     try:
         cursor.execute(query, vals)
@@ -226,6 +260,27 @@ def update_selected_status(selected_status, model_id):
         conn.commit()
         if cur.rowcount > 0:
             logging.info(f"{cur.rowcount}, record(s) updated for user : {model_id}")
+        else:
+            logging.info(f"No model records updated for user ")
+    except Exception as e:
+        logging.error(f"Unable to update model for user  due to: {e}")
+    finally:
+        cur.close()
+        conn.close()
+        
+def update_model_data_by_name(model_name, model_data, user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''UPDATE models
+                SET model_data = %s
+            WHERE model_name = %s
+            AND user_id = %s'''
+    vals = [model_data, model_name, user_id]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, model_data updated for user : {user_id}")
         else:
             logging.info(f"No model records updated for user ")
     except Exception as e:

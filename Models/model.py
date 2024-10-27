@@ -46,3 +46,26 @@ class Model:
             models_metrics.append(model_metrics)
         return models_metrics
             
+            
+    
+    
+    
+    # Retrieve model from database
+    def retrieve_model_from_database(model_name, user_id):
+        stored_model = models_DAOIMPL.get_model_blob_from_db_by_model_name_and_user_id(model_name, user_id)
+        if stored_model is None:
+            raise ValueError(f'No model found for {model_name} for user {user_id}')
+        model = pickle.loads(stored_model)
+        return model
+    
+    # Train or Retrain model
+    def train_retrain_model(model_name, x_train, y_train):
+        model_name.fit(x_train, y_train)
+        return model_name
+    
+    # Save updated model back to DB
+    def save_updated_model_back_to_db(model, model_name, model_description, user_id):
+        # serialize the model
+        model_bin = pickle.dumps(model)
+        updated_model = Model(model_name, model_description, model_bin, user_id, 1)
+        
