@@ -125,6 +125,65 @@ def get_preprocessed_script_and_data_by_id(selected_preprocessing_script_id):
     finally:
         conn.close()
         cur.close()
+
+def get_preprocessed_script_by_id(selected_preprocessing_script_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT script_data FROM preprocessing_scripts WHERE id = %s'''
+    vals = [selected_preprocessing_script_id]
+    try:
+        cur.execute(sql, vals)
+        datapresent = cur.fetchone()
+        logging.info(f'{datetime.now()}: Datapresent {datapresent}')
+        
+        # Ensure function returns both script_data and preprocessed_data, even if one is None
+        if datapresent:
+            return datapresent[0]  # Return both columns as a tuple
+        return None # Return None values if no data is found
+    except Exception as e:
+        logging.info(f'{datetime.now()}: Unable to get preprocessing script data due to {e}')
+        return None, None  # Ensure consistent return format
+    finally:
+        conn.close()
+        cur.close()
+
+def get_preprocessed_data_by_preprocessing_script_id(selected_preprocessing_script_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT preprocessed_data FROM preprocessing_scripts WHERE id = %s'''
+    vals = [selected_preprocessing_script_id]
+    try:
+        cur.execute(sql, vals)
+        datapresent = cur.fetchone()
+        logging.info(f'{datetime.now()}: Datapresent {datapresent}')
+        if datapresent:
+            return datapresent[0]
+        return None
+    except Exception as e:
+        logging.info(f'{datetime.now()}: Unable to get preprocessing script data and preprocessed data due to {e}')
+        return None, None  # Ensure consistent return format
+    finally:
+        conn.close()
+        cur.close()
+
+def get_preprocessed_script_object_by_script_id(selected_preprocessing_script_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM preprocessing_scripts WHERE id = %s'''
+    vals = [selected_preprocessing_script_id]
+    try:
+        cur.execute(sql, vals)
+        datapresent = cur.fetchone()
+        logging.info(f'{datetime.now()}: Datapresent {datapresent}')
+        if datapresent:
+            return datapresent
+        return None
+    except Exception as e:
+        logging.info(f'{datetime.now()}: Unable to get preprocessing script data and preprocessed data due to {e}')
+        return None, None  # Ensure consistent return format
+    finally:
+        conn.close()
+        cur.close()
         
 def get_all_preprocessed_data_for_user(user_id):
     conn = dcu.get_db_connection()
@@ -251,18 +310,19 @@ def insert_preprocessing_script_for_user(script):
         cur.close()
         conn.close()
         
-def update_preprocessed_data_for_user(script_name, user_id, preprocessed_data_binary):
+def update_preprocessed_data_for_user(script_id,preprocessed_data_binary):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''
         UPDATE preprocessing_scripts
         SET preprocessed_data = %s, upload_date = NOW()
-        WHERE script_name = %s AND user_id = %s
+        WHERE id = %s
     '''
+    vals = [preprocessed_data_binary,script_id]
     try:
-        cur.execute(sql, (preprocessed_data_binary, script_name, user_id))
+        cur.execute(sql, vals)
         conn.commit()
-        print(f"Preprocessed data for {script_name} updated successfully.")
+        print(f"Preprocessed data for {script_id} updated successfully.")
     except Exception as e:
         print(f"Error updating preprocessed data: {e}")
     finally:
