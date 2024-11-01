@@ -2,21 +2,21 @@
     "configurations": [
         {
             "name": "Python Debugger: Flask",
-            "type": "debugpy",
+            "type": "debugpy",  // "python" instead of "debugpy" for compatibility
             "request": "launch",
             "module": "flask",
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_DEBUG": "1"
+                "FLASK_ENV": "development"
             },
             "args": [
                 "run",
-                 "--no-reload"
-                
+                "--no-reload",
+                "--port=5001"  // Explicitly specify a port to avoid conflicts
             ],
             "jinja": true,
             "autoStartBrowser": false,
-            "python":"${command:python.interpreterPath}"
+            "python": "${command:python.interpreterPath}"  // Check this path if needed
         }
     ]
 }
