@@ -40,6 +40,24 @@ def get_dataset_data_by_id(dataset_id):
         cur.close()
         conn.close()
 
+def get_dataset_object_by_id(dataset_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM datasets
+            WHERE id = %s'''
+    vals = [dataset_id]
+    try:
+        cur.execute(sql, vals)
+        dataset = cur.fetchone()
+        if dataset:
+            return dataset
+        return []
+    except Exception as e:
+         logging.info( f'{datetime.now()}:Unable to get dataset {dataset_id} due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+
 def insert_dataset(dataset):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -91,9 +109,11 @@ def update_dataset(dataset, dataset_id):
     try:
         cur.execute(sql,vals)
         conn.commit()
-        logging.info(f"{datetime.now()}:{cur.rowcount}, dataset object successfully updated {dataset.datset_name} ")
+        logging.info(f"{datetime.now()}:{cur.rowcount}, dataset object successfully updated {dataset.dataset_name} ")
+        return True
     except Exception as e:
         logging.error( f'{datetime.now()}:Unable to update dataset object {dataset.dataset_name} due to : {e}')
+        return False
     finally:
         cur.close()
         conn.close()
