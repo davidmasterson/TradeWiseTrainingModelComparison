@@ -28,6 +28,7 @@
                             <th scope="col">Confidence Score</th>
                             <th scope="col">Result</th>
                             <th scope="col">Sector</th>
+                            <th scope="col">Processed</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -49,6 +50,7 @@
                             <td>{{ transaction.confidence }}</td>
                             <td>{{ transaction.result }}</td>
                             <td>{{ transaction.sector }}</td>
+                            <td>{{ transaction.processed }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
