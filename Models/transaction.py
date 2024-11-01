@@ -5,7 +5,7 @@ import yahoo_finance
 class transaction:
 
     def __init__(self,symbol,dp,ppps,qty,total_buy,pstring,user_id,sentiment,ds = None,spps = None,tsp = None,
-                 sstring = None,expected = 0.00,proi =0.0,actual = None,tp1 = 0.00, sop = 0.00, result = None):
+                 sstring = None,expected = 0.00,proi =0.0,actual = None,tp1 = 0.00, sop = 0.00, result = None, processed = 0):
         self.symbol = symbol
         self.dp = dp
         self.ppps = ppps
@@ -25,6 +25,7 @@ class transaction:
         self.sentiment = sentiment
         self.result = result
         self.sector = sector_finder.get_stock_sector(self.symbol)
+        self.processed = processed
 
     def aggregate_sectors_for_stock_symbols(symbols):
         sectors = {}
