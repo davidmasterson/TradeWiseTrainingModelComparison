@@ -151,8 +151,10 @@ def insert_metrics_history(metrics_history):
         cur.execute(sql,vals)
         conn.commit()
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+        return True
     except Exception as e:
         logging.error( f'{datetime.now()}:Unable to insert metrics history, due to : {e}')
+        return False
     finally:
         cur.close()
         conn.close()
