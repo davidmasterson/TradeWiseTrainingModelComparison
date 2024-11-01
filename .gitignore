@@ -30,3 +30,10 @@ MachineLearningModels/XGBoost.py
 app_debug.log
 Unprocessed_Data/stock_trans_data.csv
 Unprocessed_Data/transactions.csv
+LAST.csv
+final_ds.csv
+temp_data_csv
+test_processing.pkl
+test_processing.py
+this_script.py
+
