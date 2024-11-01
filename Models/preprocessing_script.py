@@ -5,6 +5,11 @@ import boto3
 from flask import session
 import logging
 import base64
+import pickle
+import tempfile
+import subprocess
+import os
+
 
 class Preprocessing_Script:
     
@@ -18,7 +23,7 @@ class Preprocessing_Script:
         self.preprocessed_data = preprocessed_data
 
     def execute_preprocessing_and_save(script_content, existing_preprocessed_data, model_name, user_id):
-        import pickle
+      
         
         # Retrieve the preprocessing script from the database
         
@@ -65,3 +70,36 @@ class Preprocessing_Script:
                 print(f"Preprocessed data for {model_name} saved successfully.")
         except Exception as e:
             print(f"Error saving preprocessed data: {e}")
+            
+            
+    def retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name):
+        #get preprocess script and convert from binary Save to temp file location.
+        preprocess_script_binary = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(preprocessing_script_id)
+        
+        # De pickle to text
+        preprocess_script = pickle.loads(preprocess_script_binary)
+
+        # Ensure the content is in text format
+        if isinstance(preprocess_script, bytes):
+            preprocess_script = preprocess_script.decode('utf-8')  # Convert binary to text if necessary
+
+        # Write the script content to a temporary Python file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_writer:
+            preprocess_writer.write(preprocess_script)
+            tempfile_path1 = preprocess_writer.name
+            
+        
+        # Path where the preprocessed data will be saved by the script
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
+        # Run preprocessing subprocess to output the preprocessed data
+        result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
+                                 '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/RandomForestModel_preprocessing_script.py', 
+                                 str(dataset_id), 
+                                 str(user_id), model_name,str(preprocessing_script_id)], 
+                                capture_output=True,
+                                text=True,
+                                env=env  # Pass the modified environmen
+                            )
+        preprocess_writer.close()
+        return result
