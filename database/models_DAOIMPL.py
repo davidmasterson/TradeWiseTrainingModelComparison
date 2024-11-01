@@ -59,7 +59,7 @@ def get_model_from_db_by_model_name_and_user_id(model_name, user_id):
         cursor.execute(query, vals)
         result = cursor.fetchone()
         if result:
-            return result[0]
+            return result
         return False
     except Exception as e:
         return e
@@ -94,6 +94,23 @@ def get_models_for_user_by_user_id(user_id):
         result = cursor.fetchall()
         if result:
             return result
+        return []
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
+def get_model_name_for_model_by_model_id(model_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT model_name FROM models WHERE id = %s"
+    vals = [model_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchone()
+        if result:
+            return result[0]
         return []
     except Exception as e:
         return []
