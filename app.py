@@ -472,159 +472,59 @@ def update_user_role(user_id, role):
 # ---------------------------------------------------END USER MANAGEMENT -------------------------------------------------------------------------------------
 # ---------------------------------------------------------MODEL TRAINERS -------------------------------------------------------------------------------------
 
-@app.route('/upload_models', methods = ['GET','POST'])
-def upload_models():
-    import pickle
-    if user.User.check_logged_in():
-        user_id = user.User.get_id()
-        if request.method == 'POST':
-            model_name = request.form['model_name']
-            model_description = request.form['model_description']
-            model_file = request.files['model_file']
+import subprocess
+import tempfile
+import pickle
+import json
+from database import models_preprocessing_scripts_DAOIMPL, models_training_scripts_DAOIMPL
+from datetime import datetime
+from flask import flash, redirect, url_for
+from Models import preprocessing_script, training_script
 
-        # Save the uploaded file to the specified folder
-            if model_file and model_name and model_description:
-                file_data = model_file.read()  # Read file content
-                model_binary = pickle.dumps(file_data)  # Convert to binary object
-
-                # Save binary model data to the database.
-                new_model = model.Model(model_name, model_description, model_binary,user_id,0)
-                models_DAOIMPL.insert_model_into_models_for_user(new_model)
-                flash('Model has been uploaded successfully','info')
-                return redirect(url_for('upload_models'))
-
-    # If GET request, render the upload form
-        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
-        if models:
-            models = models
-        return render_template('models.html', models=models)
-
-@app.route('/select_model/<int:model_id>', methods=['POST'])
-def select_model(model_id):
-    selected = request.form.get('selected', '0')
-    mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
-    if mod:
-        mod = mod[0]
-    models_DAOIMPL.update_selected_status(selected,model_id)
-    return redirect(url_for('upload_models'))  
-
-
-@app.route('/train_<model_name>', methods=['POST'])
+@app.route('/train_model/<model_name>', methods=['POST'])
 def train_model(model_name):
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-    import pickle
-    import logging
-    from database import models_training_scripts_DAOIMPL
-    logging.debug(f"Starting training process for model: {model_name}")
-
-    # Get user ID
-    user_id = user.User.get_id()
-    logging.info(f"Retrieved user ID: {user_id}")
-    
-
-    # Retrieve form inputs and convert to integers
     try:
-        selected_preprocessing_script_id = int(request.form.get('preprocessed_data'))
-        selected_training_script_id = int(request.form.get('training_script'))
-        model_name = models_training_scripts_DAOIMPL.get_model_name_by_training_script_id(selected_training_script_id)
-        selected_dataset_id = int(request.form.get('dataset_data'))
-        logging.info(f"Selected preprocessing script ID: {selected_preprocessing_script_id}, "
-                     f"training script ID: {selected_training_script_id}, dataset ID: {selected_dataset_id}")
-    except Exception as e:
-        logging.error(f"Error parsing form data: {e}")
-        flash("Error processing form data.", "error")
+        
+        project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
+        # Retrieve and validate form data
+        user_id = user.User.get_id()
+        preprocessing_script_id = request.form.get('preprocessed_data')
+        training_script_id = request.form.get('training_script')
+        dataset_id = request.form.get('dataset_data')
+        
+        if not all([preprocessing_script_id, training_script_id, dataset_id]):
+            flash("Missing required form data: preprocessing_script_id, training_script_id, or dataset_id.", "error")
+            return redirect(url_for('dashboard'))
+        preprocessing_script_id = int(preprocessing_script_id)
+        training_script_id = int(training_script_id)
+        model_id = models_preprocessing_scripts_DAOIMPL.get_model_id_by_pp_script_id(preprocessing_script_id)
+        model_type = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
+        
+        
+        result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
+        # LOGGING PURPOSES FOR DEBUGGING
+        logging.info(f"Subprocess output: {result.stdout}")
+        logging.error(f"Subprocess error (if any): {result.stderr}")
+        # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
+        training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
+        
+            
+            
+        
+        
+        
+        
+        
+        
+
+        
+        flash('Training has completed successfully', 'success')   
         return redirect(url_for('dashboard'))
 
-    # Retrieve preprocessed data and training script content from the database
-    try:
-        _, preprocessed_data_binary = preprocessing_scripts_DAOIMPL.get_preprocessed_script_and_data_by_id(selected_preprocessing_script_id)
-        training_script_content = training_scripts_DAOIMPL.get_training_script_data_by_id(selected_training_script_id)
-        logging.info("Retrieved preprocessed data and training script content from the database.")
-    except Exception as e:
-        logging.error(f"Error retrieving scripts or data from database: {e}")
-        flash("Error: Missing preprocessed or training script data.", "error")
+    except Exception as main_e:
+        logging.error(f"Unexpected error in train_model route: {main_e}")
+        flash("An unexpected error occurred during training.", "error")
         return redirect(url_for('dashboard'))
-
-    if not preprocessed_data_binary or not training_script_content:
-        logging.warning("Preprocessed data or training script content is missing.")
-        flash("Error: Missing preprocessed or training script data.", "error")
-        return redirect(url_for('dashboard'))
-
-    # Deserialize preprocessed data
-    try:
-        preprocessed_data = pickle.loads(preprocessed_data_binary)
-        X_train = preprocessed_data.get('X_train')
-        X_test = preprocessed_data.get('X_test')
-        y_train = preprocessed_data.get('y_train')
-        y_test = preprocessed_data.get('y_test')
-        logging.info("Successfully deserialized preprocessed data.")
-    except Exception as e:
-        logging.error(f"Error deserializing preprocessed data: {e}")
-        flash("Error processing preprocessed data.", "error")
-        return redirect(url_for('dashboard'))
-
-    # Verify completeness of preprocessed data
-    if any(data is None for data in [X_train, X_test, y_train, y_test]):
-        logging.error("Preprocessed data is incomplete: one or more data components are None.")
-        flash("Error: Incomplete preprocessed data.", "error")
-        return redirect(url_for('dashboard'))
-
-    # Set up environment for executing the training script
-    globals_dict = globals()
-    locals_dict = {}
-
-    try:
-        # Execute the training script content
-        exec(training_script_content, globals_dict, locals_dict)
-        logging.info("Executed training script content.")
-
-        # Check for 'train_model' function in script
-        train_model_func = locals_dict.get('train_model')
-        if not train_model_func:
-            raise ValueError("The training script does not define a 'train_model' function.")
-        logging.info("Found 'train_model' function in training script.")
-
-        # Train the model using the preprocessed data
-        trained_model = train_model_func(X_train, y_train)
-        logging.info("Model training completed.")
-
-        # Calculate model performance metrics
-        y_pred = trained_model.predict(X_test)
-        accuracy = accuracy_score(y_test, y_pred)
-        precision = precision_score(y_test, y_pred, average='weighted')
-        recall = recall_score(y_test, y_pred, average='weighted')
-        f1 = f1_score(y_test, y_pred, average='weighted')
-        logging.info(f"Calculated model metrics - Accuracy: {accuracy}, Precision: {precision}, "
-                     f"Recall: {recall}, F1-Score: {f1}")
-    except Exception as e:
-        logging.error(f"Error during model training or metrics calculation: {e}")
-        flash(f"Error during training: {e}", "error")
-        return redirect(url_for('dashboard'))
-
-    # Serialize and save the updated model in the database
-    try:
-        model_data = pickle.dumps(trained_model)
-        models_DAOIMPL.update_model_data_by_name(model_name, model_data, user_id)
-        curr_model = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(model_name, user_id)
-        logging.info("Model data serialized and updated in database.")
-    except Exception as e:
-        logging.error(f"Error saving model to database: {e}")
-        flash("Error saving model to database.", "error")
-        return redirect(url_for('dashboard'))
-
-    # Insert metrics into model_metrics_history table
-    try:
-        logging.info(f'model_id: {curr_model}, accuracy: {accuracy}, precision: {precision}, recall: {recall}, f1: {f1}, {datetime.now()}')
-        new_metrics = model_metrics_history.Model_Metrics_History(curr_model, accuracy, precision, recall, f1, '{}', datetime.now())
-        model_metrics_history_DAOIMPL.insert_metrics_history(new_metrics)
-        logging.info("Model metrics inserted into metrics history table.")
-        flash("Model trained and metrics updated successfully!", "success")
-    except Exception as e:
-        logging.error(f"Error saving metrics to database: {e}")
-        flash("Error saving metrics to database.", "error")
-
-    logging.info("Training process completed, redirecting to dashboard.")
-    return redirect(url_for('dashboard'))
 
 
     
@@ -655,6 +555,7 @@ def upload_preprocessing_scripts():
     if user.User.check_logged_in():
         user_id = user.User.get_id()
         if request.method == 'POST':
+            # Get frontend form data
             script_name = request.form['script_name']
             description = request.form['script_description']
             script_file = request.files['script_file']
@@ -662,59 +563,17 @@ def upload_preprocessing_scripts():
 
             if script_file and script_name and description and dataset_id:
                 script_content = script_file.read().decode('utf-8')
-
+                script_content = pickle.dumps(script_content)
+            try:
                 # Insert script data into the database
                 new_script = preprocessing_script.Preprocessing_Script(
                     script_name, description, script_content, datetime.now(), user_id, None
                 )
                 script_id = preprocessing_scripts_DAOIMPL.insert_preprocessing_script_for_user(new_script)
-
-                # Save the script to a specific directory
-                project_root = '/home/ubuntu/TradeWiseTrainingModelComparison'
-                script_path = os.path.join(project_root, 'uploaded_scripts', f'{script_name}.py')
-
-                os.makedirs(os.path.dirname(script_path), exist_ok=True)
-
-                with open(script_path, 'w') as temp_script_file:
-                    temp_script_file.write(script_content)
-
-                output_file = os.path.join(project_root, 'preprocessed_data.pkl')
-
-                try:
-                    python_path = sys.executable
-                    env = os.environ.copy()
-                    env["PYTHONPATH"] = '/home/ubuntu/miniconda3/envs/tf-env/bin/python'
-                    
-                    # Pass dataset_id as an argument to the script using subprocess
-                    result = subprocess.run(
-                        [python_path, script_path, output_file, str(dataset_id)],
-                        capture_output=True, text=True, env=env, cwd=project_root
-                    )
-                    if result.returncode != 0:
-                        print(f"Stdout: {result.stdout}")
-                        raise RuntimeError(f"Script error: {result.stderr}")
-
-                    # Load preprocessed data from the output file
-                    with open(output_file, 'rb') as f:
-                        preprocessed_data = pickle.load(f)
-
-                    # Validate data structure
-                    if validate_preprocessed_data(preprocessed_data):
-                        preprocessed_data_binary = pickle.dumps(preprocessed_data)
-                        preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_name, user_id, preprocessed_data_binary)
-                        flash('Preprocessing script uploaded and executed successfully.', 'info')
-                    else:
-                        raise ValueError("The preprocessing script did not produce the required data structure.")
-
-                except Exception as e:
-                    flash(f"Error during preprocessing: {e}", 'danger')
-                
-                finally:
-                    os.remove(script_path)
-                    if os.path.exists(output_file):
-                        os.remove(output_file)
-
+                flash('Successfully Inserted New Preprocessing Script', 'success')
                 return redirect(url_for('upload_preprocessing_scripts'))
+            except Exception as e:
+                flash(f'Error during upload {e}','error')
         
         datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
         scripts = preprocessing_scripts_DAOIMPL.get_scripts_by_user_id(user_id)
@@ -865,15 +724,18 @@ def dashboard():
             if metric:
                 top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
                 top_features_dict = json.loads(top_features_str)
-                sorted_features = dict(sorted(top_features_dict.items(), key=lambda item: item[1], reverse=True)[:5])
+                for feature in top_features_dict:
+                    feature["Importance"] = float(feature["Importance"]) * 100
 
+                # Sort and get the top 5 features by Importance
+                top_features_sorted = sorted(top_features_dict, key=lambda x: x["Importance"], reverse=True)[:5]
                 metrics_data.append({
                     'model_name': metric[0],
                     'accuracy': float(metric[1]),
                     'precision': float(metric[2]),
                     'recall': float(metric[3]),
                     'f1_score': float(metric[4]),
-                    'top_features': sorted_features,
+                    'top_features': top_features_sorted,
                     'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
                 })
             else:
@@ -1056,7 +918,7 @@ def get_progress():
     try:
         progress = progression_DAOIMPL.get_recommender_progress() or 0
     except Exception as e:
-        app.logger.error("Failed to fetch progress: %s", str(e))
+        app.logging.error("Failed to fetch progress: %s", str(e))
         return jsonify({'error': 'Could not fetch progress'}), 500
     logging.info(f'Progress is {progress[1]}')
     return jsonify({'progress': progress[1]})
