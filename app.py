@@ -49,15 +49,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.ERROR)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -491,7 +491,6 @@ def train_model(model_name):
         preprocessing_script_id = request.form.get('preprocessed_data')
         training_script_id = request.form.get('training_script')
         dataset_id = request.form.get('dataset_data')
-        
         if not all([preprocessing_script_id, training_script_id, dataset_id]):
             flash("Missing required form data: preprocessing_script_id, training_script_id, or dataset_id.", "error")
             return redirect(url_for('dashboard'))
@@ -499,25 +498,12 @@ def train_model(model_name):
         training_script_id = int(training_script_id)
         model_id = models_preprocessing_scripts_DAOIMPL.get_model_id_by_pp_script_id(preprocessing_script_id)
         model_type = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
-        
-        
         result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
         # LOGGING PURPOSES FOR DEBUGGING
         logging.info(f"Subprocess output: {result.stdout}")
         logging.error(f"Subprocess error (if any): {result.stderr}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
-        
-            
-            
-        
-        
-        
-        
-        
-        
-
-        
         flash('Training has completed successfully', 'success')   
         return redirect(url_for('dashboard'))
 
@@ -526,7 +512,30 @@ def train_model(model_name):
         flash("An unexpected error occurred during training.", "error")
         return redirect(url_for('dashboard'))
 
-
+app.route('/upload_models', methods=['GET','POST'])
+def upload_models():
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        if request.method == 'POST':
+            model_name = request.form['model_name']
+            description = request.form['model_description']
+           
+            if model_name and description:
+                
+                try:
+                    # Insert script data into the database
+                    new_model = model.Model(
+                        model_name, description, None, user_id, 0
+                    )
+                    model_id = preprocessing_scripts_DAOIMPL.insert_preprocessing_script_for_user(new_model)
+                    flash('Successfully Inserted New Preprocessing Script', 'success')
+                    return redirect(url_for('upload_preprocessing_scripts'))
+                except Exception as e:
+                    flash(f'Error during upload {e}','error')   
+    
+        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
+        return render_template('models.html', models=models)
+    return render_template('home.html')
     
     
 
@@ -853,6 +862,7 @@ def page_not_found(e):
 def purchaser_page():
     if session.get('logged_in'):
         user_name = session.get('user_name')
+        user_id = user.User.get_id()
         api = alpaca_request_methods.create_alpaca_api(user_name)
         user_account = api.get_account()
         cash = float(user_account.cash)
@@ -861,7 +871,8 @@ def purchaser_page():
 
         if request.method == 'POST':
             # Generate recommendations and store them in the session
-            orders = purchaser.generate_recommendations_task(user_name)
+            
+            orders = purchaser.generate_recommendations_task(user_id)
             session['orders'] = orders  # Store recommendations in session
             if orders:
                 return render_template('purchaser.html', orders=orders, user_cash=cash)
@@ -871,13 +882,16 @@ def purchaser_page():
 
         # Load recommendations from session if they exist
         orders = session.get('orders', None)
-        return render_template('purchaser.html', orders=orders, user_cash=cash)
+        
+        return render_template('purchaser.html', orders=orders, user_cash=cash
+                               )
     return redirect(url_for('home'))
     
 
 @app.route('/purchase', methods=['POST'])
 def purchase_stock():
     if session.get('logged_in'):
+        user_id = user.User.get_id()
         # Extract form data
         symbol = request.form.get('symbol')
         limit_price = float(request.form.get('limit_price'))
@@ -902,6 +916,7 @@ def purchase_stock():
             flash(f"Failed to place order for {symbol}. Error: {e}", 'danger')
         
         # Redirect back to the purchaser page
+        
         return redirect(url_for('purchaser_page'))
     return redirect(url_for('home'))
 
