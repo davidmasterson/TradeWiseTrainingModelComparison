@@ -23,6 +23,25 @@ def create_models_preprocessing_scripts_table(user_id):
         conn.close()
         cur.close()
         
+def get_model_id_by_pp_script_id(pp_script_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT model_id from model_preprocessing_scripts WHERE preprocessing_script_id = %s'''
+    vals = [
+        pp_script_id
+    ]
+    try:
+        cur.execute(sql, vals)
+        model_id = cur.fetchone()
+        if model_id:
+            return model_id[0]
+        return []
+    except Exception as e:
+        logging.error( f'{datetime.now()}: Unable to get model id due to {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
 def insert_into_models_preprocessing_scripts_table(model_ps_object):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
