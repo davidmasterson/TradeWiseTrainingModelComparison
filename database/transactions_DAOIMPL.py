@@ -466,6 +466,30 @@ def get_last_transaction(user_id):
     finally:
         cur.close()
         conn.close()    
+
+def get_all_closed_unprocessed_transactions_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE 
+                ds is NOT %s
+                AND
+                user_id = %s
+                AND processed = %s
+                '''
+    vals = [None, user_id, 0]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.error(f'{datetime.now()}: Unable to get unprocessed transactions for user {user_id} due to {e}')
+        return []
+    finally:
+        cur.close()
+        
 def insert_transactions(transactions):
     for transaction in transactions:
         insert_transaction(transaction)
@@ -496,12 +520,13 @@ def insert_transaction(transaction, pending_order_id):
             confidence,
             result,
             user_id,
-            sector
+            sector,
+            processed
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s,%s,%s
+            %s,%s,%s,%s,%s
             )
             '''
     vals = [transaction.symbol,
@@ -522,7 +547,8 @@ def insert_transaction(transaction, pending_order_id):
             transaction.sentiment,
             transaction.result,
             transaction.user_id,
-            transaction.sector]
+            transaction.sector,
+            transaction.processed]
     try:
         cur.execute(sql,vals)
         conn.commit()
@@ -569,6 +595,34 @@ def update_transaction(transaction_id, values):
             logging.info(f"{datetime.now()}:No record {transaction_id} has not been updated.")
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to update transaction {transaction_id} due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
+def update_processed_status_after_training(trans_id,user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            UPDATE transactions
+            SET
+            processed = %s
+            WHERE
+            id = %s
+            and user_id = %s
+        '''
+    vals = [1,
+            trans_id,
+            user_id
+            ]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, record(s) affected updated transaction {datetime.now()}id:{trans_id} to processed")
+        else:
+            logging.info(f"{datetime.now()}:record {trans_id} has not been updated as processed.")
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to update transaction {trans_id} as processed due to : {e}')
     finally:
         cur.close()
         conn.close()
