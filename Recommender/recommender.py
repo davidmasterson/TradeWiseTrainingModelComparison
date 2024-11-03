@@ -5,7 +5,7 @@ from database import models_DAOIMPL, progression_DAOIMPL
 from MachineLearningModels import manual_alg_requisition_script
 
 
-def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symbols=10):
+def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symbols=20):
     
     if symbols is None:
         
@@ -46,7 +46,7 @@ def get_model_recommendation(stock_list, count=0, iter=0, symbols=None, max_symb
         # Update iteration and count for the next loop
         iter += 1
         count += 50
-        progress_now = 50 + (4 * len(symbols))
+        progress_now = 50 + (2 * len(symbols))
         progress = progression_DAOIMPL.get_recommender_progress()
         progression_DAOIMPL.update_recommender_progress(progress_now,progress[0])
 
