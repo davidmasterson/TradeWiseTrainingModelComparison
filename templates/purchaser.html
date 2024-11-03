@@ -20,6 +20,27 @@
          <div class="container" style="display:flex;justify-content:space-between;">
             <form action='/purchaser' method='POST'>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- Dropdown for Preprocessed Data Selection -->
+                <div class="preprocessed_data_container">
+                  <label for="preprocessed_data">Select Preprocessed Data:</label>
+                  <select name="preprocessed_data" id="preprocessed_data" required>
+                      <option value="">Choose Preprocessed Data</option>
+                      {% for data in preprocessors %}
+                      <option value="{{ data[0] }}">{{ data[1] }} - {{ data[5] }}</option>
+                      {% endfor %}
+                  </select>
+              </div>
+              
+              <!-- Dropdown for Training Script Selection -->
+              <div class="training_script_data_container">
+              <label for="training_script">Select Training Script:</label>
+                  <select name="training_script" id="training_script" required>
+                      <option value="">Choose Training Script</option>
+                      {% for script in trainers %}
+                      <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
+                      {% endfor %}
+                  </select>
+              </div>
                 <button type="submit" id="generateBtn" class="btn btn-primary mb-3">Generate Recommendations</button>
             </form>
             <h3 >Cash Available: ${{"{:,.2f}".format(user_cash)}}</h3>
