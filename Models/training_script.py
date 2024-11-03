@@ -25,7 +25,7 @@ class TrainingScript:
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         result2 = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3', 
-                                  '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/RandomForestModel_training_script.py',
+                                  tempfile_path3,
                                   str(preprocessing_script_id),str(model_id),
                         str(user_id), model_name],
                                  capture_output=True,
