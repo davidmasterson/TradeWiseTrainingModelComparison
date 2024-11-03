@@ -12,19 +12,19 @@ from database import models_DAOIMPL
 user_id = int(sys.argv[1])
 
 
-model_pkl_file = "Model_Training/RandomForestModel.pkl"
 
-rf_model = pickle.loads(models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, 'RandomForestModel'))
+# import trained_model
+ma_model = pickle.loads(models_DAOIMPL.get_trained_model_for_user_by_model_name(user_id, 'Manual Algorithm'))
+future_df = pd.read_csv('Hypothetical_Predictor/transactions.csv')
 
 
 
 
 # In[209]:
-future_df = pd.read_csv('Hypothetical_Predictor/pre_future_predictions.csv')
 
 
 X_future = future_df.drop(['hit_take_profit', 'symbol', 'purchase_date', 'sell_date'], axis=1)
-future_predictions = rf_model.predict(X_future)
+future_predictions = ma_model.predict(X_future)
 
 
 # In[210]:
