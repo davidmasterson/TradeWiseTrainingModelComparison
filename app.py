@@ -49,15 +49,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# Attach logging to Flask's logger and configure it to log to the console as well
-app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-app.logger.setLevel(logging.ERROR)  # Logs errors only
+# logging.basicConfig(
+#     filename='app.log',
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+# # Attach logging to Flask's logger and configure it to log to the console as well
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+# app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -512,31 +512,31 @@ def train_model(model_name):
         flash("An unexpected error occurred during training.", "error")
         return redirect(url_for('dashboard'))
 
-app.route('/upload_models', methods=['GET','POST'])
+@app.route('/upload_models', methods = ['GET','POST'])
 def upload_models():
+    import pickle
     if user.User.check_logged_in():
         user_id = user.User.get_id()
         if request.method == 'POST':
             model_name = request.form['model_name']
-            description = request.form['model_description']
+            model_description = request.form['model_description']
            
-            if model_name and description:
-                
-                try:
-                    # Insert script data into the database
-                    new_model = model.Model(
-                        model_name, description, None, user_id, 0
-                    )
-                    model_id = preprocessing_scripts_DAOIMPL.insert_preprocessing_script_for_user(new_model)
-                    flash('Successfully Inserted New Preprocessing Script', 'success')
-                    return redirect(url_for('upload_preprocessing_scripts'))
-                except Exception as e:
-                    flash(f'Error during upload {e}','error')   
-    
+
+        # Save the uploaded file to the specified folder
+            if  model_name and model_description:
+               
+                # Save binary model data to the database.
+                new_model = model.Model(model_name, model_description, model_data = None, user_id=user_id, selected=0)
+                models_DAOIMPL.insert_model_into_models_for_user(new_model)
+                flash('Model has been uploaded successfully','info')
+                return redirect(url_for('upload_models'))
+
+    # If GET request, render the upload form
         models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
+        if models:
+            models = models
         return render_template('models.html', models=models)
-    return render_template('home.html')
-    
+       
     
 
 # ------------------------------------------------------------END MODEL --------------------------------------------------------------------------
@@ -630,7 +630,14 @@ def upload_training_scripts():
         scripts = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
         return render_template('training_scripts.html', scripts=scripts)
 
-
+@app.route('/select_model/<int:model_id>', methods=['POST'])
+def select_model(model_id):
+    selected = request.form.get('selected', '0')
+    mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
+    if mod:
+        mod = mod[0]
+    models_DAOIMPL.update_selected_status(selected,model_id)
+    return redirect(url_for('upload_models'))       
 
 @app.route('/upload_dataset', methods=['GET', 'POST'])
 def upload_dataset():
@@ -871,6 +878,11 @@ def purchaser_page():
 
         if request.method == 'POST':
             # Generate recommendations and store them in the session
+            #get form data from frontend
+            preprocessing_script = request.form.get('preprocessed_data')
+            training_script = request.form.get('training_script')
+            
+            # create new dataset using the recommender TODO ------
             
             orders = purchaser.generate_recommendations_task(user_id)
             session['orders'] = orders  # Store recommendations in session
@@ -882,8 +894,10 @@ def purchaser_page():
 
         # Load recommendations from session if they exist
         orders = session.get('orders', None)
+        preprocessors = preprocessing_scripts_DAOIMPL.get_preprocessing_scripts_for_user(user_id)
+        trainers = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
         
-        return render_template('purchaser.html', orders=orders, user_cash=cash
+        return render_template('purchaser.html', orders=orders, user_cash=cash, preprocessors=preprocessors, trainers=trainers
                                )
     return redirect(url_for('home'))
     
