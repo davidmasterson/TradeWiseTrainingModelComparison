@@ -12,7 +12,8 @@
             "args": [
                 "run",
                 "--no-reload",
-                "--port=5001"  // Explicitly specify a port to avoid conflicts
+                "--port=5001" ,
+                "--debug" // Explicitly specify a port to avoid conflicts
             ],
             "jinja": true,
             "autoStartBrowser": false,

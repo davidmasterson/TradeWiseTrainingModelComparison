@@ -161,7 +161,7 @@ final_df = pd.DataFrame(finalized_dataset_data)
 # final_df = final_df.drop(indices_to_drop).reset_index(drop=True)
 # final_df = final_df.loc[:, ~final_df.columns.str.contains('^Unnamed')]
 # print(final_df)
-final_df.to_csv('output1.csv')
+print(final_df.columns.to_list())
 
 # final_df_bin = pickle.dumps(final_df)
 # newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),1)

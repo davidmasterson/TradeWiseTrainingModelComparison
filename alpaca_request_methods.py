@@ -178,8 +178,6 @@ def handle_trade_updates(ws, event, data, username, user_id):
         client_order_id = data['order']['id']
         logging.info(client_order_id)
         
-        
-        
         if side == 'buy':
             # Handle buy side
             try:
