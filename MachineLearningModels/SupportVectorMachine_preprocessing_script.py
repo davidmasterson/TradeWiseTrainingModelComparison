@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import pickle
 from io import BytesIO
-from database import dataset_DAOIMPL
+from database import dataset_DAOIMPL, preprocessing_scripts_DAOIMPL
 import logging
 logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log', 
                     level=logging.DEBUG, 
@@ -18,20 +18,18 @@ logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_
 logging.debug("Starting preprocessing script.")
 logging.info(f"Dataset ID received: {sys.argv[2]}")
 # Load and preprocess dataset
-def preprocess_data(output_path, dataset_id):
+def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
     try:
         dataset_id = int(dataset_id)
         logging.info("Fetching dataset...")
+        dataset_id = int(dataset_id)
         dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
         
-        # Confirm dataset retrieval
-        if dataset_data:
-            logging.debug("Dataset successfully retrieved.")
-        else:
+        if not dataset_data:
             logging.error("Failed to retrieve dataset.")
             return None
 
-        df = pd.read_csv(BytesIO(dataset_data), encoding='ISO-8859-1')
+        df = pickle.loads(dataset_data)
         logging.info("Data loaded into DataFrame.")
         
         # Add additional debug logging around key processing steps
@@ -40,17 +38,14 @@ def preprocess_data(output_path, dataset_id):
         df = df.apply(pd.to_numeric, errors='coerce')
         df.fillna(0, inplace=True)  # Or use another method to handle missing data if necessary
 
-        # Remove unwanted features
-        df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 
-                            'expected_return', 'percentage_roi', 'actual_return', 
-                            'stop_loss_price', 'tp2', 'sop', 'purchase_string'])
+       
 
         # Drop non-numeric columns
-        df = df.drop(columns=['symbol', 'date_purchased'])
+        df = df.drop(columns=['symbol', 'sector'], axis=1)
 
         # Prepare features and target
-        X = df.drop(columns=['tp1'])  # Features
-        y = df['tp1']  # Target
+        X = df.drop(columns=['hit_tp1_within_12'])  # Features
+        y = df['hit_tp1_within_12']  # Target
 
         # Scale the features
         scaler = MinMaxScaler(feature_range=(0, 1))
@@ -68,13 +63,9 @@ def preprocess_data(output_path, dataset_id):
             'scaler': scaler,
             'structure': 'train_test_split'  # Explicitly set the structure
         }
-        with open(output_path, 'wb') as f:
-            pickle.dump(preprocessed_data, f)
-        logging.debug(f"Serialized preprocessed data with structure: {preprocessed_data.get('structure')}")
-                    
-        logging.debug("Serialized preprocessed data with structure: train_test_split.")
-
-        print(f"Preprocessing complete. Data saved to {output_path}")
+        preprocessed_bin = pickle.dumps(preprocessed_data)
+        preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_id,preprocessed_bin)
+        logging.info(f'Preprocessed data updated for user')
                 
         return preprocessed_data
     except Exception as e:
@@ -84,6 +75,9 @@ def preprocess_data(output_path, dataset_id):
 
 # If this script is run directly, preprocess data and print confirmation
 if __name__ == "__main__":
-    output_path = sys.argv[1]
-    dataset_id = sys.argv[2]
-    preprocess_data(output_path, dataset_id)
+    output_path =  sys.argv[0]  
+    dataset_id =  sys.argv[1]  
+    user_id = sys.argv[2]  
+    model_name = sys.argv[3]
+    script_id = sys.argv[4]
+    preprocess_data(output_path, dataset_id, user_id, model_name, script_id)

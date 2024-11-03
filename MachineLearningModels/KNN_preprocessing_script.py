@@ -7,8 +7,13 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 import pickle
-from database import dataset_DAOIMPL
-from io import BytesIO
+from database import dataset_DAOIMPL, preprocessing_scripts_DAOIMPL
+import logging
+logging.basicConfig(
+    filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 # Function to calculate technical indicators
 def calculate_rsi(data, window=14):
@@ -29,65 +34,70 @@ def calculate_momentum(data, period=14):
     return data.diff(period)
 
 # Load and preprocess dataset
-def preprocess_data(output_path, dataset_id):
-    
-    dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
+    try:
+        logging.info("Fetching dataset...")
+        dataset_id = int(dataset_id)
+        dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+        
+        if not dataset_data:
+            logging.error("Failed to retrieve dataset.")
+            return None
 
-    # Load dataset into a DataFrame
-    df = pd.read_csv(BytesIO(dataset_data), encoding='ISO-8859-1')  # Adjust encoding if needed
+        df = pickle.loads(dataset_data)
+        logging.info("Data loaded into DataFrame.")
 
-    # Convert all columns to numeric, setting errors='coerce' to handle non-numeric entries
-    df = df.apply(pd.to_numeric, errors='coerce')
+        # Drop unnecessary columns
+        try:
+            df = df.drop(['sector','symbol'], axis=1)
+        except:
+            pass
+        
 
-    # Fill NaN values (or you can choose to drop them)
-    df = df.fillna(0)  # or df.dropna()
+        # Calculate technical indicators
+        df['RSI'] = calculate_rsi(df['ppps'], 14)
+        df['SMA'] = calculate_sma(df['ppps'], 20)
+        df['EMA'] = calculate_ema(df['ppps'], 20)
+        df['Momentum'] = calculate_momentum(df['ppps'], 10)
 
-    # Drop unnecessary columns
-    df = df.drop(columns=['date_sold', 'sold_pps', 'total_sell_price', 'sell_string', 
-                          'expected_return', 'percentage_roi', 'actual_return', 
-                          'stop_loss_price', 'tp2', 'sop', 'purchase_string', 
-                          'symbol', 'date_purchased'])
+        df.fillna(0, inplace=True)
 
-    # Calculate technical indicators
-    df['RSI'] = calculate_rsi(df['purchased_pps'], 14)
-    df['SMA'] = calculate_sma(df['purchased_pps'], 20)
-    df['EMA'] = calculate_ema(df['purchased_pps'], 20)
-    df['Momentum'] = calculate_momentum(df['purchased_pps'], 10)
+        # Prepare features and target
+        X = df.drop(columns=['hit_tp1_within_12'])  # Exclude target column 'tp1'
+        y_continuous = df['hit_tp1_within_12']  # Target
 
-    df.fillna(0, inplace=True)
+        # Binning the target variable
+        num_bins = 10
+        y_binned, bin_edges = pd.cut(y_continuous, bins=num_bins, labels=False, retbins=True)
+        
+        # Scale the features
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        X_scaled = scaler.fit_transform(X)
 
-    # Prepare features and target
-    X = df.drop(columns=['tp1'])  # Exclude target column 'tp1'
-    y_continuous = df['tp1']  # Target
+        # Split the data
+        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_binned, test_size=0.2, random_state=42)
 
-    # Binning the target variable
-    num_bins = 10
-    y_binned, bin_edges = pd.cut(y_continuous, bins=num_bins, labels=False, retbins=True)
-    
-    # Scale the features
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    X_scaled = scaler.fit_transform(X)
+        # Serialize preprocessed data
+        preprocessed_data = {
+            'X_train': X_train,
+            'X_test': X_test,
+            'y_train': y_train,
+            'y_test': y_test
+        }
+        preprocessed_bin = pickle.dumps(preprocessed_data)
+        preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_id,preprocessed_bin)
+        logging.info(f'Preprocessed data updated for user')
 
-    # Split the data
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, y_binned, test_size=0.2, random_state=42)
-
-    # Serialize preprocessed data
-    preprocessed_data = {
-        'X_train': X_train,
-        'X_test': X_test,
-        'y_train': y_train,
-        'y_test': y_test
-    }
-    with open(output_path, 'wb') as f:
-        pickle.dump(preprocessed_data, f)
-
-    print(f"Preprocessing complete. Data saved to {output_path}")
-    
-    return preprocessed_data
+        return preprocessed_data
+    except Exception as e:
+        raise
 
 # If run directly, preprocess data and save to binary file
 if __name__ == "__main__":
-    dataset_path = sys.argv[1]
-    output_path = sys.argv[2]
-    preprocess_data(dataset_path, output_path)
+    output_path =  sys.argv[0]  
+    dataset_id =  sys.argv[1]  
+    user_id = sys.argv[2]  
+    model_name = sys.argv[3]
+    script_id = sys.argv[4]
+    preprocess_data(output_path, dataset_id, user_id, model_name, script_id)
     
