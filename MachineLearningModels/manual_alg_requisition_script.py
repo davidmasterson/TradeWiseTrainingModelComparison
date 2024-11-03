@@ -29,18 +29,17 @@ def process_phrase_for_sentiment(articles_list, company_name):
             all_sentences.append(phrase_output)
     for array_of_sentences in all_sentences:
         for sentence in array_of_sentences:
-            if company_name in sentence:
-                analyzer = SentimentIntensityAnalyzer()
-                results_dict = analyzer.polarity_scores(sentence)
-                negative_perc = results_dict['neg'] * 100
-                positive_perc = results_dict['pos'] * 100
-                overall = ((negative_perc + positive_perc) / 2)  
-                if overall != 0: 
-                    if negative_perc == 0:
-                        overall = positive_perc
-                    elif positive_perc == 0:
-                        overall = 0 - negative_perc       
-                    all_sentiments.append(overall)
+            analyzer = SentimentIntensityAnalyzer()
+            results_dict = analyzer.polarity_scores(sentence)
+            negative_perc = results_dict['neg'] * 100
+            positive_perc = results_dict['pos'] * 100
+            overall = ((negative_perc + positive_perc) / 2)  
+            if overall != 0: 
+                if negative_perc == 0:
+                    overall = positive_perc
+                elif positive_perc == 0:
+                    overall = 0 - negative_perc       
+                all_sentiments.append(overall)
     if len(all_sentiments) > 0:
         finalized_perc = int(sum(all_sentiments)/len(all_sentiments))
         return finalized_perc
