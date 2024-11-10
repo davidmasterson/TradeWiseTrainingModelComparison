@@ -304,7 +304,7 @@ def insert_metric(metric):
                 user_id) VALUES (
                 %s,%s,%s,%s,
                 %s,%s,%s,%s,
-                %s,%s,%s,%s,%s)
+                %s,%s,%s)
                 '''
     vals = [metric.accuracy,
             metric.error_rate,

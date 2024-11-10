@@ -479,7 +479,7 @@ import json
 from database import models_preprocessing_scripts_DAOIMPL, models_training_scripts_DAOIMPL
 from datetime import datetime
 from flask import flash, redirect, url_for
-from Models import preprocessing_script, training_script
+from Models import preprocessing_script, training_script, metric
 
 @app.route('/train_model/<model_name>', methods=['POST'])
 def train_model(model_name):
@@ -504,7 +504,9 @@ def train_model(model_name):
         logging.error(f"Subprocess error (if any): {result.stderr}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
-        flash('Training has completed successfully', 'success')   
+        new_metric = metric.calculate_daily_metrics_values(user_id)
+        metrics_DAOIMPL.insert_metric(new_metric)
+        flash('Training has completed successfully as well as new metrics entry.', 'success')   
         return redirect(url_for('dashboard'))
 
     except Exception as main_e:
