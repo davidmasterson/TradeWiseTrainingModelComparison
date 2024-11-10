@@ -53,69 +53,89 @@
 
 
         <!-- Table to display recommendations -->
-        {% if orders %}
+        {% if recommendations %}
         <table class="table table-bordered" id="recommendationsTable" style="border-color:black">
             <thead>
                 <tr>
                     <th>Symbol</th>
                     <th>Limit Price</th>
                     <th>Qty</th>
+                    <th>Confidence</th>
+                    
                     
                     
                 </tr>
             </thead>
             <tbody>
-              {% for x in orders %}
-              {% set row_color = 'white' %}
-              {% if x.sentiment <= 40 %}
-                  {% set row_color = '#f9dfc5' %}
-              {% elif x.sentiment >= 41 and x.sentiment <= 59 %}
-                  {% set row_color = '#FFCCCB' %}
-              {% elif x.sentiment >= 60 and x.sentiment <= 79 %}
-                  {% set row_color = '#FFFBC8' %}
-              {% else %}
-                  {% set row_color = '#cefad0' %}
-              {% endif %}
-          
-              <tr style="background-color: {{ row_color }};border : 2px, solid-black;">
-                  <td>{{ x.symbol }}</td>
-                  <td>{{ x.limit_price }}</td>
-                  <td>{{ x.qty }}</td>
+                {% for details in recommendations %}
+                {% set row_color = 'white' %}
+                {% if details.confidence <= 40 %}
+                    {% set row_color = '#f9dfc5' %}
+                {% elif details.confidence >= 41 and details.confidence <= 59 %}
+                    {% set row_color = '#FFCCCB' %}
+                {% elif details.confidence >= 60 and details.confidence <= 79 %}
+                    {% set row_color = '#FFFBC8' %}
+                {% else %}
+                    {% set row_color = '#cefad0' %}
+                {% endif %}
+      
+                <tr style="background-color: {{ row_color }}; border: 2px solid black;">
+                    <td>{{ details.symbol }}</td>
+                    <td>{{ details.limit_price }}</td>
+                    <td>{{ details.qty }}</td>
+                    <td>{{ details.confidence }}</td>
                     <td>
                         <!-- Purchase button with form -->
                         <form action="/purchase" method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="symbol" value="{{ x.symbol }}">
-                            <input type="hidden" name="limit_price" value="{{ x.limit_price }}">
-                            <input type="hidden" name="qty" value="{{ x.qty }}">
+                            <input type="hidden" name="symbol" value="{{ symbol }}">
+                            <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
+                            <input type="hidden" name="qty" value="{{ details.qty }}">
                             <button type="submit" class="btn btn-success">Purchase</button>
                         </form>
                     </td>
                 </tr>
-               
                 {% endfor %}
-            </tbody>
+              </tbody>
         </table>
         {% endif %}
     </div>
 
 <script>
-  document.getElementById('generateBtn').addEventListener('click', function() {
-      var intervalId = setInterval(function() {
-          fetch('/progress')  // Assume '/progress' is your endpoint returning a JSON with progress percentage
-              .then(response => response.json())
-              .then(data => {
-                  var progressBar = document.getElementById('progressBar');
-                  progressBar.style.width = data.progress + '%';
-                  progressBar.textContent = data.progress + '%';
-                  progressBar.setAttribute('aria-valuenow', data.progress);
-                  
-                  if (data.progress >= 100) {
-                      clearInterval(intervalId);  // Stop polling when the task is complete
-                  }
-              })
-              .catch(error => console.error('Error fetching progress:', error));
-      }, 10000);  // Update every 10 seconds
-  });
+
+    function checkRecommendations() {
+        fetch('/check-recommendations')
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === "complete") {
+                    // Display the recommendations
+                    renderRecommendations(data.orders);
+                } else {
+                    // Keep checking every 5 seconds if recommendations aren't ready
+                    setTimeout(checkRecommendations, 5000);
+                }
+            });
+    }
+    
+    // Start checking when the page loads
+    document.addEventListener('DOMContentLoaded', checkRecommendations);
+
+    document.getElementById('generateBtn').addEventListener('click', function() {
+        var intervalId = setInterval(function() {
+            fetch('/progress')  // Assume '/progress' is your endpoint returning a JSON with progress percentage
+                .then(response => response.json())
+                .then(data => {
+                    var progressBar = document.getElementById('progressBar');
+                    progressBar.style.width = data.progress + '%';
+                    progressBar.textContent = data.progress + '%';
+                    progressBar.setAttribute('aria-valuenow', data.progress);
+                    
+                    if (data.progress >= 100) {
+                        clearInterval(intervalId);  // Stop polling when the task is complete
+                    }
+                })
+                .catch(error => console.error('Error fetching progress:', error));
+        }, 10000);  // Update every 10 seconds
+    });
 </script>
 {% endblock %}
