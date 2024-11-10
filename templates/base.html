@@ -6,6 +6,7 @@
         // This will render as a static JavaScript object after Jinja processing
             var historicalMetrics = {{ historical_metrics | safe }};
     </script>
+    <script src="{{ url_for('static', filename='js/tutorial.js') }}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Application{% endblock %}</title>
     <!-- Bootstrap CSS -->
@@ -80,6 +81,7 @@
     <div class="sidebar">
         {% if request.path != '/index' %}
             <a href="/">Home</a>
+            <button onclick="showTutorial()">Start Tutorial</button>
         {% endif %}
         
         <!-- Category: Setup -->
