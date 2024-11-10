@@ -2,12 +2,13 @@ from database import database_connection_utility as dcu
 from datetime import datetime
 import logging
 
-def get_all_metrics():
+def get_all_metrics_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = 'SELECT * FROM metrics'
+    sql = 'SELECT * FROM metrics WHERE user_id = %s'
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         metrics = cur.fetchall()
         if metrics:
             return metrics
@@ -19,13 +20,13 @@ def get_all_metrics():
         cur.close()
         conn.close()
 
-def get_metrics_dates():
+def get_metrics_dates_by_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT date_of_metric FROM metrics'''
-    
+    sql = '''SELECT date_of_metric FROM metrics WHERE user_id=%s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -37,13 +38,13 @@ def get_metrics_dates():
         conn.close()
         cur.close()
 
-def get_metrics_accuracies():
+def get_metrics_accuracies_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT accuracy FROM metrics'''
-    
+    sql = '''SELECT accuracy FROM metrics WHERE user_id=%s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -55,13 +56,13 @@ def get_metrics_accuracies():
         conn.close()
         cur.close()
 
-def get_metrics_error_rates():
+def get_metrics_error_rates_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT error_rate FROM metrics'''
-    
+    sql = '''SELECT error_rate FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -73,13 +74,13 @@ def get_metrics_error_rates():
         conn.close()
         cur.close()
 
-def get_metrics_cumlative_correct_predictions():
+def get_metrics_cumlative_correct_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT cumulative_correct_pred FROM metrics'''
-    
+    sql = '''SELECT cumulative_correct_pred FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -91,13 +92,14 @@ def get_metrics_cumlative_correct_predictions():
         conn.close()
         cur.close()
 
-def get_metrics_cumlative_incorrect_predictions():
+def get_metrics_cumlative_incorrect_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT cumulative_incorrect_pred FROM metrics'''
+    sql = '''SELECT cumulative_incorrect_pred FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -109,13 +111,14 @@ def get_metrics_cumlative_incorrect_predictions():
         conn.close()
         cur.close()
 
-def get_metrics_times_to_close():
+def get_metrics_times_to_close_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT time_to_close_correct_pred FROM metrics'''
+    sql = '''SELECT time_to_close_correct_pred FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -127,13 +130,14 @@ def get_metrics_times_to_close():
         conn.close()
         cur.close()
 
-def get_metrics_cumlative_profits():
+def get_metrics_cumlative_profits_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT cumulative_profit FROM metrics'''
+    sql = '''SELECT cumulative_profit FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -145,13 +149,14 @@ def get_metrics_cumlative_profits():
         conn.close()
         cur.close()
 
-def get_metrics_cumlative_losses():
+def get_metrics_cumlative_losses_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''SELECT cumulative_loss FROM metrics'''
+    sql = '''SELECT cumulative_loss FROM metrics WHERE user_id = %s'''
+    vals = [user_id]
     
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         dates = cur.fetchall()
         if dates:
             return dates
@@ -180,6 +185,7 @@ def get_metric_by_date_by_user(date,user_id):
     finally:
         cur.close()
         conn.close()
+
 def get_metrics_by_user_id(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -198,12 +204,13 @@ def get_metrics_by_user_id(user_id):
         cur.close()
         conn.close()
 
-def get_last_sector_breakdown_profit():
+def get_last_sector_breakdown_profit_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = "SELECT sector_bd_profit FROM metrics ORDER BY id DESC limit 1 "
+    sql = "SELECT sector_bd_profit FROM metrics WHERE user_id = %s ORDER BY id DESC limit 1 "
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         metrics = cur.fetchone()
         if metrics:
             return metrics
@@ -233,12 +240,13 @@ def get_last_metric_for_user(user_id):
         cur.close()
         conn.close()
 
-def get_last_sector_breakdown_loss():
+def get_last_sector_breakdown_loss_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = "SELECT sector_bd_loss FROM metrics ORDER BY id DESC limit 1 "
+    sql = "SELECT sector_bd_loss FROM metrics WHERE user_id = %s ORDER BY id DESC limit 1 "
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         metrics = cur.fetchone()
         if metrics:
             return metrics
@@ -250,62 +258,28 @@ def get_last_sector_breakdown_loss():
         cur.close()
         conn.close()
 
-def get_last_sector_breakdown_rec():
-    conn = dcu.get_db_connection()
-    cur = conn.cursor()
-    sql = "SELECT sector_bd_rec FROM metrics ORDER BY id DESC limit 1 "
-    try:
-        cur.execute(sql)
-        metrics = cur.fetchone()
-        if metrics:
-            return metrics
-        return {}
-    except Exception as e:
-        logging.info(e)
-        return {}
-    finally:
-        cur.close()
-        conn.close()
-
-def get_last_sector_breakdown_nrec():
-    conn = dcu.get_db_connection()
-    cur = conn.cursor()
-    sql = "SELECT sector_bd_nrec FROM metrics ORDER BY id DESC limit 1 "
-    try:
-        cur.execute(sql)
-        metrics = cur.fetchone()
-        if metrics:
-            return metrics
-        return {}
-    except Exception as e:
-        logging.info(e)
-        return {}
-    finally:
-        cur.close()
-        conn.close()
-
-def get_all_last_sector_breakdowns():
+def get_all_last_sector_breakdowns_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT 
             sector_bd_profit,
-            sector_bd_loss,
-            sector_bd_rec,
-            sector_bd_nrec
+            sector_bd_loss
             FROM metrics 
+            WHERE user_id=%s
             ORDER BY id 
             DESC 
             limit 1 
             '''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         metrics = cur.fetchone()
         if metrics:
             return metrics
-        return [{},{},{},{}]
+        return [{},{}]
     except Exception as e:
         logging.info(e)
-        return [{},{},{},{}]
+        return [{},{}]
     finally:
         cur.close()
         conn.close()
@@ -326,8 +300,6 @@ def insert_metric(metric):
                 cumulative_loss,
                 sector_bd_profit,
                 sector_bd_loss,
-                sector_bd_rec,
-                sector_bd_nrec,
                 date_of_metric,
                 user_id) VALUES (
                 %s,%s,%s,%s,
@@ -343,8 +315,6 @@ def insert_metric(metric):
             metric.cumulative_loss,
             metric.sector_breakdown_profit,
             metric.sector_breakdown_loss,
-            metric.sector_breakdown_rec,
-            metric.sector_breakdown_nrec,
             metric.date,
             metric.user_id]
     try:
@@ -374,8 +344,6 @@ def update_metric(metric, id):
                 cumulative_loss = %s,
                 sector_bd_profit = %s,
                 sector_bd_loss = %s,
-                sector_bd_rec = %s,
-                sector_bd_nrec = %s,
                 date_of_metric = %s,
                 user_id = %s
                 WHERE
@@ -389,8 +357,6 @@ def update_metric(metric, id):
             metric.cumulative_loss,
             metric.sector_breakdown_profit,
             metric.sector_breakdown_loss,
-            metric.sector_breakdown_rec,
-            metric.sector_breakdown_nrec,
             metric.date,
             metric.user_id,
             id[0]]
