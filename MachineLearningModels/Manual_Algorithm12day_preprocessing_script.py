@@ -11,6 +11,7 @@ import pickle
 from database import dataset_DAOIMPL, transactions_DAOIMPL
 from MachineLearningModels import manual_alg_requisition_script
 import sector_finder
+import concurrent.futures
 import logging
 logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log', 
                     level=logging.INFO, 
@@ -61,16 +62,23 @@ def calculate_third_check(symbol):
     except:
         return 0
     
-
+def calculate_political_sentiment():
+    neu, pos, neg = manual_alg_requisition_script.process_daily_political_sentiment()
+    return neu, pos, neg
 def calculate_sentiment(symbol):
     try:
-        company_name = sector_finder.get_stock_company_name(symbol)
-        info = manual_alg_requisition_script.request_articles(symbol, company_name)
-        sentiment_score = manual_alg_requisition_script.process_phrase_for_sentiment(info,company_name)
+        article = manual_alg_requisition_script.request_articles(symbol)
+        sentiment_score = manual_alg_requisition_script.process_phrase_for_sentiment(article)
         sentiment_score = round(sentiment_score, 2)
         return sentiment_score
     except Exception as e:
         return 0
+
+def parallel_apply(symbols, func, max_workers=4):
+    """ Helper function to apply a calculation in parallel. """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(func, symbols))
+    return results 
     
 def preprocess_first_dataframe(user_id):
     from sector_finder import get_stock_sector
@@ -88,6 +96,7 @@ def preprocess_first_dataframe(user_id):
         df1['dp'] = pd.to_datetime(df1['dp'], errors='coerce')
         df1['ds'] = pd.to_datetime(df1['ds'], errors='coerce')
         df1['sector'] = df1['symbol'].apply(get_stock_sector)
+        df1['pol_neu'], df1['pol_pos'], df1['pol_neg'] = manual_alg_requisition_script.process_daily_political_sentiment()
         df1['result'] = 0
         df1.loc[df1['actual'] > 0, 'result'] = 1
         
@@ -118,17 +127,25 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
         pd.set_option('display.max_columns', None)
         logging.info("Calculated technical indicators.")
         
-        # Calculate Stocksbot manual algo checks
-        df['check1sl'] = df['symbol'].apply(lambda x: calculate_first_check(x))
+        logging.info("Starting parallel processing for check1sl.")
+        df['check1sl'] = parallel_apply(df['symbol'], calculate_first_check)
         logging.info("Calculated slopes.")
-        df['check2rev'] = df['symbol'].apply(lambda x: calculate_second_check(x))
+
+        logging.info("Starting parallel processing for check2rev.")
+        df['check2rev'] = parallel_apply(df['symbol'], calculate_second_check)
         logging.info("Calculated reversals.")
-        df['check3fib'] = df['symbol'].apply(lambda x: calculate_third_check(x))
+
+        logging.info("Starting parallel processing for check3fib.")
+        df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
         logging.info("Calculated fibs.")
-        df['check4sa'] = df['symbol'].apply(lambda x: calculate_sentiment(x))
+
+        logging.info("Starting parallel processing for check4sa.")
+        df['sa_neu'] , df['sa_pos'], df['sa_neg'] = parallel_apply(df['symbol'], calculate_sentiment)
         logging.info("Calculated sentiment.")
-        # CHANGE BACK ----------------------------------------------------------------------------------------------------------------
-        df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib'] + df['check4sa']
+        df['pol_neu'], df['pol_pos'], df['pol_neg'] = manual_alg_requisition_script.process_daily_political_sentiment()
+        # Calculate final confidence score
+        df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
+        logging.info("Calculated confidence.")
         # ---------------------------------------------------------------------------------------------------------------------------
         logging.info("Calculated confidence.")
         df = df.dropna()
