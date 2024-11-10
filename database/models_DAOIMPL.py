@@ -118,6 +118,23 @@ def get_model_name_for_model_by_model_id(model_id):
         conn.close()
         cursor.close()
 
+def get_model_id_for_model_by_model_name(model_name):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT id FROM models WHERE model_name = %s"
+    vals = [model_name]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+        return []
+    except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
 def get_selected_models_for_user(user_id):
     conn = dcu.get_db_connection()
     cursor = conn.cursor()
