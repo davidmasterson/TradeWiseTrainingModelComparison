@@ -1,6 +1,7 @@
 import sector_finder
 import logging
 import yahoo_finance
+from MachineLearningModels import manual_alg_requisition_script
 
 class transaction:
 
@@ -26,6 +27,8 @@ class transaction:
         self.result = result
         self.sector = sector_finder.get_stock_sector(self.symbol)
         self.processed = processed
+        self.pol_neu_open, self.pol_pos_open, self.pol_neg_open = manual_alg_requisition_script.process_daily_political_sentiment()
+        self.sa_neu_open, self.sa_pos_open, self.sa_neg_open = transaction.calculate_sentiment(self.symbol)
 
     def aggregate_sectors_for_stock_symbols(symbols):
         sectors = {}
@@ -39,3 +42,13 @@ class transaction:
                 sectors[sector] = 1  # Initialize the sector count if it doesn't exist yet
         
         return sectors  # Return the aggregated sector counts
+    
+    def calculate_sentiment(symbol):
+        try:
+            info = manual_alg_requisition_script.request_articles(symbol)
+            avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
+            logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
+            return avg_neut, avg_pos, avg_neg 
+        except Exception as e:
+            logging.error(f'Error calculating sentiment: {e}')
+            return 0, 0, 0

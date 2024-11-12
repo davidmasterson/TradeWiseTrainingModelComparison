@@ -567,11 +567,21 @@ def insert_transaction(transaction, pending_order_id):
             user_id,
             sector,
             processed
+            
+            pol_neu_open,
+            pol_pos_open,
+            pol_neg_open,
+            sa_neu_open,
+            sa_pos_open,
+            sa_neg_open
+            
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s,%s,%s,%s
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s
             )
             '''
     vals = [transaction.symbol,
@@ -593,7 +603,14 @@ def insert_transaction(transaction, pending_order_id):
             transaction.result,
             transaction.user_id,
             transaction.sector,
-            transaction.processed]
+            transaction.processed,
+            transaction.pol_neu_open,
+            transaction.pol_pos_open,
+            transaction.pol_neg_open,
+            transaction.sa_neu_open,
+            transaction.sa_pos_open,
+            transaction.sa_neg_open
+            ]
     try:
         cur.execute(sql,vals)
         conn.commit()

@@ -160,8 +160,10 @@ final_df = pd.DataFrame(finalized_dataset_data)
 # # Drop specified rows and reset index
 # final_df = final_df.drop(indices_to_drop).reset_index(drop=True)
 # final_df = final_df.loc[:, ~final_df.columns.str.contains('^Unnamed')]
-# print(final_df)
-print(final_df.columns.to_list())
+print(final_df)
+
+# final_df.drop(['pol_neu','pol_pos','pol_neg','sa_neu','sa_pos','sa_neg'], axis=1, inplace=True)
+# print(final_df.columns.to_list())
 
 # final_df_bin = pickle.dumps(final_df)
 # newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),1)

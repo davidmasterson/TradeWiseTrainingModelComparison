@@ -29,6 +29,12 @@
             
             <label for="alpaca_secret_key">Alpaca Secret Key:</label>
             <input type="text" id="alpaca_secret_key" name="alpaca_secret_key"><br>
+            
+            <label for="alpaca_endpoint">Alpaca Endpoint:</label>
+                <select id="alpaca_endpoint" name="alpaca_endpoint">
+                    <option value="https://api.alpaca.markets">https://api.alpaca.markets</option>
+                    <option value="https://paper-api.alpaca.markets">https://paper-api.alpaca.markets/v2</option>
+                </select><br>
         
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" required><br>
@@ -40,10 +46,15 @@
             <input type="maxpps" id="maxpps" name="maxpps" required><br>
             
             <label for="risk">Risk Tolerance:</label>
-            <input type="risk" id="risk" name="risk" required><br>
+            <select id="risk" name="risk">
+                <option value="high">high</option>
+                <option value="medium">medium</option>
+                <option value="low">low</option>
+            </select><br>
             
             <label for="conf_thresh">Confidence Threshold:</label>
-            <input type="conf_thresh" id="conf_thresh" name="conf_thresh" required><br>
+            <input type="range" id="conf_thresh" name="conf_thresh" min="0" max="100" value="50" required>
+            <span id="conf_thresh_value">50%</span><br>
             
             <label for="mints">Min Total Per Transaction:</label>
             <input type="mints" id="mints" name="mints" required><br>
@@ -74,4 +85,12 @@
         width: 100%;
     }
 </style>
+<script>
+    const slider = document.getElementById("conf_thresh");
+    const output = document.getElementById("conf_thresh_value");
+
+    slider.oninput = function() {
+        output.innerText = this.value + "%";
+    }
+</script>
 {% endblock %}

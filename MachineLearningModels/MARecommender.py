@@ -64,12 +64,14 @@ def calculate_third_check(symbol):
 
 def calculate_sentiment(symbol):
     try:
-        
         info = manual_alg_requisition_script.request_articles(symbol)
-        sentiment_score = manual_alg_requisition_script.process_phrase_for_sentiment(info)
-        return sentiment_score
+        avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
+        logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
+        return (avg_pos + avg_neg) / 2
+        # return avg_neut, avg_pos, avg_neg TODO uncomment 
     except Exception as e:
-        return 0
+        logging.error(f'Error calculating sentiment: {e}')
+        return 0 #TODO change back to 0, 0, 0
     
 
         
@@ -87,7 +89,7 @@ logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_
                     level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
-def parallel_apply(symbols, func, max_workers=4):
+def parallel_apply(symbols, func, max_workers=20):
     """ Helper function to apply a calculation in parallel. """
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(func, symbols))
@@ -121,11 +123,20 @@ def preprocess_data(user_id, model_name):
         logging.info("Starting parallel processing for check3fib.")
         df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
         logging.info("Calculated fibs.")
-
-        logging.info("Starting parallel processing for check4sa.")
-        df['sa_neu'] , df['sa_pos'], df['sa_neg'] = parallel_apply(df['symbol'], calculate_sentiment)
-        logging.info("Calculated sentiment.")
-        df['pol_neu'], df['pol_pos'], df['pol_neg'] = manual_alg_requisition_script.process_daily_political_sentiment()
+        # df['check4sa'] = parallel_apply(df['symbol'], calculate_sentiment)
+        # Calculate sentiment scores for each symbol using parallel processing
+        # try:
+        #     df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
+        # except Exception as e:
+        #     logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
+        # logging.info("Calculated symbol-specific sentiment.")
+        # # Calculate the political sentiment scores once, as they apply to all rows
+        # try:
+        #     pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
+        #     df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
+        #     logging.info("Calculated and applied daily political sentiment scores to all rows.")
+        # except Exception as e:
+        #     logging.error(f"Error calculating political sentiment: {e}")
         # Calculate final confidence score
         df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
         logging.info("Calculated confidence.")
@@ -157,6 +168,8 @@ def preprocess_data(user_id, model_name):
         df['hit_tp1_within_12'] = None
 
         X = df.drop(['hit_tp1_within_12'], axis=1)
+        logging.error(f'X = {X.columns.to_list()}')
+        logging.error(f'DF = {df.columns.to_list()}')
         X = X.apply(pd.to_numeric, errors='coerce').fillna(0)  # Ensure all data in X is numeric
 
         # Scale features
@@ -174,7 +187,7 @@ def preprocess_data(user_id, model_name):
         # Filter symbols based on probability threshold (e.g., >= 0.7 for recommendation)
         symbols = symdf['symbol'].tolist()  # List of symbols for each row
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con}
-                   for symbol, pred, prob, con in zip(symbols, predictions, probabilities, confidence_scores) if pred == 1 and prob >= .6]
+                   for symbol, pred, prob, con in zip(symbols, predictions, probabilities, confidence_scores) if pred == 1 and prob >= .5]
 
         logging.info("Predictions and probabilities calculated successfully.")
         

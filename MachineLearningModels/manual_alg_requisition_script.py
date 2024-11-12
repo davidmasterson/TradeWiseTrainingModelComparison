@@ -24,44 +24,49 @@ def process_phrase_for_sentiment(articles_list):
     negs = []
     posis = []
     neutrs = []
-    for article in articles_list:
-        analyzer = SentimentIntensityAnalyzer()
-        results_dict = analyzer.polarity_scores(article)
-        negative_perc = results_dict['neg'] * 100
-        positive_perc = results_dict['pos'] * 100
-        neutr_perc = results_dict['neu'] * 100
+    if not articles_list:
+        return 0, 0, 0  # Return default values if no articles are provided
+    logging.info(f'Articles list contains {len(articles_list)}')
+    try:
+        for article in articles_list:
+            analyzer = SentimentIntensityAnalyzer()
+            results_dict = analyzer.polarity_scores(article)
+            negs.append(results_dict['neg'] * 100)
+            posis.append(results_dict['pos'] * 100)
+            neutrs.append(results_dict['neu'] * 100)
         
-        print(negative_perc,positive_perc,neutr_perc)
-        negs.append(negative_perc)
-        posis.append(positive_perc)
-        neutrs.append(neutr_perc)
-        avg_neut = int(sum(neutrs)/len(neutrs))
-        avg_pos = int(sum(posis)/len(posis))
-        avg_neg = int(sum(negs)/len(negs))
-        return avg_neut,avg_pos,avg_neg
-    return 0
+        avg_neut = int(sum(neutrs) / len(neutrs)) if neutrs else 0
+        avg_pos = int(sum(posis) / len(posis)) if posis else 0
+        avg_neg = int(sum(negs) / len(negs)) if negs else 0
+        logging.info(f'Returning {avg_neut, avg_pos, avg_neg}')
+        return avg_neut, avg_pos, avg_neg
+    except Exception as e:
+        logging.error(f'Unable to process SA for symbol  phrase due to {e}')
+        return 0, 0, 0
 
 def process_political_phrase_for_sentiment(articles_list):
     
     negs = []
     posis = []
     neutrs = []
-    for article in articles_list:
-        analyzer = SentimentIntensityAnalyzer()
-        results_dict = analyzer.polarity_scores(article)
-        negative_perc = results_dict['neg'] * 100
-        positive_perc = results_dict['pos'] * 100
-        neutr_perc = results_dict['neu'] * 100
+    if not articles_list:
+        return 0, 0, 0  # Return default values if no articles are provided
+    try:
+        for article in articles_list:
+            analyzer = SentimentIntensityAnalyzer()
+            results_dict = analyzer.polarity_scores(article)
+            negs.append(results_dict['neg'] * 100)
+            posis.append(results_dict['pos'] * 100)
+            neutrs.append(results_dict['neu'] * 100)
         
-        print(negative_perc,positive_perc,neutr_perc)
-        negs.append(negative_perc)
-        posis.append(positive_perc)
-        neutrs.append(neutr_perc)
-        avg_neut = int(sum(neutrs)/len(neutrs))
-        avg_pos = int(sum(posis)/len(posis))
-        avg_neg = int(sum(negs)/len(negs))
-        return avg_neut,avg_pos,avg_neg
-    return 0
+        avg_neut = int(sum(neutrs) / len(neutrs)) if neutrs else 0
+        avg_pos = int(sum(posis) / len(posis)) if posis else 0
+        avg_neg = int(sum(negs) / len(negs)) if negs else 0
+        logging.info(f'Returning {avg_neut, avg_pos, avg_neg}')
+        return avg_neut, avg_pos, avg_neg
+    except Exception as e:
+        logging.error(f'Unable to process political phrase due to {e}')
+        return 0, 0, 0
 
 def fetch_full_article(url):
     res = rq.get(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -87,22 +92,25 @@ def process_daily_political_sentiment():
 
     headers = {
         "x-rapidapi-host": "cnn-api1.p.rapidapi.com",
-        "x-rapidapi-key": "0e3005b6abmsh9fa4e0595e68252p1098a7jsne5f4cf4abb2f"
+        "x-rapidapi-key": os.getenv('CNN_API_KEY')
     }
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        data = response.json()
+        links = [item['link'] for item in data['latest'] if 'link' in item]
+        links = set(links[:11])
+        print(links) 
+        for url in links:
+            article =fetch_full_article(url)
+            articles.append(article)
+        neu, pos, neg = process_political_phrase_for_sentiment(articles)
+        logging.info(f'returning {neu, pos, neg}')
+        return neu, pos, neg 
+    except Exception as e:
+        logging.error(f'Unable to process daily political sentiment due to: {e}')  
+        return 0, 0, 0
 
-    response = requests.get(url, headers=headers, params=querystring)
-    data = response.json()
-    links = [item['link'] for item in data['latest'] if 'link' in item]
-    links = set(links[:11])
-    print(links) 
-    for url in links:
-        article =fetch_full_article(url)
-        articles.append(article)
-    neu, pos, neg = process_political_phrase_for_sentiment(articles)
-    return neu, pos, neg   
-    
 def request_articles(symbol):
-    # --------Polygon financial News API -------------------------
     key = os.getenv('POLY_NEWS_KEY')
     url = (f'https://api.polygon.io/v2/reference/news?ticker={symbol}')
     full_url = url + key
@@ -111,26 +119,24 @@ def request_articles(symbol):
     
     articles = []
     try:
-        res1 = [[article['description'], article['article_url']] for article in res['results'] if symbol in article['tickers']]
-        for x, y in res1:
+        res1 = [article['article_url'] for article in res['results'] if symbol in article['tickers']]
+        for y in res1:
             full = fetch_full_article(y)
             if full:
                 articles.append(full)
     except Exception as e:
         logging.error(f'Unable to fetch article from Polygon API due to {e}')
-        pass
+    finally:
     
+        res2 = fetch_articles_from_Finlight(symbol, 'finance.yahoo.com')
+        res3 = fetch_articles_from_Finlight(symbol, 'cnbc.com')
+        res4 = fetch_articles_from_Finlight(symbol, 'nytimes.com')
+        finlight_articles = [res2, res3, res4]
+        for text in finlight_articles:
+            if text:
+                articles.append(text)
         
-        
-    #---------Financial New API 2----------------------------------
-    res2 = fetch_articles_from_Finlight(symbol, 'finance.yahoo.com')
-    res3 = fetch_articles_from_Finlight(symbol, 'cnbc.com')
-    res4 = fetch_articles_from_Finlight(symbol, 'nytimes.com') 
-    finlight_articles = [res2,res3,res4]
-    for text in finlight_articles:
-        if text:
-            articles.append(text)
-    return [articles]
+        return articles  # Return the list directly
 
 def fetch_articles_from_Finlight(symbol, source):
     from_date = date.today() - timedelta(days=7)

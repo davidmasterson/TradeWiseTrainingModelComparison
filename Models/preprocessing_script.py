@@ -88,6 +88,38 @@ class Preprocessing_Script:
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
+                                 tempfile_path1, 
+                                 str(dataset_id), 
+                                 str(user_id), model_name,str(preprocessing_script_id)], 
+                                capture_output=True,
+                                text=True,
+                                env=env  # Pass the modified environmen
+                            )
+        preprocess_writer.close()
+        return result
+    
+    def retrainer_preprocessor_for_recommender(preprocessing_script_id, project_root, dataset_id, user_id, model_name):
+        #get preprocess script and convert from binary Save to temp file location.
+        preprocess_script_binary = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(preprocessing_script_id)
+        
+        # De pickle to text
+        preprocess_script = pickle.loads(preprocess_script_binary)
+
+        # Ensure the content is in text format
+        if isinstance(preprocess_script, bytes):
+            preprocess_script = preprocess_script.decode('utf-8')  # Convert binary to text if necessary
+
+        # Write the script content to a temporary Python file
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_writer:
+            preprocess_writer.write(preprocess_script)
+            tempfile_path1 = preprocess_writer.name
+            
+        
+        # Path where the preprocessed data will be saved by the script
+        env = os.environ.copy()
+        env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
+        # Run preprocessing subprocess to output the preprocessed data
+        result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
                                  '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/Manual_Algorithm12day_preprocessing_script.py', 
                                  str(dataset_id), 
                                  str(user_id), model_name,str(preprocessing_script_id)], 

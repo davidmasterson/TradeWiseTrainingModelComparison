@@ -67,12 +67,13 @@ def calculate_political_sentiment():
     return neu, pos, neg
 def calculate_sentiment(symbol):
     try:
-        article = manual_alg_requisition_script.request_articles(symbol)
-        sentiment_score = manual_alg_requisition_script.process_phrase_for_sentiment(article)
-        sentiment_score = round(sentiment_score, 2)
-        return sentiment_score
+        info = manual_alg_requisition_script.request_articles(symbol)
+        avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
+        logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
+        return avg_neut, avg_pos, avg_neg 
     except Exception as e:
-        return 0
+        logging.error(f'Error calculating sentiment: {e}')
+        return 0, 0, 0
 
 def parallel_apply(symbols, func, max_workers=4):
     """ Helper function to apply a calculation in parallel. """
@@ -88,7 +89,8 @@ def preprocess_first_dataframe(user_id):
         transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
         print(transactions[0])
         columns = ['id','symbol','dp','ppps','qty','total_buy','pstring','ds','spps','tsp','sstring','expected',
-                   'proi','actual','tp1','sop','confidence','result','user_id','sector', 'processed']
+                   'proi','actual','tp1','sop','confidence','result','user_id','sector', 'processed','pol_neu_open',
+                   'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open']
         df1 = pd.DataFrame(data=transactions, columns=columns)
         
         # Drop rows with missing 'ds' and apply transformations
@@ -113,68 +115,82 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
     from database import preprocessing_scripts_DAOIMPL
     from flask import flash
     from Models import preprocessing_script
+    from io import BytesIO
+    user_id = int(user_id)
+    dataset_id = int(dataset_id)
+    script_id = int(script_id)
     try:
-        
-        try: 
+        transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
+        if len(transactions) > 0:
             df1 = preprocess_first_dataframe(user_id) 
             df = df1[0] 
             transactions = df1[1] 
-        except Exception as e:
-            flash('No reason to retrain at this time. There have not been any changes since last retraining.','error')
-            return
         
-        pd.set_option('display.max_rows', None)
-        pd.set_option('display.max_columns', None)
-        logging.info("Calculated technical indicators.")
         
-        logging.info("Starting parallel processing for check1sl.")
-        df['check1sl'] = parallel_apply(df['symbol'], calculate_first_check)
-        logging.info("Calculated slopes.")
-
-        logging.info("Starting parallel processing for check2rev.")
-        df['check2rev'] = parallel_apply(df['symbol'], calculate_second_check)
-        logging.info("Calculated reversals.")
-
-        logging.info("Starting parallel processing for check3fib.")
-        df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
-        logging.info("Calculated fibs.")
-
-        logging.info("Starting parallel processing for check4sa.")
-        df['sa_neu'] , df['sa_pos'], df['sa_neg'] = parallel_apply(df['symbol'], calculate_sentiment)
-        logging.info("Calculated sentiment.")
-        df['pol_neu'], df['pol_pos'], df['pol_neg'] = manual_alg_requisition_script.process_daily_political_sentiment()
-        # Calculate final confidence score
-        df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
-        logging.info("Calculated confidence.")
-        # ---------------------------------------------------------------------------------------------------------------------------
-        logging.info("Calculated confidence.")
-        df = df.dropna()
-        # Date-based feature engineering
-        df['dp'] = pd.to_datetime(df['dp'])
-        df['purchase_day'] = df['dp'].dt.day
-        df['purchase_month'] = df['dp'].dt.month
-        df['purchase_year'] = df['dp'].dt.year
-        df['ds'] = pd.to_datetime(df['ds'])
-        df['sell_day'] = df['ds'].dt.day
-        df['sell_month'] = df['ds'].dt.month
-        df['sell_year'] = df['ds'].dt.year
-        logging.info("Performed date-based feature engineering.")
-
-#         # Drop unnecessary columns
-        df = df.drop([ 'id','pstring','spps','tsp','sstring','expected','proi','result','user_id',
-                      'processed','sell_day','sell_month','sell_year'], axis=1)
-        logging.info("Dropped unnecessary columns.")
-        # Ensure the target column is reset
-        df['hit_tp1_within_12'] = df.apply(calculate_target, axis=1)
-        logging.info(f"Recalculated target. Distribution:\n{df['hit_tp1_within_12'].value_counts()}")
-        # COMBINE DATAFRAMES TO A FULL DF CONTAINING NEW AND OLD TRANSACTION DATA ROWS
-        dataset_id = int(dataset_id)
-        finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
-        finalized_dataset_data = pickle.loads(finalized_dataset_data)
-        logging.info("Data loaded into DataFrame.")
-        finalized_df = finalized_dataset_data
-        df_final = pd.concat([df, finalized_df], ignore_index=True)
-        df_final = df_final.reset_index(drop=True)
+            pd.set_option('display.max_rows', None)
+            pd.set_option('display.max_columns', None)
+            logging.info("Calculated technical indicators.")
+            
+            logging.info("Starting parallel processing for check1sl.")
+            df['check1sl'] = parallel_apply(df['symbol'], calculate_first_check)
+            logging.info("Calculated slopes.")
+            logging.info("Starting parallel processing for check2rev.")
+            df['check2rev'] = parallel_apply(df['symbol'], calculate_second_check)
+            logging.info("Calculated reversals.")
+            logging.info("Starting parallel processing for check3fib.")
+            df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
+            logging.info("Calculated fibs.")
+            # try:
+            #     df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
+            # except Exception as e:
+            #     logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
+            # logging.info("Calculated symbol-specific sentiment.")
+            # # Calculate the political sentiment scores once, as they apply to all rows
+            # try:
+            #     pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
+            #     df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
+            #     logging.info("Calculated and applied daily political sentiment scores to all rows.")
+            # except Exception as e:
+            #     logging.error(f"Error calculating political sentiment: {e}")
+            # Calculate final confidence score
+            df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
+            logging.info("Calculated confidence.")
+            # ---------------------------------------------------------------------------------------------------------------------------
+            logging.info("Calculated confidence.")
+            df = df.dropna()
+            # Date-based feature engineering
+            df['dp'] = pd.to_datetime(df['dp'])
+            df['purchase_day'] = df['dp'].dt.day
+            df['purchase_month'] = df['dp'].dt.month
+            df['purchase_year'] = df['dp'].dt.year
+            df['ds'] = pd.to_datetime(df['ds'])
+            df['sell_day'] = df['ds'].dt.day
+            df['sell_month'] = df['ds'].dt.month
+            df['sell_year'] = df['ds'].dt.year
+            logging.info("Performed date-based feature engineering.")
+        #        # Drop unnecessary columns
+            df = df.drop([ 'id','pstring','spps','tsp','sstring','expected','proi','result','user_id',
+                        'processed','sell_day','sell_month','sell_year'], axis=1)
+            logging.info("Dropped unnecessary columns.")
+            # Ensure the target column is reset
+            df['hit_tp1_within_12'] = df.apply(calculate_target, axis=1)
+            logging.info(f"Recalculated target. Distribution:\n{df['hit_tp1_within_12'].value_counts()}")
+        
+        if len(transactions) > 0:
+            # COMBINE DATAFRAMES TO A FULL DF CONTAINING NEW AND OLD TRANSACTION DATA ROWS
+            dataset_id = int(dataset_id)
+            finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+            finalized_dataset_data = pickle.loads(finalized_dataset_data)
+            logging.info("Data loaded into DataFrame.")
+            finalized_df = finalized_dataset_data
+            df_final = pd.concat([df, finalized_df], ignore_index=True)
+            df_final = df_final.reset_index(drop=True)
+        else:
+            dataset_id = int(dataset_id)
+            finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+            finalized_dataset_data = pickle.loads(finalized_dataset_data)
+            df_final = finalized_dataset_data
+            
         try:
             df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
         except:
@@ -188,9 +204,9 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
         df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
         df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
         logging.info("Encoded categorical features.")
-        
-        df_final.to_csv('LAST.csv')
-        df_final = df_final.drop(['dp','ds', 'actual', 'confidence'], axis=1)
+        if len(transactions) > 0:
+            df_final.to_csv('LAST.csv')
+            df_final = df_final.drop(['dp','ds', 'actual', 'confidence'], axis=1)
         
         new_dataset = df_final
         df_final = df_final.drop(['sector', 'symbol'], axis=1)
@@ -245,7 +261,7 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
         try:
             final_df_bin = pickle.dumps(new_dataset)
             dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
-            newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),1)
+            newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),user_id)
             dataset_DAOIMPL.update_dataset(newd,dataset_id)
             logging.info('Uploading of converted dataset is complete.')
         except Exception as e:

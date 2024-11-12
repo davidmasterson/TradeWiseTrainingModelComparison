@@ -68,3 +68,19 @@ def insert_recommendation(recommendation):
     finally:
         conn.close()
         cur.close()
+
+def delete_all_recommended_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''DELETE FROM recommended
+            WHERE user_id = %s'''
+    vals = [user_id]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+    except Exception as e:
+        logging.error(f'{datetime.now()}: Unable to delete recommendations due to {e}')
+        return []
+    finally:
+        conn.close()
+        cur.close()

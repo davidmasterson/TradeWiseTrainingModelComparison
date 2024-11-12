@@ -16,6 +16,40 @@
             <label for="modelDescription">Model Description</label>
             <textarea id="modelDescription" name="model_description" class="form-control" placeholder="Describe the model" required></textarea>
         </div>
+        
+        <div class="form-group">
+            <h2> Please choose the dataset, preprocessing script, and training script that will be used to create this model.</h2>
+            <div class="dataset_data_container">
+                <label for="dataset}">Select Dataset:</label>
+                <select name="dataset" id="dataset" required>
+                    <option value="">Choose Dataset</option>
+                    {% for dataset in datasets %}
+                    <option value="{{ dataset[0] }}">{{ dataset[1] }} - {{ dataset[5] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <!-- Dropdown for Preprocessed Data Selection -->
+             <div class="preprocessed_data_container">
+                <label for="preprocessing_script">Select Preprocessing Script:</label>
+                <select name="preprocessing_script" id="preprocessing_script" required>
+                    <option value="">Choose Preprocessing Script</option>
+                    {% for script in preprocessing_scripts %}
+                    <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Dropdown for Training Script Selection -->
+            <div class="training_script_data_container">
+            <label for="training_script">Select Training Script:</label>
+                <select name="training_script" id="training_script" required>
+                    <option value="">Choose Training Script</option>
+                    {% for script in training_scripts %}
+                    <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
 
         <!-- <div class="form-group">
             <label for="modelFile">Model Training File (.h5, .json, or other format)</label>

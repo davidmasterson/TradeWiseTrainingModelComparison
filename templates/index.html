@@ -29,6 +29,7 @@
             <div class="button-container">
                 <form action="{{ url_for('train_model', model_name=curmetric.model_name) }}" method="POST">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="model_name" value="{{ curmetric.model_name }}"/>
                     <!-- Dropdown for Dataset Selection -->
                     <div class="dataset_data_container">
                         <label for="dataset_data_{{ curmetric.model_name }}">Select Dataset:</label>

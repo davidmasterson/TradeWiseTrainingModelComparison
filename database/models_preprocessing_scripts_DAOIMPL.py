@@ -42,10 +42,29 @@ def get_model_id_by_pp_script_id(pp_script_id):
         cur.close()
         conn.close()
         
+def get_entry_by_model_id(model_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * from model_preprocessing_scripts WHERE model_id = %s'''
+    vals = [
+        model_id
+    ]
+    try:
+        cur.execute(sql, vals)
+        model_id = cur.fetchone()
+        if model_id:
+            return model_id[0]
+        return []
+    except Exception as e:
+        logging.error( f'{datetime.now()}: Unable to get model id due to {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
 def insert_into_models_preprocessing_scripts_table(model_ps_object):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''INSERT INTO models_preprocessing_scripts(
+    sql = '''INSERT INTO model_preprocessing_scripts(
                 model_id,
                 preprocessing_script_id)
                 VALUES(
@@ -68,12 +87,14 @@ def insert_into_models_preprocessing_scripts_table(model_ps_object):
 def update_models_preprocessing_script_table(model_ps_object):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = '''UPDATE models_preprocessing_scripts SET
-                models_id = %s,
-                preprocessing_script_id = %s'''
+    sql = '''UPDATE model_preprocessing_scripts SET
+                model_id = %s,
+                preprocessing_script_id = %s
+                WHERE model_id = %s'''
     vals = [
         model_ps_object.model_id,
-        model_ps_object.preprocessing_script_id
+        model_ps_object.preprocessing_script_id,
+        model_ps_object.model_id
     ]
     try:
         cur.execute(sql, vals)
