@@ -43,7 +43,7 @@ def get_alpaca_stream_connection(username):
     this_user = user_DAOIMPL.get_user_by_username(username)[0]
     alpaca_key = this_user['alpaca_key']
     alpaca_secret_key = this_user['alpaca_secret']
-    alpaca_base_url = "https://paper-api.alpaca.markets"  # Base URL for paper trading
+    alpaca_base_url = this_user['alpaca_endpoint']  # Base URL for paper trading
 
     # Remove 'data_stream' argument
     conn = Stream(alpaca_key, alpaca_secret_key, base_url=alpaca_base_url)
@@ -148,18 +148,28 @@ def connect_to_user_alpaca_account(user_name):
     try:
         user_alpaca_account_key = this_user['alpaca_key']
         user_alpaca_secret_key = this_user['alpaca_secret']
+        base_url = this_user['alpaca_endpoint']
         # api = tradeapi.REST(user_alpaca_account_key, user_alpaca_secret_key, 'paper-api.alpaca.markets', api_version='v2')
-        conn = tradeapi.stream.Stream(user_alpaca_account_key, user_alpaca_secret_key, base_url='paper-api.alpaca.markets')
+        conn = tradeapi.stream.Stream(user_alpaca_account_key, user_alpaca_secret_key, base_url)
         return conn
     except Exception as e:
         logging.error(f'Unable to connect to user alpaca account due to : {e}')
+
+def create_alpaca_api_during_api_key_resub(api_key, api_secret, api_endpoint):
+    try:
+        api = tradeapi.REST(api_key, api_secret, api_endpoint)
+        return api
+    except Exception as e:
+        logging.error(f'Unable to update api key due to {e}')
+        return None
 
 def create_alpaca_api(username):
     this_user = user_DAOIMPL.get_user_by_username(username)[0]
     try:
         user_alpaca_account_key = this_user['alpaca_key']
         user_alpaca_secret_key = this_user['alpaca_secret']
-        api = tradeapi.REST(user_alpaca_account_key, user_alpaca_secret_key, 'https://paper-api.alpaca.markets', api_version='v2')
+        base_url = this_user['alpaca_endpoint']
+        api = tradeapi.REST(user_alpaca_account_key, user_alpaca_secret_key,base_url)
         return api
     except Exception as e:
         logging.error(f'Unable to connect to user alpaca account due to : {e}')
@@ -297,12 +307,15 @@ def subscribe_to_data_streams(ws, username):
     ws.send(json.dumps(subscribe_data))
 
 
-def run_alpaca_websocket(username,user_id, alpaca_key, alpaca_secret):
+def run_alpaca_websocket(username,user_id, alpaca_key, alpaca_secret, alpaca_endpoint):
     websocket.enableTrace(True)
-    
+    if alpaca_endpoint == 'https://api.alpaca.markets':
+        stream_endpoint = 'wss://api.alpaca.markets/stream'
+    else:
+        stream_endpoint = 'wss://paper-api.alpaca.markets/stream'
     # Initialize WebSocketApp and pass the API key and secret to on_open
     ws = websocket.WebSocketApp(
-        'wss://paper-api.alpaca.markets/stream',
+        stream_endpoint,
         on_open=lambda ws: on_open(ws, username, alpaca_key, alpaca_secret),
         on_message=lambda ws, message: on_message(ws, message, username, user_id),
         on_error=on_error,
