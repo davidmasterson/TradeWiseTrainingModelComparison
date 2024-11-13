@@ -62,18 +62,7 @@ def calculate_third_check(symbol):
     except:
         return 0
     
-def calculate_political_sentiment():
-    neu, pos, neg = manual_alg_requisition_script.process_daily_political_sentiment()
-    return neu, pos, neg
-def calculate_sentiment(symbol):
-    try:
-        info = manual_alg_requisition_script.request_articles(symbol)
-        avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
-        logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
-        return avg_neut, avg_pos, avg_neg 
-    except Exception as e:
-        logging.error(f'Error calculating sentiment: {e}')
-        return 0, 0, 0
+
 
 def parallel_apply(symbols, func, max_workers=4):
     """ Helper function to apply a calculation in parallel. """
@@ -90,6 +79,7 @@ def preprocess_first_dataframe(user_id):
         print(transactions[0])
         columns = ['id','symbol','dp','ppps','qty','total_buy','pstring','ds','spps','tsp','sstring','expected',
                    'proi','actual','tp1','sop','confidence','result','user_id','sector', 'processed','pol_neu_open',
+                   'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open','pol_neu_open',
                    'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open']
         df1 = pd.DataFrame(data=transactions, columns=columns)
         
@@ -97,17 +87,15 @@ def preprocess_first_dataframe(user_id):
         df1.dropna(subset=['ds'], inplace=True)
         df1['dp'] = pd.to_datetime(df1['dp'], errors='coerce')
         df1['ds'] = pd.to_datetime(df1['ds'], errors='coerce')
-        df1['sector'] = df1['symbol'].apply(get_stock_sector)
-        df1['pol_neu'], df1['pol_pos'], df1['pol_neg'] = manual_alg_requisition_script.process_daily_political_sentiment()
-        df1['result'] = 0
-        df1.loc[df1['actual'] > 0, 'result'] = 1
+        df1['result'] = df1['result'].apply(lambda x: 0 if x == 'loss' else 1)
+        
         
         logging.info("First dataset processed successfully.")
         return [df1,transactions]
 
     except Exception as e:
         logging.error(f"Error in first dataset preprocessing: {e}")
-        return pd.DataFrame()
+        return None
         
 # Main preprocessing function
 def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
@@ -120,9 +108,10 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
     dataset_id = int(dataset_id)
     script_id = int(script_id)
     try:
-        transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
-        if len(transactions) > 0:
-            df1 = preprocess_first_dataframe(user_id) 
+        
+        
+        df1 = preprocess_first_dataframe(user_id) 
+        if df1 is not None:
             df = df1[0] 
             transactions = df1[1] 
         
@@ -140,18 +129,6 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             logging.info("Starting parallel processing for check3fib.")
             df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
             logging.info("Calculated fibs.")
-            # try:
-            #     df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
-            # except Exception as e:
-            #     logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
-            # logging.info("Calculated symbol-specific sentiment.")
-            # # Calculate the political sentiment scores once, as they apply to all rows
-            # try:
-            #     pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
-            #     df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
-            #     logging.info("Calculated and applied daily political sentiment scores to all rows.")
-            # except Exception as e:
-            #     logging.error(f"Error calculating political sentiment: {e}")
             # Calculate final confidence score
             df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
             logging.info("Calculated confidence.")
@@ -176,104 +153,109 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             df['hit_tp1_within_12'] = df.apply(calculate_target, axis=1)
             logging.info(f"Recalculated target. Distribution:\n{df['hit_tp1_within_12'].value_counts()}")
         
-        if len(transactions) > 0:
             # COMBINE DATAFRAMES TO A FULL DF CONTAINING NEW AND OLD TRANSACTION DATA ROWS
             dataset_id = int(dataset_id)
             finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
-            finalized_dataset_data = pickle.loads(finalized_dataset_data)
-            logging.info("Data loaded into DataFrame.")
-            finalized_df = finalized_dataset_data
-            df_final = pd.concat([df, finalized_df], ignore_index=True)
-            df_final = df_final.reset_index(drop=True)
-        else:
-            dataset_id = int(dataset_id)
-            finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
-            finalized_dataset_data = pickle.loads(finalized_dataset_data)
-            df_final = finalized_dataset_data
+            if finalized_dataset_data:
+                finalized_dataset_data = pickle.loads(finalized_dataset_data)
+                logging.info("Data loaded into DataFrame.")
+                finalized_df = finalized_dataset_data
+                df = df.reset_index(drop=True)
+                finalized_df = finalized_df.reset_index(drop=True)
+                df = df.loc[:, ~df.columns.duplicated()]
+                finalized_df = finalized_df.loc[:, ~finalized_df.columns.duplicated()]
+                df_final = pd.concat([df, finalized_df], axis=0, ignore_index=True)
+                df_final = df_final.reset_index(drop=True)
+                df_final = df_final.loc[:, ~df_final.columns.duplicated()]
+            else:
+                df_final = df
+        
             
-        try:
-            df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
-        except:
-            pass
-        # Removed unnamed column
+            try:
+                df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
+            except:
+                pass
+            # Removed unnamed column
        
-        if '\x80\x04\x95~ù' in df_final:
-            df_final.drop(['\x80\x04\x95~ù'], axis = 1)
-        # Encode categorical features
-        label_encoder = LabelEncoder()
-        df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
-        df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
-        logging.info("Encoded categorical features.")
-        if len(transactions) > 0:
+            if '\x80\x04\x95~ù' in df_final:
+                df_final.drop(['\x80\x04\x95~ù'], axis = 1)
+            # Encode categorical features
+            label_encoder = LabelEncoder()
+            df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
+            df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
+            logging.info("Encoded categorical features.")
             df_final.to_csv('LAST.csv')
             df_final = df_final.drop(['dp','ds', 'actual', 'confidence'], axis=1)
         
-        new_dataset = df_final
-        df_final = df_final.drop(['sector', 'symbol'], axis=1)
-           
-        # Separate features and target
-        X = df_final.drop(['hit_tp1_within_12'], axis=1)
-        columns_list = X.columns.to_list()
-        pd.reset_option('display.max_rows')
-        pd.reset_option('display.max_columns')
-        logging.info(f'Columns are: {columns_list}')
-        y = df_final['hit_tp1_within_12']
-        logging.info("Separated features and target.")
-
-        # Ensure all data in X is numeric
-        X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
-
-        # Scale features
-        scaler = MinMaxScaler(feature_range=(0, 1))
-        X_scaled = scaler.fit_transform(X)
-
-        # Train-test split for modeling
-        X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
-        
-        # Package preprocessed data
-        preprocessed_data = {
-            'X_train': X_train,
-            'X_test': X_test,
-            'y_train': y_train,
-            'y_test': y_test,
-            'scaler': scaler,
-            'structure': 'train_test_split',
-            'columns':columns_list
-        }
-        logging.info("Packaged preprocessed data successfully.")
-
-        try: 
-            from Models import dataset
-            from datetime import datetime
-            ppdata = pickle.dumps(preprocessed_data)
-            ppscript_object = preprocessing_scripts_DAOIMPL.get_preprocessed_script_object_by_script_id(int(script_id))
-            if ppscript_object:
-                script_id = int(script_id)
-            preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_id, ppdata)
-        except Exception as e:
-            logging.error(f'Unable to update user preprocessing script preprocessed data due to {e}')
-            raise
-
-        logging.info('Updating preprocessed_data')
-        logging.info(f'Preproccesed data has been updated.')
-        logging.info('Uploading new dataset')
-        
-        try:
-            final_df_bin = pickle.dumps(new_dataset)
-            dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
-            newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),user_id)
-            dataset_DAOIMPL.update_dataset(newd,dataset_id)
-            logging.info('Uploading of converted dataset is complete.')
-        except Exception as e:
-            flash(f'Unable to update dataset due to {e}','error')
-            logging.error(f'Unable to update dataset due to {e}')
-        
-        # modify the processed field on the transactions contained in the new dataframe
-        for transaction in transactions:
-            id = int(transaction[0])
-            transactions_DAOIMPL.update_processed_status_after_training(id,user_id)
+            new_dataset = df_final
+            df_final = df_final.drop(['sector', 'symbol'], axis=1)
             
-        return preprocess_data
+            # Separate features and target
+            X = df_final.drop(['hit_tp1_within_12'], axis=1)
+            columns_list = X.columns.to_list()
+            pd.reset_option('display.max_rows')
+            pd.reset_option('display.max_columns')
+            logging.info(f'Columns are: {columns_list}')
+            y = df_final['hit_tp1_within_12']
+            logging.info("Separated features and target.")
+
+            # Ensure all data in X is numeric
+            X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+
+            # Scale features
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            X_scaled = scaler.fit_transform(X)
+
+            # Train-test split for modeling
+            X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.2, random_state=42)
+        
+            # Package preprocessed data
+            preprocessed_data = {
+                'X_train': X_train,
+                'X_test': X_test,
+                'y_train': y_train,
+                'y_test': y_test,
+                'scaler': scaler,
+                'structure': 'train_test_split',
+                'columns':columns_list
+            }
+            logging.info("Packaged preprocessed data successfully.")
+
+            try: 
+                from Models import dataset
+                from datetime import datetime
+                ppdata = pickle.dumps(preprocessed_data)
+                ppscript_object = preprocessing_scripts_DAOIMPL.get_preprocessed_script_object_by_script_id(int(script_id))
+                if ppscript_object:
+                    script_id = int(script_id)
+                preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_id, ppdata)
+            except Exception as e:
+                logging.error(f'Unable to update user preprocessing script preprocessed data due to {e}')
+                raise
+
+            logging.info('Updating preprocessed_data')
+            logging.info(f'Preproccesed data has been updated.')
+            logging.info('Uploading new dataset')
+        
+            try:
+                final_df_bin = pickle.dumps(new_dataset)
+                dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
+                newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),user_id)
+                dataset_DAOIMPL.update_dataset(newd,dataset_id)
+                logging.info('Uploading of converted dataset is complete.')
+            except Exception as e:
+                flash(f'Unable to update dataset due to {e}','error')
+                logging.error(f'Unable to update dataset due to {e}')
+            
+            # modify the processed field on the transactions contained in the new dataframe
+            for transaction in transactions:
+                id = int(transaction[0])
+                transactions_DAOIMPL.update_processed_status_after_training(id,user_id)
+                
+            return preprocess_data
+        else:
+            logging.info(' No need for retraining, positions have not been closed since last training was completed.')
+            return None
         
     except Exception as e:
         
