@@ -198,8 +198,7 @@ def handle_trade_updates(ws, event, data, username, user_id):
                 expected = total_buy * .03
                 company_name = sector_finder.get_stock_company_name(symbol)
                 sector = sector_finder.get_stock_sector(symbol)
-                sentiment = MachineLearningModels.manual_alg_requisition_script.request_articles(symbol, company_name)
-                overall_sent = MachineLearningModels.manual_alg_requisition_script.process_phrase_for_sentiment(sentiment, company_name)
+                
                 
                 new_trans = transaction.transaction(
                     symbol=symbol,
@@ -209,14 +208,13 @@ def handle_trade_updates(ws, event, data, username, user_id):
                     total_buy=total_buy,
                     pstring=client_order_id,
                     user_id=user_id,
-                    sentiment=overall_sent,
                     expected=expected,
                     tp1=tp1,
                     sop=sop
                 )
                 # Insert the transaction
                 
-                pending_orders_DAOIMPL.insert_pending_order(client_order_id,user_id,side)
+                # pending_orders_DAOIMPL.insert_pending_order(client_order_id,user_id,side)
                 pending = pending_orders_DAOIMPL.get_pending_buy_orders_by_user_id_and_client_order_id(user_id, client_order_id)
                 if pending:
                     pending = pending[0]
@@ -242,7 +240,12 @@ def handle_trade_updates(ws, event, data, username, user_id):
                 result = 'loss' if actual <= 0 else 'profit'
                 sstring = f"{client_order_id}~sell({datetime.now()})"
                 transaction_id = int(transaction2[0])
-                values = [ds, spps, tsp, sstring, proi, actual, result]
+                pol_neu_close, pol_pos_close, pol_neg_close = MachineLearningModels.manual_alg_requisition_script.process_daily_political_sentiment()
+                
+                info = MachineLearningModels.manual_alg_requisition_script.request_articles(symbol)
+                sa_neu_close, sa_pos_close, sa_neg_close = MachineLearningModels.manual_alg_requisition_script.process_phrase_for_sentiment(info)
+                
+                values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]
                 transactions_DAOIMPL.update_transaction(transaction_id, values)
                 pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0])
     else:
