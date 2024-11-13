@@ -169,7 +169,7 @@ def calculate_average_days_to_close_for_user(user_id):
     cur = conn.cursor()
     sql = f'''SELECT AVG(DATEDIFF(STR_TO_DATE(ds, '%Y-%m-%d'), STR_TO_DATE(dp, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
-                WHERE sstring IS NOT NONE
+                WHERE sstring IS NOT NULL
                 AND actual > 0
                 AND user_id = %s'''
     vals = [user_id]
@@ -562,20 +562,25 @@ def insert_transaction(transaction, pending_order_id):
             actual,
             tp1,
             sop,
-            confidence,
             result,
             user_id,
             sector,
-            processed
-            
+            processed,
             pol_neu_open,
             pol_pos_open,
             pol_neg_open,
             sa_neu_open,
             sa_pos_open,
-            sa_neg_open
+            sa_neg_open,
+            pol_neu_close,
+            pol_pos_close,
+            pol_neg_close,
+            sa_neu_close,
+            sa_pos_close,
+            sa_neg_close
             
             ) VALUES (
+            %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
@@ -599,7 +604,6 @@ def insert_transaction(transaction, pending_order_id):
             transaction.actual,
             transaction.tp1,
             transaction.sop,
-            transaction.sentiment,
             transaction.result,
             transaction.user_id,
             transaction.sector,
@@ -609,7 +613,13 @@ def insert_transaction(transaction, pending_order_id):
             transaction.pol_neg_open,
             transaction.sa_neu_open,
             transaction.sa_pos_open,
-            transaction.sa_neg_open
+            transaction.sa_neg_open,
+            transaction.pol_neu_close,
+            transaction.pol_pos_close,
+            transaction.pol_neg_close,
+            transaction.sa_neu_close,
+            transaction.sa_pos_close,
+            transaction.sa_neg_close
             ]
     try:
         cur.execute(sql,vals)
@@ -635,7 +645,13 @@ def update_transaction(transaction_id, values):
             sstring = %s,
             proi = %s,
             actual = %s,
-            result = %s
+            result = %s,
+            pol_neu_close,
+            pol_pos_close,
+            pol_neg_close,
+            sa_neu_close,
+            sa_pos_close,
+            sa_neg_close
             WHERE
             id = %s
         '''
@@ -646,6 +662,12 @@ def update_transaction(transaction_id, values):
             values[4],
             values[5],
             values[6],
+            values[7],
+            values[8],
+            values[9],
+            values[10],
+            values[11],
+            values[12],
             transaction_id
             ]
     try:
