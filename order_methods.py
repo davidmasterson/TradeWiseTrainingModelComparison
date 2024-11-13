@@ -11,6 +11,7 @@ import sector_finder
 
 def submit_limit_order(username, incoming_order):
     try:
+        this_limit_price = round(alpaca_request_methods.get_symbol_current_price(incoming_order['symbol']),2)
         conn = alpaca_request_methods.create_alpaca_api(username)
         user_id = session.get('user_id')
         order = conn.submit_order(
@@ -18,13 +19,13 @@ def submit_limit_order(username, incoming_order):
             qty=incoming_order['qty'],  # Quantity of shares to buy
             side=incoming_order['side'],  # "buy" or "sell"
             type=incoming_order['type'],
-            limit_price=incoming_order['limit_price'],# Order type: "market" or "limit"
+            limit_price= this_limit_price,# Order type: "market" or "limit"
             time_in_force=incoming_order['tif'],  # day
             client_order_id=f"{datetime.now()}{incoming_order['symbol']}{incoming_order['qty']} {incoming_order['limit_price']}/{user_id}"
         )
         coid = order.id
         logging.info(f"Order submitted: {incoming_order}, order_id {order}")
-        # pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
+        pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
     except Exception as e:
         logging.info(f"Error placing order: {e}")
  
