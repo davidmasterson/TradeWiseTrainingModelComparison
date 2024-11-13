@@ -90,8 +90,10 @@ def insert_pending_order(client_order_id, user_id,side,purchase_string = None):
     try:
         cur.execute(sql, vals)
         conn.commit()
+        poid = cur.lastrowid
         if side == 'buy':
             logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted pending buy order :{client_order_id}")
+            return poid
         elif side == 'sell':
             logging.info(f'{datetime.now()} pending sell order with id: {client_order_id} and purhase string {purchase_string} successfully entered.')
     except Exception as e:
