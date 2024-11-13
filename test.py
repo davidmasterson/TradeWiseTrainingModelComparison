@@ -143,32 +143,61 @@ import app
 # from database import pending_orders_DAOIMPL
 
 # pending_orders_DAOIMPL.truncate_pending_orders_at_eod()
-from database import dataset_DAOIMPL
-from Models import dataset
-import pickle
-import pandas as pd
-from io import BytesIO
-pd.set_option('display.max_rows', None)
-pd.set_option('display.max_columns', None)
-finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(13)
-dsobject = dataset_DAOIMPL.get_dataset_object_by_id(13)
-finalized_dataset_data = pickle.loads(finalized_dataset_data)
-final_df = pd.DataFrame(finalized_dataset_data)
+# from database import dataset_DAOIMPL
+# from Models import dataset
+# import pickle
+# import pandas as pd
+# from io import BytesIO
+# pd.set_option('display.max_rows', None)
+# pd.set_option('display.max_columns', None)
+# finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(38)
+# dsobject = dataset_DAOIMPL.get_dataset_object_by_id(38)
+# finalized_dataset_data = pickle.loads(finalized_dataset_data)
+# final_df = pd.DataFrame()
 
-# indices_to_drop = [0, 1, 2, 3]# 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,19,20,21,22,23]
+# # # indices_to_drop = [0, 1, 2, 3]# 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,19,20,21,22,23]
 
-# # Drop specified rows and reset index
-# final_df = final_df.drop(indices_to_drop).reset_index(drop=True)
-# final_df = final_df.loc[:, ~final_df.columns.str.contains('^Unnamed')]
-print(final_df)
+# # # # Drop specified rows and reset index
+# # # final_df = final_df.drop(indices_to_drop).reset_index(drop=True)
+# # # final_df = final_df.loc[:, ~final_df.columns.str.contains('^Unnamed')]
+# print(final_df)
 
 # final_df.drop(['pol_neu','pol_pos','pol_neg','sa_neu','sa_pos','sa_neg'], axis=1, inplace=True)
 # print(final_df.columns.to_list())
 
 # final_df_bin = pickle.dumps(final_df)
-# newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),1)
-# dataset_DAOIMPL.update_dataset(newd,13)
+# newd = dataset.Dataset(dsobject[1],dsobject[2],final_df_bin,datetime.now(),2)
+# dataset_DAOIMPL.update_dataset(newd,38)
 
 
 # with open('output2.csv', 'w') as writer:
 #     writer.write(str(finalized_dataset_data))
+# from datetime import datetime
+# from datetime import date
+# symbol = 'FBYDW'
+# ppps = 1.00
+# qty = 30
+
+# dp = date(2024,11,12)
+# total_buy = ppps * qty
+# pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
+# user_id = 2
+# ds = None
+# spps = None
+# tsp = None
+# sstring = None
+
+
+
+
+# from database import pending_orders_DAOIMPL
+# poid = pending_order = pending_orders_DAOIMPL.insert_pending_order(pstring,user_id,'buy',pstring)
+
+# new_transaction = transaction.transaction(symbol, dp,ppps,qty,total_buy,pstring,user_id,ds,spps,tsp,sstring,expected = (total_buy * .03),proi=None,
+#                                           actual=None,tp1 = ppps + (ppps * .03), sop = ppps - (ppps * .01), result = None, processed = 0)
+# transactions_DAOIMPL.insert_transaction(new_transaction,poid)
+# symbols = ['ASNS']
+# for symbol in symbols:
+#     info = manual_alg_requisition_script.request_articles(symbol)
+#     pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
+#     print(pol_neu, pol_pos, pol_neg)
