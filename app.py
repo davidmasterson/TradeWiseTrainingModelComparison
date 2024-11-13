@@ -519,13 +519,13 @@ def train_model(model_name):
             models_training_scripts_DAOIMPL.insert_into_models_training_scripts_table(new_mod_trainscript)
         
         model_type = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
+        closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
         result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
         # LOGGING PURPOSES FOR DEBUGGING
         logging.info(f"Subprocess output: {result.stdout}")
         logging.error(f"Subprocess error (if any): {result.stderr}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
-        closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
         if closed_transactions:
             new_metric = metric.calculate_daily_metrics_values(user_id)
             metrics_DAOIMPL.insert_metric(new_metric)
@@ -885,7 +885,7 @@ def plot_metrics():
         if metrics:
             metric.Metric.plot_model_metrics(user_id)
             # manual_metrics.Manual_metrics.plot_manual_metrics()
-            return render_template('metrics_plots.html')
+            return render_template('metrics_plots.html', user_id=user_id)
         message = 'There are not any metrics yet!'
         return render_template('metrics_plots.html', message=message)
     return redirect(url_for('home'))
@@ -1021,6 +1021,7 @@ def purchase_stock():
         symbol = request.form.get('symbol')
         limit_price = float(request.form.get('limit_price'))
         qty = int(request.form.get('qty'))
+        confidence = int(request.form.get('confidence'))
 
         try:
             order = {
@@ -1029,7 +1030,8 @@ def purchase_stock():
                 'qty': qty,
                 'side': 'buy',
                 'type': 'limit',
-                'tif': 'gtc'  # Good 'til canceled
+                'tif': 'day',  # Good 'til canceled
+                'confidence': confidence
             }
             # Call Alpaca's purchase method to execute the order
             order_methods.submit_limit_order(session.get('user_name'), order)
