@@ -96,7 +96,7 @@ class Metric:
          prof_sector_json = json.dumps(prof_sectors_dict)
 
          #loss sectors
-         loss_sectors_dict = transactions_DAOIMPL.get_profit_sectors_for_user(user_id)
+         loss_sectors_dict = transactions_DAOIMPL.get_loss_sectors_for_user(user_id)
          loss_sector_json = json.dumps(loss_sectors_dict)
          
          return [prof_sector_json,loss_sector_json]
