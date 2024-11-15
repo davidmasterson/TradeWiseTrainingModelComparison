@@ -7,7 +7,7 @@ from flask import session
 
 class User(): # Inherit from flask UserMixin class for authentication and session management
 
-    def __init__(self, first,last,user_name,password,email,alpaca_key, alpaca_secret):
+    def __init__(self, first,last,user_name,password,email,alpaca_key, alpaca_secret, alpaca_endpoint):
         self.first = first
         self.last = last
         self.user_name = user_name
@@ -15,6 +15,7 @@ class User(): # Inherit from flask UserMixin class for authentication and sessio
         self.email = email
         self.alpaca_key = alpaca_key
         self.alpaca_secret = alpaca_secret
+        self.alpaca_endpoint = alpaca_endpoint
         
         
     def check_logged_in():

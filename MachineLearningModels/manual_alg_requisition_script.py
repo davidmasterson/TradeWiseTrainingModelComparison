@@ -20,30 +20,54 @@ def preprocess_phares_into_string_for_analysis(phrase):
     phrase_output = phrase_output.split('.')
     return phrase_output
 
-def process_phrase_for_sentiment(articles_list, company_name):
-    all_sentences = []
-    all_sentiments = []
-    for phrase in articles_list:
-        for sentence in phrase:
-            phrase_output = preprocess_phares_into_string_for_analysis(sentence)
-            all_sentences.append(phrase_output)
-    for array_of_sentences in all_sentences:
-        for sentence in array_of_sentences:
+def process_phrase_for_sentiment(articles_list):
+    negs = []
+    posis = []
+    neutrs = []
+    if not articles_list:
+        return 0, 0, 0  # Return default values if no articles are provided
+    logging.info(f'Articles list contains {len(articles_list)}')
+    try:
+        for article in articles_list:
             analyzer = SentimentIntensityAnalyzer()
-            results_dict = analyzer.polarity_scores(sentence)
-            negative_perc = results_dict['neg'] * 100
-            positive_perc = results_dict['pos'] * 100
-            overall = ((negative_perc + positive_perc) / 2)  
-            if overall != 0: 
-                if negative_perc == 0:
-                    overall = positive_perc
-                elif positive_perc == 0:
-                    overall = 0 - negative_perc       
-                all_sentiments.append(overall)
-    if len(all_sentiments) > 0:
-        finalized_perc = int(sum(all_sentiments)/len(all_sentiments))
-        return finalized_perc
-    return 0
+            results_dict = analyzer.polarity_scores(article)
+            negs.append(results_dict['neg'] * 100)
+            posis.append(results_dict['pos'] * 100)
+            neutrs.append(results_dict['neu'] * 100)
+        
+        avg_neut = int(sum(neutrs) / len(neutrs)) if neutrs else 0
+        avg_pos = int(sum(posis) / len(posis)) if posis else 0
+        avg_neg = int(sum(negs) / len(negs)) if negs else 0
+        logging.info(f'Returning {avg_neut, avg_pos, avg_neg}')
+        return avg_neut, avg_pos, avg_neg
+    except Exception as e:
+        logging.error(f'Unable to process SA for symbol  phrase due to {e}')
+        return 0, 0, 0
+
+def process_political_phrase_for_sentiment(articles_list):
+    
+    negs = []
+    posis = []
+    neutrs = []
+    if not articles_list:
+        return 0, 0, 0  # Return default values if no articles are provided
+    try:
+        for article in articles_list:
+            analyzer = SentimentIntensityAnalyzer()
+            results_dict = analyzer.polarity_scores(article)
+            negs.append(results_dict['neg'] * 100)
+            posis.append(results_dict['pos'] * 100)
+            neutrs.append(results_dict['neu'] * 100)
+        
+        avg_neut = int(sum(neutrs) / len(neutrs)) if neutrs else 0
+        avg_pos = int(sum(posis) / len(posis)) if posis else 0
+        avg_neg = int(sum(negs) / len(negs)) if negs else 0
+        logging.info(f'Returning {avg_neut, avg_pos, avg_neg}')
+        return avg_neut, avg_pos, avg_neg
+    except Exception as e:
+        logging.error(f'Unable to process political phrase due to {e}')
+        return 0, 0, 0
+
 def fetch_full_article(url):
     res = rq.get(url, headers={'User-Agent': 'Mozilla/5.0'})
     res = res.text
@@ -58,10 +82,35 @@ def fetch_full_article(url):
     if 'Founded in 1993' in article_text:
         return []
     return(article_text)
-        
-    
-def request_articles(symbol, company_name):
-    # --------Polygon financial News API -------------------------
+
+def process_daily_political_sentiment():
+    import requests
+    articles = []
+
+    url = "https://cnn-api.p.rapidapi.com/category"
+    querystring = {"url":"https://edition.cnn.com/politics"}
+
+    headers = {
+        "x-rapidapi-host": "cnn-api1.p.rapidapi.com",
+        "x-rapidapi-key": os.getenv('CNN_API_KEY')
+    }
+    try:
+        response = requests.get(url, headers=headers, params=querystring)
+        data = response.json()
+        links = [item['link'] for item in data['latest'] if 'link' in item]
+        links = set(links[:11])
+        print(links) 
+        for url in links:
+            article =fetch_full_article(url)
+            articles.append(article)
+        neu, pos, neg = process_political_phrase_for_sentiment(articles)
+        logging.info(f'returning {neu, pos, neg}')
+        return neu, pos, neg 
+    except Exception as e:
+        logging.error(f'Unable to process daily political sentiment due to: {e}')  
+        return 0, 0, 0
+
+def request_articles(symbol):
     key = os.getenv('POLY_NEWS_KEY')
     url = (f'https://api.polygon.io/v2/reference/news?ticker={symbol}')
     full_url = url + key
@@ -70,28 +119,26 @@ def request_articles(symbol, company_name):
     
     articles = []
     try:
-        res1 = [[article['description'], article['article_url']] for article in res['results'] if symbol in article['tickers']]
-        for x, y in res1:
+        res1 = [article['article_url'] for article in res['results'] if symbol in article['tickers']]
+        for y in res1:
             full = fetch_full_article(y)
             if full:
                 articles.append(full)
     except Exception as e:
         logging.error(f'Unable to fetch article from Polygon API due to {e}')
-        pass
+    finally:
     
+        res2 = fetch_articles_from_Finlight(symbol, 'finance.yahoo.com')
+        res3 = fetch_articles_from_Finlight(symbol, 'cnbc.com')
+        res4 = fetch_articles_from_Finlight(symbol, 'nytimes.com')
+        finlight_articles = [res2, res3, res4]
+        for text in finlight_articles:
+            if text:
+                articles.append(text)
         
-        
-    #---------Financial New API 2----------------------------------
-    res2 = fetch_articles_from_Finlight(symbol, 'finance.yahoo.com', company_name)
-    res3 = fetch_articles_from_Finlight(symbol, 'cnbc.com', company_name)
-    res4 = fetch_articles_from_Finlight(symbol, 'nytimes.com', company_name) 
-    finlight_articles = [res2,res3,res4]
-    for text in finlight_articles:
-        if text:
-            articles.append(text)
-    return [articles]
+        return articles  # Return the list directly
 
-def fetch_articles_from_Finlight(symbol, source, company_name):
+def fetch_articles_from_Finlight(symbol, source):
     from_date = date.today() - timedelta(days=7)
     to_date = date.today()
     api_key = os.getenv('FINLIGHT_NEWS_KEY')
@@ -104,7 +151,7 @@ def fetch_articles_from_Finlight(symbol, source, company_name):
     response = rq.get(url, headers=headers)
     try:
         res = response.json()['articles']
-        content = [[article['content'], article['link']] for article in res if company_name in article['content'].lower()]
+        content = [[article['content'], article['link']] for article in res]
         for x, y in content:
             full = fetch_full_article(y)
             if full:    
@@ -549,7 +596,7 @@ def get_5_days_prev_sma5(position):
         symbol = position
             
     finally:
-        symbol = symbol[0]
+        symbol = symbol
         sma_list = get_sma_list(symbol,10,[],(datetime.now() - timedelta(days=10)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
@@ -648,7 +695,7 @@ def get_5_days_prev_sma20(position):
     except Exception as e:
         symbol = position
     finally:
-        symbol = symbol[0]    
+        symbol = symbol   
         sma_list = get_sma_list(symbol,25,[],(datetime.now() - timedelta(days=25)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
@@ -667,7 +714,7 @@ def get_sma200(position,sma_list):
     except Exception as e:
         symbol = position
     finally:
-        symbol = symbol[0]   
+        symbol = symbol  
         sma_list_copy = deepcopy(sma_list)
         if sma_list != None and sma_list != [] and None not in sma_list:
             sma_list.pop(0)
@@ -750,7 +797,7 @@ def get_5_days_prev_sma200(position):
         symbol = position
             
     finally:
-        symbol = symbol[0]
+        symbol = symbol
         sma_list = get_sma_list(symbol,205,[],(datetime.now() - timedelta(days=205)).strftime("%Y-%m-%d"),datetime.now().strftime("%Y-%m-%d"))
         sma_list_copy = deepcopy(sma_list)
         if len(sma_list) != None and sma_list != []:
@@ -785,3 +832,5 @@ def get_slope_of_line(sma_start_point, sma_end_point, sma_number):
     required_slope = .10
     slope = (sma_end_point - sma_start_point) / sma_number
     return slope
+
+

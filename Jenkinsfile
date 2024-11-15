@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        PROJECT_DIR = '/home/ubuntu/LSTMStockPricePredictor'
+        PROJECT_DIR = '/home/ubuntu/TradeWiseTrainingModelComparison'
+        CONDA_ENV = 'tf-env'
     }
 
     stages {
@@ -14,16 +15,18 @@ pipeline {
                 }
             }
         }
-        stage('Build') {
+        stage('Set Up Conda Environment') {
+            when {
+                branch 'main'  // Only trigger this pipeline if changes are in the 'main' branch
+            },
             steps {
                 script {
-                    sh 'env'
-                    sh '#!/bin/bash -e \n echo "Running in bash"'
-                    shellType = sh(script: 'echo $SHELL', returnStdout: true).trim()
-                    echo "Current Shell: ${shellType}"
-                    sh 'echo $SHELL'
-                    echo "Installing dependencies..."
-                    sh "${env.PROJECT_DIR}/venv/bin/python -m pip install -r ${env.PROJECT_DIR}/requirements.txt"
+                    // Activate the conda environment and install dependencies
+                    sh """
+                        source ~/miniconda3/etc/profile.d/conda.sh
+                        conda activate ${CONDA_ENV}
+                        conda env update -f ${PROJECT_DIR}/environment.yml --prune
+                    """
                 }
             }
         }
@@ -31,8 +34,11 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    echo "Running unit tests..."
-                    // Your testing commands will go here
+                    sh """
+                        source ~/miniconda3/etc/profile.d/conda.sh
+                        conda activate ${CONDA_ENV}
+                        # Run test commands here
+                    """
                 }
             }
         }
@@ -41,11 +47,11 @@ pipeline {
             steps {
                 script {
                     echo "Deploying application..."
-                    sh "sudo systemctl stop autotrader_project.service"
-                    sh "sudo cp -r ${env.PROJECT_DIR} /var/www/autotrader_project"
+                    sh "sudo systemctl stop tradewise.service"
+                    sh "sudo cp -r ${PROJECT_DIR} /var/www/tradewise"
                     sh "sudo systemctl daemon-reload"
-                    sh "sudo systemctl start autotrader_project.service"
-                    sh "sudo systemctl enable autotrader_project.service"
+                    sh "sudo systemctl start tradewise.service"
+                    sh "sudo systemctl enable tradewise.service"
                     echo "Application deployed and service restarted successfully."
                     
                     echo "Reloading Nginx..."

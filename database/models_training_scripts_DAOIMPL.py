@@ -42,6 +42,25 @@ def get_model_name_by_training_script_id(trainscript_id):
         conn.close()
         cur.close()
         
+def get_entry_by_model_id(model_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * from models_training_scripts WHERE model_id = %s'''
+    vals = [
+        model_id
+    ]
+    try:
+        cur.execute(sql, vals)
+        model_id = cur.fetchone()
+        if model_id:
+            return model_id[0]
+        return []
+    except Exception as e:
+        logging.error( f'{datetime.now()}: Unable to get model id due to {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
 def insert_into_models_training_scripts_table(model_ts_object):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -69,11 +88,13 @@ def update_models_training_script_table(model_ts_object):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE models_training_scripts SET
-                models_id = %s,
-                training_script_id = %s'''
+                model_id = %s,
+                training_script_id = %s
+                WHERE model_id=%s'''
     vals = [
         model_ts_object.model_id,
-        model_ts_object.training_script_id
+        model_ts_object.training_script_id,
+        model_ts_object.model_id
     ]
     try:
         cur.execute(sql, vals)

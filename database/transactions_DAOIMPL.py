@@ -169,12 +169,12 @@ def calculate_average_days_to_close_for_user(user_id):
     cur = conn.cursor()
     sql = f'''SELECT AVG(DATEDIFF(STR_TO_DATE(ds, '%Y-%m-%d'), STR_TO_DATE(dp, '%Y-%m-%d'))) AS avg_days_to_close
                 FROM transactions
-                WHERE sstring !='N/A'
-                AND prediction = 1
-                AND prediction = result
-                AND user_id = {user_id}'''
+                WHERE sstring IS NOT NULL
+                AND actual > 0
+                AND user_id = %s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         avg = cur.fetchone()
         if avg:
             return avg[0]
@@ -189,9 +189,10 @@ def calculate_average_days_to_close_for_user(user_id):
 def calculate_cumulative_profit_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT sum(actual) from transactions WHERE actual > 0 and result = 1 AND user_id = {user_id}'
+    sql = f'SELECT sum(actual) from transactions WHERE actual > 0 AND user_id = %s'
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         profit = cur.fetchone()
         if profit:
             return profit[0]
@@ -203,12 +204,53 @@ def calculate_cumulative_profit_for_user(user_id):
         conn.close()
         cur.close()
 
+def get_profit_sectors_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT sector, COUNT(*) FROM transactions WHERE actual > 0 AND user_id = %s GROUP BY sector'
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        sectors = cur.fetchall()
+        if sectors:
+            # Convert the fetched data into a dictionary with sector as key and count as value
+            sector_count_dict = {sector: count for sector, count in sectors}
+            return sector_count_dict
+        return {}
+    except Exception as e:
+        logging.info(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
+def get_loss_sectors_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = 'SELECT sector, COUNT(*) FROM transactions WHERE actual < 0 AND user_id = %s GROUP BY sector'
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        sectors = cur.fetchall()
+        if sectors:
+            # Convert the fetched data into a dictionary
+            sector_loss_dict = {sector: count for sector, count in sectors}
+            return sector_loss_dict
+        return {}
+    except Exception as e:
+        logging.info(e)
+        return {}
+    finally:
+        cur.close()
+        conn.close()
+
 def calculate_cumulative_loss_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT sum(actual) from transactions WHERE actual < 0 AND result = 0 AND user_id={user_id}'
+    sql = f'SELECT sum(actual) from transactions WHERE actual < 0 AND user_id=%s'
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         loss = cur.fetchone()
         if loss:
             return loss[0]
@@ -224,9 +266,10 @@ def calculate_correct_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = f'''SELECT COUNT(*) FROM transactions 
-            WHERE actual > 0 AND user_id={user_id}'''
+            WHERE actual > 0 AND user_id=%s'''
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         count = cur.fetchone()
         if count:
             return count[0]
@@ -241,9 +284,10 @@ def calculate_correct_predictions_for_user(user_id):
 def calculate_incorrect_predictions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT COUNT(*) FROM transactions WHERE actual < 0 user_id={user_id}'
+    sql = f'SELECT COUNT(*) FROM transactions WHERE actual < 0 AND user_id= %s'
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         count = cur.fetchone()
         if count:
             return count[0]
@@ -383,9 +427,10 @@ def get_closed_transaction_by_sstring_for_user(sstring,user_id):
 def select_model_sector_profits_symbols_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
-    sql = f'SELECT symbol from transactions WHERE actual > 0 and result = 1 AND user_id={user_id}'
+    sql = f'SELECT symbol from transactions WHERE actual > 0 AND user_id=%s'
+    vals = [user_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql,vals)
         symbols = cur.fetchall()
         if symbols:
             return symbols
@@ -517,16 +562,31 @@ def insert_transaction(transaction, pending_order_id):
             actual,
             tp1,
             sop,
-            confidence,
             result,
             user_id,
             sector,
-            processed
+            processed,
+            pol_neu_open,
+            pol_pos_open,
+            pol_neg_open,
+            sa_neu_open,
+            sa_pos_open,
+            sa_neg_open,
+            pol_neu_close,
+            pol_pos_close,
+            pol_neg_close,
+            sa_neu_close,
+            sa_pos_close,
+            sa_neg_close
+            
             ) VALUES (
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
             %s,%s,%s,%s,%s,
-            %s,%s,%s,%s,%s
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s
             )
             '''
     vals = [transaction.symbol,
@@ -544,11 +604,23 @@ def insert_transaction(transaction, pending_order_id):
             transaction.actual,
             transaction.tp1,
             transaction.sop,
-            transaction.sentiment,
             transaction.result,
             transaction.user_id,
             transaction.sector,
-            transaction.processed]
+            transaction.processed,
+            transaction.pol_neu_open,
+            transaction.pol_pos_open,
+            transaction.pol_neg_open,
+            transaction.sa_neu_open,
+            transaction.sa_pos_open,
+            transaction.sa_neg_open,
+            transaction.pol_neu_close,
+            transaction.pol_pos_close,
+            transaction.pol_neg_close,
+            transaction.sa_neu_close,
+            transaction.sa_pos_close,
+            transaction.sa_neg_close
+            ]
     try:
         cur.execute(sql,vals)
         conn.commit()
@@ -573,7 +645,13 @@ def update_transaction(transaction_id, values):
             sstring = %s,
             proi = %s,
             actual = %s,
-            result = %s
+            result = %s,
+            pol_neu_close,
+            pol_pos_close,
+            pol_neg_close,
+            sa_neu_close,
+            sa_pos_close,
+            sa_neg_close
             WHERE
             id = %s
         '''
@@ -584,6 +662,12 @@ def update_transaction(transaction_id, values):
             values[4],
             values[5],
             values[6],
+            values[7],
+            values[8],
+            values[9],
+            values[10],
+            values[11],
+            values[12],
             transaction_id
             ]
     try:

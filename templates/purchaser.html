@@ -20,27 +20,44 @@
          <div class="container" style="display:flex;justify-content:space-between;">
             <form action='/purchaser' method='POST'>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
                 <!-- Dropdown for Preprocessed Data Selection -->
                 <div class="preprocessed_data_container">
-                  <label for="preprocessed_data">Select Preprocessed Data:</label>
-                  <select name="preprocessed_data" id="preprocessed_data" required>
-                      <option value="">Choose Preprocessed Data</option>
-                      {% for data in preprocessors %}
-                      <option value="{{ data[0] }}">{{ data[1] }} - {{ data[5] }}</option>
-                      {% endfor %}
-                  </select>
-              </div>
-              
-              <!-- Dropdown for Training Script Selection -->
-              <div class="training_script_data_container">
-              <label for="training_script">Select Training Script:</label>
-                  <select name="training_script" id="training_script" required>
-                      <option value="">Choose Training Script</option>
-                      {% for script in trainers %}
-                      <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
-                      {% endfor %}
-                  </select>
-              </div>
+                    <label for="preprocessed_data">Select Preprocessed Data:</label>
+                    <select name="preprocessed_data" id="preprocessed_data" required>
+                        <option value="">Choose Preprocessed Data</option>
+                        {% for data in preprocessors %}
+                        <option value="{{ data[0] }}">{{ data[1] }} - {{ data[5] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            
+                <!-- Dropdown for Training Script Selection -->
+                <div class="training_script_data_container">
+                    <label for="training_script">Select Training Script:</label>
+                    <select name="training_script" id="training_script" required>
+                        <option value="">Choose Training Script</option>
+                        {% for script in trainers %}
+                        <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            
+                <!-- Number Selector for Maximum Recommendations with Tooltip -->
+                <div class="recommendation_count_container" style="position: relative; margin-top: 20px;">
+                    <label for="recommendation_count" style="display: block;">
+                        Number of Recommendations:
+                    </label>
+                    <input type="number" name="recommendation_count" id="recommendation_count" min="5" max="100" step="5" value="5" required style="margin-right: 10px; padding: 5px; display: inline-block;">
+                    
+                    
+                    <!-- Tooltip icon with hover effect -->
+                    <h4 class="tooltip" style="display: inline-block; cursor: pointer; margin-left: 5px;">
+                        ⓘ <!-- Info icon or text to trigger the tooltip -->
+                        <h6 class="tooltiptext">The higher the number, the longer the process may take.</h6>
+                    </h4>
+                </div>
+                <br>
                 <button type="submit" id="generateBtn" class="btn btn-primary mb-3">Generate Recommendations</button>
             </form>
             <h3 >Cash Available: ${{"{:,.2f}".format(user_cash)}}</h3>
@@ -53,69 +70,107 @@
 
 
         <!-- Table to display recommendations -->
-        {% if orders %}
+        {% if recommendations %}
         <table class="table table-bordered" id="recommendationsTable" style="border-color:black">
             <thead>
                 <tr>
                     <th>Symbol</th>
                     <th>Limit Price</th>
                     <th>Qty</th>
+                    <th>Confidence</th>
+                    
                     
                     
                 </tr>
             </thead>
             <tbody>
-              {% for x in orders %}
-              {% set row_color = 'white' %}
-              {% if x.sentiment <= 40 %}
-                  {% set row_color = '#f9dfc5' %}
-              {% elif x.sentiment >= 41 and x.sentiment <= 59 %}
-                  {% set row_color = '#FFCCCB' %}
-              {% elif x.sentiment >= 60 and x.sentiment <= 79 %}
-                  {% set row_color = '#FFFBC8' %}
-              {% else %}
-                  {% set row_color = '#cefad0' %}
-              {% endif %}
-          
-              <tr style="background-color: {{ row_color }};border : 2px, solid-black;">
-                  <td>{{ x.symbol }}</td>
-                  <td>{{ x.limit_price }}</td>
-                  <td>{{ x.qty }}</td>
+                {% for details in recommendations %}
+                {% set row_color = 'white' %}
+                {% if details.confidence <= 40 %}
+                    {% set row_color = '#f9dfc5' %}
+                {% elif details.confidence >= 41 and details.confidence <= 59 %}
+                    {% set row_color = '#FFCCCB' %}
+                {% elif details.confidence >= 60 and details.confidence <= 79 %}
+                    {% set row_color = '#FFFBC8' %}
+                {% else %}
+                    {% set row_color = '#cefad0' %}
+                {% endif %}
+      
+                <tr style="background-color: {{ row_color }}; border: 2px solid black;">
+                    <td>{{ details.symbol }}</td>
+                    <td>{{ details.limit_price }}</td>
+                    <td>{{ details.qty }}</td>
+                    <td>{{ details.confidence }}</td>
                     <td>
                         <!-- Purchase button with form -->
                         <form action="/purchase" method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="symbol" value="{{ x.symbol }}">
-                            <input type="hidden" name="limit_price" value="{{ x.limit_price }}">
-                            <input type="hidden" name="qty" value="{{ x.qty }}">
+                            <input type="hidden" name="symbol" value="{{ details.symbol }}">
+                            <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
+                            <input type="hidden" name="qty" value="{{ details.qty }}">
+                            <input type="hidden" name="confidence" value="{{ details.confidence}}">
                             <button type="submit" class="btn btn-success">Purchase</button>
                         </form>
                     </td>
                 </tr>
-               
                 {% endfor %}
-            </tbody>
+              </tbody>
         </table>
         {% endif %}
     </div>
+    <style>
+        /* Tooltip container */
+        .tooltip {
+            position: relative;
+            color: #007bff; /* Optional: change the color to indicate it has a tooltip */
+        }
+    
+        /* Tooltip text */
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 250px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            top: -5px; /* Adjusted position to show above input */
+            left: 50%; /* Centered tooltip over info icon */
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            white-space: nowrap;
+        }
+    
+        /* Show tooltip text on hover */
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('generateBtn').addEventListener('click', function() {
+                var intervalId = setInterval(function() {
+                    fetch('/progress')  // Assume '/progress' is your endpoint returning a JSON with progress percentage
+                        .then(response => response.json())
+                        .then(data => {
+                            var progressBar = document.getElementById('progressBar');
+                            progressBar.style.width = data.progress + '%';
+                            progressBar.textContent = data.progress + '%';
+                            progressBar.setAttribute('aria-valuenow', data.progress);
+                            
+                            if (data.progress >= 100) {
+                                clearInterval(intervalId);  // Stop polling when the task is complete
+                            }
+                        })
+                        .catch(error => console.error('Error fetching progress:', error));
+                }, 5000);  // Update every 5 seconds
+            });
+        });
+    </script>
 
-<script>
-  document.getElementById('generateBtn').addEventListener('click', function() {
-      var intervalId = setInterval(function() {
-          fetch('/progress')  // Assume '/progress' is your endpoint returning a JSON with progress percentage
-              .then(response => response.json())
-              .then(data => {
-                  var progressBar = document.getElementById('progressBar');
-                  progressBar.style.width = data.progress + '%';
-                  progressBar.textContent = data.progress + '%';
-                  progressBar.setAttribute('aria-valuenow', data.progress);
-                  
-                  if (data.progress >= 100) {
-                      clearInterval(intervalId);  // Stop polling when the task is complete
-                  }
-              })
-              .catch(error => console.error('Error fetching progress:', error));
-      }, 10000);  // Update every 10 seconds
-  });
-</script>
+
 {% endblock %}

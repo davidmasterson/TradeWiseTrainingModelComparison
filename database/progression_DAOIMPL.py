@@ -8,7 +8,9 @@ def create_recommender_progress_table():
     sql1 = '''DROP TABLE IF EXISTS recommender_progress'''
     sql2 = '''CREATE TABLE recommender_progress(
             id INT AUTO_INCREMENT PRIMARY KEY,
-            recommender_progress int default 0)
+            recommender_progress int default 0,
+            user_id INT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(id))
             '''
             
     try:
@@ -40,14 +42,36 @@ def get_recommender_progress():
     finally:
         conn.close()
         cur.close()
+
+def get_recommender_progress_by_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM
+            recommender_progress
+            WHERE user_id=%s'''
+    vals = [user_id]
+    try:
+        cur.execute(sql,vals)
+        progress = cur.fetchone()
+        if progress:
+            return progress
+        return 0
+    except Exception as e:
+        logging.error(f'{datetime.now()}: Unable to retrieve recommender progress due to {e}')
+        return False
+    finally:
+        conn.close()
+        cur.close()
         
-def insert_recommender_progress(progress):
+def insert_recommender_progress(progressobj):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT INTO recommender_progress(
-                progress)
-                VALUES(%s)'''
-    vals = [progress]
+                progress,
+                user_id)
+                VALUES(%s,%s)'''
+    vals = [progressobj.progress,
+            progressobj.user_id]
     try:
         cur.execute(sql, vals)
         conn.commit()
@@ -58,14 +82,16 @@ def insert_recommender_progress(progress):
         cur.close()
         conn.close()
     
-def update_recommender_progress(new_progress, progress_id):
+def update_recommender_progress(new_progress, user_id, progress_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''UPDATE recommender_progress SET
-                progress = %s
+                progress = %s,
+                user_id = %s
             WHERE id = %s
             '''
     vals = [new_progress,
+            user_id,
             progress_id
             ]
     try:
