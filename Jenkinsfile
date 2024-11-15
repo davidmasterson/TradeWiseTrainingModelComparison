@@ -4,6 +4,7 @@ pipeline {
     environment {
         PROJECT_DIR = '/home/ubuntu/TradeWiseTrainingModelComparison'
         CONDA_ENV = 'tf-env'
+        CONDA_PATH = '/home/ubuntu/miniconda3/condabin/conda'
     }
 
     stages {
