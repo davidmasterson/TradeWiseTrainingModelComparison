@@ -25,7 +25,7 @@ pipeline {
                         sudo -u ubuntu bash -c '
                         source ${CONDA_PATH}/etc/profile.d/conda.sh
                         conda activate ${CONDA_ENV}
-                        conda env update -f ${PROJECT_DIR}/environment.yml --prune
+                        conda env update -f ${PROJECT_DIR}/environment.yaml --prune
                         '
                     """
                 }
