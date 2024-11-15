@@ -25,7 +25,6 @@ from datetime import datetime
 import json
 
 import cProfile
-from Seller.tasks import check_positions_in_background
 
 
 app = Flask(__name__)
@@ -49,15 +48,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.ERROR)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -172,28 +171,18 @@ def login():
                 try:
                     account = conn.get_account()
                     if account:
-                        # Start WebSocket using the user_id directly
                         try:
                             username = user_data['user_name']
                             user_id = user_data['id']
                             alpaca_key = user_data['alpaca_key']
                             alpaca_secret = user_data['alpaca_secret']
-                            url = url_for('start_websocket_route', username=username, user_id=user_id, alpaca_key=alpaca_key,alpaca_secret=alpaca_secret, _external=True)
-                            response = requests.get(url)
-                            logging.info(f"WebSocket initiation response: {response.status_code}")
                             
-                            # Start background thread
-                            background_thread = threading.Thread(target=check_positions_in_background, args=(username, user_id))
-                            background_thread.daemon = True  # Ensures thread exits when the main program exits
-                            background_thread.start()
-
-                            if background_thread.is_alive():
-                                logging.info("Background thread is running.")
-                            else:
-                                logging.info("Background thread failed to start.")
+                            
+                            
+                            
 
                         except Exception as e:
-                            logging.error(f"Failed to start WebSocket: {e}")
+                            logging.error(f"Failed to start background task: {e}")
 
                         return redirect(url_for('dashboard'))
                 except Exception as e:
@@ -1075,22 +1064,10 @@ def get_progress():
 
 
 
-@app.route('/start_websocket/<username>')
-def start_websocket_route(username):
-    user_id = request.args.get('user_id')  # Extract from query string
-    alpaca_key = request.args.get('alpaca_key')  # Extract from query string
-    alpaca_secret = request.args.get('alpaca_secret')  # Extract from query string
-    full_user = user_DAOIMPL.get_user_by_user_id(int(user_id))
-    if full_user:
-        full_user = full_user
-        alpaca_endpoint = full_user[8]
-    
-    
-    # Start the WebSocket in a separate thread to avoid blocking Flask
-    thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,user_id,alpaca_key, alpaca_secret, alpaca_endpoint))
-    thread.start()
-    return "WebSocket connection initiated"
 
+    
+    
+    
 
 
 @app.route('/update_preferences', methods=['POST'])
@@ -1174,7 +1151,6 @@ def log_event_loop_status(prefix=""):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    start_websocket_route(session.get('user_name'))
     cProfile.run('generate_recommendations_task(user_id = session.get("user_id"))', 'profiling_output')
     
     
