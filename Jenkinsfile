@@ -18,7 +18,7 @@ pipeline {
         stage('Set Up Conda Environment') {
             when {
                 branch 'main'  // Only trigger this pipeline if changes are in the 'main' branch
-            },
+            }
             steps {
                 script {
                     // Activate the conda environment and install dependencies
