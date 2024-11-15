@@ -4,7 +4,7 @@ pipeline {
     environment {
         PROJECT_DIR = '/home/ubuntu/TradeWiseTrainingModelComparison'
         CONDA_ENV = 'tf-env'
-        CONDA_PATH = '/home/ubuntu/miniconda3' // Correct path to Miniconda
+        CONDA_PATH = '/var/lib/jenkins/miniconda3' // Correct path to Miniconda
     }
 
     stages {
