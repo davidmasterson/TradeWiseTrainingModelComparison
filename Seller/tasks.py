@@ -9,7 +9,7 @@ import alpaca_request_methods
 import order_methods
 import time
 
-
+'''Script for running websocket for all users in the background'''
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def check_positions_for_user(username, user_id):
