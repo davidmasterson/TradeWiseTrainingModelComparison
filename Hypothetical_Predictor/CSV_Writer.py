@@ -5,31 +5,32 @@ import alpaca_request_methods
 class CSV_Writer:
 
     def write_temporary_csv(symbols):
-        with open('/home/david/TradeWiseTrainingModelComparison/Hypothetical_Predictor/transactions.csv', 'w') as temporary_writer:
-            temporary_writer.write(f'transaction_id,symbol,date_purchased,purchased_pps,qty,total_buy_price,purchase_string,date_sold,sold_pps,total_sell_price,sell_string,expected_return,percentage_roi,actual_return,tp1,sop\n')
+        with open('/home/ubuntu/TradeWiseTrainingModelComparison/Hypothetical_Predictor/transactions.csv', 'w') as temporary_writer:
+            temporary_writer.write(f'id,symbol,dp,ppps,qty,total_buy,pstring,ds,spps,tsp,sstring,expected,proi,actual,tp1,sop,result,user_id,processed\n')
             count = 0
+            
             for symbol in symbols:
                 date_today = date.today()
                 if isinstance(symbol, str):
-                    purchased_pps = alpaca_request_methods.get_symbol_current_price(symbol)
+                    ppps = alpaca_request_methods.get_symbol_current_price(symbol)
                 else:
-                    purchased_pps = symbol[1]
+                    ppps = symbol[1]
                 qty = 1
-                total_buy_price = purchased_pps
-                purchase_string = ''
-                date_sold = 'N/A'
-                sold_pps = 'N/A'
-                total_sell_price = 'N/A'
-                sell_string = 'N/A'
-                expected_return = purchased_pps * .03
-                percentage_roi = 0.00
-                actual_return = 'N/A'
-                tp1 = purchased_pps + (purchased_pps * .03)
-                sop = purchased_pps - (purchased_pps * .01)
+                total_buy = ppps
+                pstring = ''
+                ds = 'N/A'
+                spps = 'N/A'
+                tsp = 'N/A'
+                sstring = 'N/A'
+                expected = ppps * .03
+                proi = 0.00
+                actual = 'N/A'
+                tp1 = ppps + (ppps * .03)
+                sop = ppps - (ppps * .01)
                 if isinstance(symbol, str):
-                    temporary_writer.write(f'{count},{symbol},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{tp1},{sop}\n')
+                    temporary_writer.write(f'{count},{symbol},{date_today},{ppps},{qty},{total_buy},{pstring},{ds},{spps},{tsp},{sstring},{expected},{proi},{actual},{tp1},{sop}\n')
                 else:
-                    temporary_writer.write(f'{count},{symbol[0]},{date_today},{purchased_pps},{qty},{total_buy_price},{purchase_string},{date_sold},{sold_pps},{total_sell_price},{sell_string},{expected_return},{percentage_roi},{actual_return},{tp1},{sop}\n')
+                    temporary_writer.write(f'{count},{symbol[0]},{date_today},{ppps},{qty},{total_buy},{pstring},{ds},{spps},{tsp},{sstring},{expected},{proi},{actual},{tp1},{sop}\n')
                 count += 1
             temporary_writer.close()
 

@@ -25,7 +25,6 @@ from datetime import datetime
 import json
 
 import cProfile
-from Seller.tasks import check_positions_in_background
 
 
 app = Flask(__name__)
@@ -49,15 +48,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.ERROR)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -114,6 +113,7 @@ def signup():
         email = request.form['email']
         alpaca_key = request.form['alpaca_key']
         alpaca_secret = request.form['alpaca_secret_key']
+        alpaca_endpoint = request.form['alpaca_endpoint']
         minpps = request.form['minpps']
         maxpps = request.form['maxpps']
         risk = request.form['risk']
@@ -171,28 +171,18 @@ def login():
                 try:
                     account = conn.get_account()
                     if account:
-                        # Start WebSocket using the user_id directly
                         try:
                             username = user_data['user_name']
                             user_id = user_data['id']
                             alpaca_key = user_data['alpaca_key']
                             alpaca_secret = user_data['alpaca_secret']
-                            url = url_for('start_websocket_route', username=username, user_id=user_id, alpaca_key=alpaca_key,alpaca_secret=alpaca_secret, _external=True)
-                            response = requests.get(url)
-                            logging.info(f"WebSocket initiation response: {response.status_code}")
                             
-                            # Start background thread
-                            background_thread = threading.Thread(target=check_positions_in_background, args=(username, user_id))
-                            background_thread.daemon = True  # Ensures thread exits when the main program exits
-                            background_thread.start()
-
-                            if background_thread.is_alive():
-                                logging.info("Background thread is running.")
-                            else:
-                                logging.info("Background thread failed to start.")
+                            
+                            
+                            
 
                         except Exception as e:
-                            logging.error(f"Failed to start WebSocket: {e}")
+                            logging.error(f"Failed to start background task: {e}")
 
                         return redirect(url_for('dashboard'))
                 except Exception as e:
@@ -215,13 +205,14 @@ def login():
 def update_api_keys():
     
     # Get form data and validate
-    username = request.form.get('username')
+    username = request.form.get('user')
     password = request.form.get('password')
     alpaca_key = request.form.get('alpaca_key')
     alpaca_secret_key = request.form.get('alpaca_secret_key')
+    alpaca_endpoint = request.form.get('alpaca_endpoint')
     # Fetch user from the database
     try:
-        conn = alpaca_request_methods.create_alpaca_api(username)
+        conn = alpaca_request_methods.create_alpaca_api_during_api_key_resub(alpaca_key,alpaca_secret_key,alpaca_endpoint)
         account = conn.get_account()
         if account:
             user_data = user_DAOIMPL.get_user_by_username(username)[0]
@@ -479,7 +470,7 @@ import json
 from database import models_preprocessing_scripts_DAOIMPL, models_training_scripts_DAOIMPL
 from datetime import datetime
 from flask import flash, redirect, url_for
-from Models import preprocessing_script, training_script
+from Models import preprocessing_script, training_script, metric, models_preprocessing_scripts, models_training_scripts
 
 @app.route('/train_model/<model_name>', methods=['POST'])
 def train_model(model_name):
@@ -488,23 +479,46 @@ def train_model(model_name):
         project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
         # Retrieve and validate form data
         user_id = user.User.get_id()
+        model_name = request.form.get('model_name')
+        model_id = models_DAOIMPL.get_model_id_for_model_by_model_name(model_name)
         preprocessing_script_id = request.form.get('preprocessed_data')
         training_script_id = request.form.get('training_script')
         dataset_id = request.form.get('dataset_data')
-        if not all([preprocessing_script_id, training_script_id, dataset_id]):
+        if not all([preprocessing_script_id, training_script_id, dataset_id, model_id]):
             flash("Missing required form data: preprocessing_script_id, training_script_id, or dataset_id.", "error")
             return redirect(url_for('dashboard'))
         preprocessing_script_id = int(preprocessing_script_id)
         training_script_id = int(training_script_id)
-        model_id = models_preprocessing_scripts_DAOIMPL.get_model_id_by_pp_script_id(preprocessing_script_id)
+        model_id = int(model_id)
+        
+        # Insert or update model_preprocessing_script union table entry
+        current_exists = models_preprocessing_scripts_DAOIMPL.get_entry_by_model_id(model_id)
+        new_modppscript = models_preprocessing_scripts.ModelPreProcessingScripts(model_id,preprocessing_script_id)
+        if current_exists:
+            models_preprocessing_scripts_DAOIMPL.update_models_preprocessing_script_table(new_modppscript)
+        else:
+            models_preprocessing_scripts_DAOIMPL.insert_into_models_preprocessing_scripts_table(new_modppscript)
+       
+        # Insert or update models_training_script union table entry
+        current_exists = models_training_scripts_DAOIMPL.get_entry_by_model_id(model_id)
+        new_mod_trainscript = models_training_scripts.ModelsTrainingScripts(model_id,training_script_id)
+        if current_exists:
+            models_training_scripts_DAOIMPL.update_models_training_script_table(new_mod_trainscript)
+        else:
+            models_training_scripts_DAOIMPL.insert_into_models_training_scripts_table(new_mod_trainscript)
+        
         model_type = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
+        closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
         result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
         # LOGGING PURPOSES FOR DEBUGGING
         logging.info(f"Subprocess output: {result.stdout}")
         logging.error(f"Subprocess error (if any): {result.stderr}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
-        flash('Training has completed successfully', 'success')   
+        if closed_transactions:
+            new_metric = metric.calculate_daily_metrics_values(user_id)
+            metrics_DAOIMPL.insert_metric(new_metric)
+        flash('Training has completed successfully as well as new metrics entry.', 'success')   
         return redirect(url_for('dashboard'))
 
     except Exception as main_e:
@@ -520,22 +534,67 @@ def upload_models():
         if request.method == 'POST':
             model_name = request.form['model_name']
             model_description = request.form['model_description']
-           
-
+            ppscript = request.form['preprocessing_script']
+            dataset = request.form['dataset']
+            tscript = request.form['training_script']
+            if model_name and model_description and ppscript and tscript and dataset:
+                ppscript = int(ppscript)
+                dataset = int(dataset)
+                tscript = int(tscript)
+            
+            # Save model without binary model to database.
+            new_model = model.Model(model_name, model_description, model_data = None, user_id=user_id, selected=0)
+            model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
+            
+            # Insert or update model_preprocessing_script union table entry
+            current_exists = models_preprocessing_scripts_DAOIMPL.get_entry_by_model_id(model_id)
+            new_modppscript = models_preprocessing_scripts.ModelPreProcessingScripts(model_id,ppscript)
+            if current_exists:
+                models_preprocessing_scripts_DAOIMPL.update_models_preprocessing_script_table(new_modppscript)
+            else:
+                models_preprocessing_scripts_DAOIMPL.insert_into_models_preprocessing_scripts_table(new_modppscript)
+        
+            # Insert or update models_training_script union table entry
+            current_exists = models_training_scripts_DAOIMPL.get_entry_by_model_id(model_id)
+            new_mod_trainscript = models_training_scripts.ModelsTrainingScripts(model_id,tscript)
+            if current_exists:
+                models_training_scripts_DAOIMPL.update_models_training_script_table(new_mod_trainscript)
+            else:
+                models_training_scripts_DAOIMPL.insert_into_models_training_scripts_table(new_mod_trainscript)
+            
+            project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
+            # create a preprocessed data object
+            result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(ppscript,project_root,dataset,user_id,model_name)
+            # LOGGING PURPOSES FOR DEBUGGING
+            logging.info(f"Subprocess output: {result.stdout}")
+            logging.error(f"Subprocess error (if any): {result.stderr}")
+            # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
+            training_script.TrainingScript.model_trainer(tscript,ppscript, model_id, user_id, model_name, project_root)
+            
+        # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script
+            # # get blobs from database for initial training of model blob
+            # ppscript_bin = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(preprocessing_script)
+            # dataset_bin = dataset_DAOIMPL.get_dataset_data_by_id(dataset)
+            # trainscript_bin = training_scripts_DAOIMPL.get_training_script_data_by_id(training_script)
+            
+            # # convert from binary using pickle
+            # ppscript = pickle.loads(ppscript_bin)
+            # dataset = pickle.loads(dataset_bin)
+            # train_script = pickle.loads(trainscript_bin)
+            
         # Save the uploaded file to the specified folder
-            if  model_name and model_description:
-               
-                # Save binary model data to the database.
-                new_model = model.Model(model_name, model_description, model_data = None, user_id=user_id, selected=0)
-                models_DAOIMPL.insert_model_into_models_for_user(new_model)
-                flash('Model has been uploaded successfully','info')
-                return redirect(url_for('upload_models'))
+            flash('Model has been uploaded successfully','info')
+            return redirect(url_for('upload_models'))
 
     # If GET request, render the upload form
         models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
+        training_scripts = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        preprocessing_scripts = preprocessing_scripts_DAOIMPL.get_preprocessing_scripts_for_user(user_id)
+        datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
         if models:
             models = models
-        return render_template('models.html', models=models)
+        return render_template('models.html', models=models, training_scripts=training_scripts, preprocessing_scripts=preprocessing_scripts,
+                               datasets=datasets)
        
     
 
@@ -641,6 +700,7 @@ def select_model(model_id):
 
 @app.route('/upload_dataset', methods=['GET', 'POST'])
 def upload_dataset():
+    import pandas as pd
     
     if user.User.check_logged_in():
         user_id = user.User.get_id()
@@ -652,7 +712,9 @@ def upload_dataset():
 
             if dataset_file and dataset_name and description:
                 # Load dataset content into a DataFrame
-                dataset_data = pickle.dumps(dataset_file)
+                dataset_df = pd.read_csv(dataset_file)
+                dataset_df = dataset_df.loc[:, ~dataset_df.columns.str.contains('^Unnamed')]
+                dataset_data = pickle.dumps(dataset_df)
 
                 # Store dataset metadata in database
                 new_dataset = dataset.Dataset(
@@ -720,7 +782,7 @@ def dashboard():
 
         # Fetch model metrics and historical metrics
         model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_selected_ml_models() or []
-        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_selected_models_sorted_by_model() or []
+        historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_selected_models_for_user_sorted_by_model(user_id) or []
 
         logging.info(f"historical_metrics: {historical_metrics}")
         logging.info(f'model metrics: {model_metrics}')
@@ -807,11 +869,12 @@ from Models import manual_metrics
 @app.route('/metrics_plots', methods=['GET'])
 def plot_metrics():
     if session.get('logged_in'):
-        metrics = manual_metrics_DAOIMPL.get_metrics_by_user_id(session.get('user_id'))
+        user_id = user.User.get_id()
+        metrics = metrics_DAOIMPL.get_all_metrics_for_user(user_id)
         if metrics:
-            manual_metrics.Manual_metrics.plot_manual_metrics()
+            metric.Metric.plot_model_metrics(user_id)
             # manual_metrics.Manual_metrics.plot_manual_metrics()
-            return render_template('metrics_plots.html')
+            return render_template('metrics_plots.html', user_id=user_id)
         message = 'There are not any metrics yet!'
         return render_template('metrics_plots.html', message=message)
     return redirect(url_for('home'))
@@ -867,37 +930,74 @@ def page_not_found(e):
 
 @app.route('/purchaser', methods=['GET', 'POST'])
 def purchaser_page():
+    from Finder import symbol_finder
+    from Recommender import recommender
+    from Purchaser import score_based_purchaser
+    import ast
+    from flask import session
+    from threading import Thread
+    from Models import recommended, progress_object
+    from database import recommended_DAOIMPL, progression_DAOIMPL
     if session.get('logged_in'):
         user_name = session.get('user_name')
         user_id = user.User.get_id()
         api = alpaca_request_methods.create_alpaca_api(user_name)
         user_account = api.get_account()
         cash = float(user_account.cash)
+        trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)
+        min_spend = float(trade_settings[2])
+        max_spend = float(trade_settings[3])
+        max_total_spend = float(trade_settings[7])
     
     
 
         if request.method == 'POST':
             # Generate recommendations and store them in the session
             #get form data from frontend
-            preprocessing_script = request.form.get('preprocessed_data')
+            preprocessing_script_id = request.form.get('preprocessed_data')
             training_script = request.form.get('training_script')
-            
+            recommendation_count = request.form.get('recommendation_count')
+            recommendation_count = int(recommendation_count)
+            model_name = preprocessing_scripts_DAOIMPL.get_model_name_for_preprocessing_scripts_preprocessing_script_id(preprocessing_script_id)
+            model_id = models_DAOIMPL.get_model_id_for_model_by_model_name(model_name)
+            recommended_DAOIMPL.delete_all_recommended_for_user(user_id)
             # create new dataset using the recommender TODO ------
-            
-            orders = purchaser.generate_recommendations_task(user_id)
-            session['orders'] = orders  # Store recommendations in session
-            if orders:
-                return render_template('purchaser.html', orders=orders, user_cash=cash)
+            progress_now = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
+            if progress_now:
+                progression_DAOIMPL.update_recommender_progress(1, user_id, progress_now[0])
             else:
-                error_message = 'No recommendations were found at that confidence level. Lower your confidence level and try again.'
-                return render_template('purchaser.html', error = error_message, user_cash=cash)
-
-        # Load recommendations from session if they exist
-        orders = session.get('orders', None)
+                new_progress = progress_object.Progress(1, user_id)
+                progression_DAOIMPL.insert_recommender_progress(new_progress)
+            assets_list = symbol_finder.get_list_of_tradeable_stocks()
+            progress_now = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
+            progression_DAOIMPL.update_recommender_progress(10, user_id, progress_now[0])
+            assets_list = symbol_finder.fetch_price_data_concurrently(assets_list,min_spend,max_spend)
+            progression_DAOIMPL.update_recommender_progress(20, user_id, progress_now[0])
+            assets_list = symbol_finder.sort_list_from_lowest_price_to_highest_price(assets_list)
+            new_list = list(map(lambda x: x[0], assets_list))
+            orders = recommender.get_model_recommendations_for_recommender(new_list, preprocessing_script_id, model_name, model_id, user_id, max_total_spend,recommendation_count, 20)
+            symbols = [item['Symbol'] for item in orders]
+            symbols_for_purchase = score_based_purchaser.process_symbols_for_purchase(symbols,orders, max_total_spend)
+            
+            for symbol, order_details in symbols_for_purchase.items():
+                recommendation = recommended.Recommended(order_details['symbol'],order_details['limit_price'],order_details['confidence'],user_id)
+                recommended_DAOIMPL.insert_recommendation(recommendation)    
+            return redirect(url_for('purchaser_page'))
+                # Load recommendations from session if they exist
+        recommendations = []
+        orders = recommended_DAOIMPL.get_recommended_for_user(user_id)
+        logging.info(orders)
         preprocessors = preprocessing_scripts_DAOIMPL.get_preprocessing_scripts_for_user(user_id)
         trainers = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        for order in orders:
+            recommendations.append( {
+                'symbol': order[1],
+                'limit_price': round(float(order[2]),2),
+                'confidence': order[3],
+                'qty': int( max_total_spend / float(order[2]))   
+            })
         
-        return render_template('purchaser.html', orders=orders, user_cash=cash, preprocessors=preprocessors, trainers=trainers
+        return render_template('purchaser.html', recommendations=recommendations, user_cash=cash, preprocessors=preprocessors, trainers=trainers, max_total_spend=max_total_spend
                                )
     return redirect(url_for('home'))
     
@@ -910,6 +1010,7 @@ def purchase_stock():
         symbol = request.form.get('symbol')
         limit_price = float(request.form.get('limit_price'))
         qty = int(request.form.get('qty'))
+        confidence = int(request.form.get('confidence'))
 
         try:
             order = {
@@ -918,7 +1019,8 @@ def purchase_stock():
                 'qty': qty,
                 'side': 'buy',
                 'type': 'limit',
-                'tif': 'gtc'  # Good 'til canceled
+                'tif': 'day',  # Good 'til canceled
+                'confidence': confidence
             }
             # Call Alpaca's purchase method to execute the order
             order_methods.submit_limit_order(session.get('user_name'), order)
@@ -943,14 +1045,15 @@ def purchase_stock():
 @app.route('/progress', methods=['GET'])
 def get_progress():
     from database import progression_DAOIMPL
+    user_id = session.get('user_id')
     global progress
     try:
-        progress = progression_DAOIMPL.get_recommender_progress() or 0
+        progress = progression_DAOIMPL.get_recommender_progress_by_user(user_id)[1] or 0
     except Exception as e:
         app.logging.error("Failed to fetch progress: %s", str(e))
         return jsonify({'error': 'Could not fetch progress'}), 500
-    logging.info(f'Progress is {progress[1]}')
-    return jsonify({'progress': progress[1]})
+    logging.info(f'Progress is {progress}')
+    return jsonify({'progress': progress})
 
 
 
@@ -961,18 +1064,10 @@ def get_progress():
 
 
 
-@app.route('/start_websocket/<username>')
-def start_websocket_route(username):
-    user_id = request.args.get('user_id')  # Extract from query string
-    alpaca_key = request.args.get('alpaca_key')  # Extract from query string
-    alpaca_secret = request.args.get('alpaca_secret')  # Extract from query string
+
     
     
-    # Start the WebSocket in a separate thread to avoid blocking Flask
-    thread = threading.Thread(target=alpaca_request_methods.run_alpaca_websocket, args=(username,user_id,alpaca_key, alpaca_secret))
-    thread.start()
-    return "WebSocket connection initiated"
-
+    
 
 
 @app.route('/update_preferences', methods=['POST'])
@@ -1056,7 +1151,6 @@ def log_event_loop_status(prefix=""):
 
 if __name__ == "__main__":
     app.run(debug=True)
-    start_websocket_route(session.get('user_name'))
     cProfile.run('generate_recommendations_task(user_id = session.get("user_id"))', 'profiling_output')
     
     

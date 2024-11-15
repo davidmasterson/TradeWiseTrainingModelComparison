@@ -12,45 +12,65 @@
                 <table class="table table-striped table-hover">
                     <thead class="thead-dark">
                         <tr>
-                            <th scope="col">Symbol</th>
-                            <th scope="col">Purchase Date</th>
-                            <th scope="col">Price Per Share</th>
-                            <th scope="col">Quantity</th>
-                            <th scope="col">Total Purchase</th>
-                            <th scope="col">Sale Date</th>
-                            <th scope="col">Sale Price Per Share</th>
-                            <th scope="col">Total Sale</th>
-                            <th scope="col">Expected Return</th>
-                            <th scope="col">Percentage ROI</th>
-                            <th scope="col">Actual Return</th>
-                            <th scope="col">Take Profit 1</th>
-                            <th scope="col">SOP</th>
-                            <th scope="col">Confidence Score</th>
-                            <th scope="col">Result</th>
-                            <th scope="col">Sector</th>
-                            <th scope="col">Processed</th>
+                            <th>Symbol</th>
+                                <th>Date Purchased</th>
+                                <th>Price/Share</th>
+                                <th>Quantity</th>
+                                <th>Total Purchase</th>
+                                <th>Date Sold</th>
+                                <th>Sold PPS</th>
+                                <th>Total Sell</th>
+                                <th>Expected Return</th>
+                                <th>ROI %</th>
+                                <th>Actual Return</th>
+                                <th>TP1</th>
+                                <th>SOP</th>
+                                <th>Sector</th>
+                                <th>Result</th>
+                                <th>Political Neutral Open</th>
+                                <th>Political Positive Open</th>
+                                <th>Political Negative Open</th>
+                                <th>S.A Neutral Open</th>
+                                <th>S.A Positive Open</th>
+                                <th>S.A Negative Open</th>
+                                <th>Political Neutral close</th>
+                                <th>Political Positive close</th>
+                                <th>Political Negative close</th>
+                                <th>S.A Neutral close</th>
+                                <th>S.A Positive close</th>
+                                <th>S.A Negative close</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for transaction in transactions %}
                         <tr>
                             <td>{{ transaction.symbol }}</td>
-                            <td>{{ transaction.dp }}</td>
-                            <td>{{ transaction.ppps }}</td>
-                            <td>{{ transaction.qty }}</td>
-                            <td>{{ transaction.total_buy }}</td>
-                            <td>{{ transaction.ds }}</td>
-                            <td>{{ transaction.spps }}</td>
-                            <td>{{ transaction.tsp }}</td>
-                            <td>{{ transaction.expected }}</td>
-                            <td>{{ transaction.proi }}%</td>
-                            <td>{{ transaction.actual }}</td>
-                            <td>{{ transaction.tp1 }}</td>
-                            <td>{{ transaction.sop }}</td>
-                            <td>{{ transaction.confidence }}</td>
-                            <td>{{ transaction.result }}</td>
-                            <td>{{ transaction.sector }}</td>
-                            <td>{{ transaction.processed }}</td>
+                                <td>{{ transaction.dp }}</td>
+                                <td>{{ transaction.ppps }}</td>
+                                <td>{{ transaction.qty }}</td>
+                                <td>{{ transaction.total_buy }}</td>
+                                <td>{{ transaction.ds }}</td>
+                                <td>{{ transaction.spps }}</td>
+                                <td>{{ transaction.tsp }}</td>
+                                <td>{{ transaction.expected }}</td>
+                                <td>{{ transaction.proi }}%</td>
+                                <td>{{ transaction.actual }}</td>
+                                <td>{{ transaction.tp1 }}</td>
+                                <td>{{ transaction.sop }}</td>
+                                <td>{{ transaction.sector }}</td>
+                                <td>{{ transaction.result }}</td>
+                                <td>{{ transaction.pol_neu_open }}</td>
+                                <td>{{ transaction.pol_pos_open }}</td>
+                                <td>{{ transaction.pol_neg_open }}</td>
+                                <td>{{ transaction.sa_neu_open }}</td>
+                                <td>{{ transaction.sa_pos_open }}</td>
+                                <td>{{ transaction.sa_neg_open }}</td>
+                                <td>{{ transaction.pol_neu_close }}</td>
+                                <td>{{ transaction.pol_pos_close }}</td>
+                                <td>{{ transaction.pol_neg_close }}</td>
+                                <td>{{ transaction.sa_neu_close }}</td>
+                                <td>{{ transaction.sa_pos_close }}</td>
+                                <td>{{ transaction.sa_neg_close }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

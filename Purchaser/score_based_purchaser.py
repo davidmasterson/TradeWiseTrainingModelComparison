@@ -49,27 +49,25 @@ def rank_sectors(sector_breakdown):
     sorted_sectors = sorted(sector_breakdown.items(), key=lambda x: x[1], reverse=True)
     return {sector: rank for rank, (sector, _) in enumerate(sorted_sectors, 1)}
 
-def process_symbols_for_purchase(symbols_list, max_total_spend):
-    
-    
-    orders = {}
-    for symbol_set in symbols_list: 
-        symbol = symbol_set[0]
+def process_symbols_for_purchase(symbols_list, orders, max_total_spend):
+    orders_list = {}
+
+    # Loop through symbols_list and orders together using zip
+    for symbol, order in zip(symbols_list, orders):
         limit_price = float(alpaca_request_methods.get_symbol_current_price(symbol))
-         
-        limit_price = round(limit_price,2)
-        orders[symbol] = {
-            'symbol':symbol,
-            'limit_price': float(limit_price),
-            'qty': int(float(max_total_spend) / float(limit_price)),
-            'side':'buy',
-            'type':'limit',
-            'tif':'day',
+        orders_list[symbol] = {
+            'symbol': symbol,
+            'limit_price': round(limit_price, 2),
+            'qty': int(float(max_total_spend) / limit_price),
+            'side': 'buy',
+            'type': 'limit',
+            'tif': 'day',
             'updated_last': datetime.now(),
-            'sentiment' : symbol_set[1]
+            'confidence': order['Confidence'],
+            'probability': order['Probability']
         }
-    return orders
-            
+
+    return orders_list
 
 
 # Example usage

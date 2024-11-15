@@ -6,6 +6,7 @@
         // This will render as a static JavaScript object after Jinja processing
             var historicalMetrics = {{ historical_metrics | safe }};
     </script>
+    <script src="{{ url_for('static', filename='js/tutorial.js') }}"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}My Application{% endblock %}</title>
     <!-- Bootstrap CSS -->
@@ -80,18 +81,19 @@
     <div class="sidebar">
         {% if request.path != '/index' %}
             <a href="/">Home</a>
+            <button onclick="showTutorial()">Start Tutorial</button>
         {% endif %}
         
         <!-- Category: Setup -->
-        <h3>Setup</h3>
-        <a href="/upload_preprocessing_scripts">PreProcessing Scripts</a>
-        <a href="/upload_training_scripts">Training Scripts</a>
+        <h3>Initial Setup</h3>
+        <a href="/upload_dataset">1. Upload Dataset</a>
+        <a href="/upload_preprocessing_scripts">2. Upload PreProcessing Script</a>
+        <a href="/upload_training_scripts">3. Upload Training Script</a>
+        <a href="/upload_models">4. Create Model</a>
 
         <!-- Category: Models and Analytics -->
-        <h3>Models and Analytics</h3>
-        <a href="/upload_models">Models</a>
+        <h3>Analytics</h3>
         <a href="/metrics_plots">Metrics</a>
-        <a href="/upload_dataset">Datasets</a>
 
         <!-- Category: Orders and Transactions -->
         <h3>Orders and Transactions</h3>

@@ -19,6 +19,7 @@ def create_user_table(user_id):
             password VARCHAR(255) NOT NULL,
             alpaca_key VARCHAR(255) NOT NULL,
             alpaca_secret VARCHAR(255) NOT NULL,
+            alpaca_endpoint VARCHAR(255) NOT NULL,
             PRIMARY KEY (id))
             '''
     try:
@@ -148,18 +149,20 @@ def insert_user(user):
                 user_name,
                 password,
                 alpaca_key,
-                alpaca_secret
+                alpaca_secret,
+                alpaca_endpoint
                 )
                 VALUES(
                 %s,%s,%s,%s,%s,
-                %s,%s)'''
+                %s,%s,%s)'''
     vals = [user.first,
             user.last,
             user.email,
             user.user_name,
             user.password,
             user.alpaca_key,
-            user.alpaca_secret
+            user.alpaca_secret,
+            user.alpaca_endpoint
             ]
     try:
         cur.execute(sql, vals)
@@ -196,7 +199,8 @@ def update_user_alpaca_keys(key, secret_key, id):
     cur = conn.cursor()
     sql = '''UPDATE users SET
             alpaca_key = %s,
-            alpaca_secret = %s
+            alpaca_secret = %s,
+            alpaca_endpoint=%s
             WHERE 
             id = %s'''
     vals = [key,secret_key,id]
@@ -222,7 +226,8 @@ def update_user(user, user_id):
             email = %s,
             password = %s,
             alpaca_key = %s,
-            alpaca_secret = %s
+            alpaca_secret = %s,
+            alpaca_endpoint = %s,
             WHERE 
             id = %s'''
     vals = [
@@ -232,6 +237,7 @@ def update_user(user, user_id):
         user.password,
         user.alpaca_key,
         user.alpaca_secret,
+        user.alpaca_endpoint,
         user_id
     ] 
     try:

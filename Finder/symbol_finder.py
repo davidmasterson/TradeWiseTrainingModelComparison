@@ -73,10 +73,10 @@ def fetch_price_data_concurrently(symbols_list,min_price,max_price, max_workers=
                 if result:
                     assets.append(result)
                 count += 1
-                if count % 156 == 0:
-                    cur_prog = progression_DAOIMPL.get_recommender_progress()
-                    progress = cur_prog[1] + 1
-                    progression_DAOIMPL.update_recommender_progress(progress, cur_prog[0])
+                # if count % 156 == 0:
+                    # cur_prog = progression_DAOIMPL.get_recommender_progress()
+                    # progress = cur_prog[1] + 1
+                    # progression_DAOIMPL.update_recommender_progress(progress, cur_prog[0])
                 logging.info(f"{count}/{len(symbols_list)}: Processed {symbol}")
             except Exception as e:
                 logging.info(f"Error processing {symbol}: {e}")
