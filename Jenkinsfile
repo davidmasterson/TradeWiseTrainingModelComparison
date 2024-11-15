@@ -15,14 +15,15 @@ pipeline {
                 }
             }
         }
+
         stage('Set Up Conda Environment') {
             when {
                 branch 'main'  // Only trigger this pipeline if changes are in the 'main' branch
             }
             steps {
                 script {
-                    // Activate the conda environment and install dependencies
-                    sh """
+                    // Use bash and activate the conda environment
+                    sh """#!/bin/bash
                         source ~/miniconda3/etc/profile.d/conda.sh
                         conda activate ${CONDA_ENV}
                         conda env update -f ${PROJECT_DIR}/environment.yml --prune
@@ -34,7 +35,7 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    sh """
+                    sh """#!/bin/bash
                         source ~/miniconda3/etc/profile.d/conda.sh
                         conda activate ${CONDA_ENV}
                         # Run test commands here
@@ -65,7 +66,7 @@ pipeline {
 
     post {
         always {
-            echo 'Build, Test and Deployment steps are completed.'
+            echo 'Build, Test, and Deployment steps are completed.'
         }
     }
 }
