@@ -4,7 +4,7 @@ pipeline {
     environment {
         PROJECT_DIR = '/home/ubuntu/TradeWiseTrainingModelComparison'
         CONDA_ENV = 'tf-env'
-        CONDA_PATH = '/home/ubuntu/miniconda3' // Correct path to Miniconda
+        CONDA_PATH = '/home/ubuntu/miniconda3'
     }
 
     stages {
@@ -18,16 +18,15 @@ pipeline {
         }
 
         stage('Set Up Conda Environment') {
-            when {
-                branch 'main'  // Only trigger this pipeline if changes are in the 'main' branch
-            }
             steps {
                 script {
-                    // Use bash and activate the conda environment
+                    // Run the setup commands as the ubuntu user to ensure correct permissions
                     sh """#!/bin/bash
+                        sudo -u ubuntu bash -c '
                         source ${CONDA_PATH}/etc/profile.d/conda.sh
                         conda activate ${CONDA_ENV}
                         conda env update -f ${PROJECT_DIR}/environment.yml --prune
+                        '
                     """
                 }
             }
@@ -36,10 +35,13 @@ pipeline {
         stage('Test') {
             steps {
                 script {
+                    // Run test commands as the ubuntu user
                     sh """#!/bin/bash
+                        sudo -u ubuntu bash -c '
                         source ${CONDA_PATH}/etc/profile.d/conda.sh
                         conda activate ${CONDA_ENV}
                         # Run test commands here
+                        '
                     """
                 }
             }
