@@ -102,17 +102,17 @@ def get_model_recommendations_for_recommender(new_list,preprocessing_script_id, 
 
 
         # Open the file in append mode after the first iteration
-        
-        for prob in probs:
+        if probs:
+            for prob in probs:
             # Check if the prediction meets the condition (prob[-1] == 1)
             
-            symbols.append(prob)  # Append the symbol to the list
-            if len(symbols) >= recommendation_count:  # Stop when we have enough symbols
-                logging.info(symbols)
-                progress_now = len(symbols) * (100 - progression) / recommendation_count
-                progress = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
-                progression_DAOIMPL.update_recommender_progress(progress_now,user_id,progress[0])
-                return symbols
+                symbols.append(prob)  # Append the symbol to the list
+                if len(symbols) >= recommendation_count:  # Stop when we have enough symbols
+                    logging.info(symbols)
+                    progress_now = len(symbols) * (100 - progression) / recommendation_count
+                    progress = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
+                    progression_DAOIMPL.update_recommender_progress(progress_now,user_id,progress[0])
+                    return symbols
         logging.error(f'{symbols}')
         # Update iteration and count for the next loop
         iter += 1
