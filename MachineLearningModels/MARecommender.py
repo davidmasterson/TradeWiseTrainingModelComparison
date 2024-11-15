@@ -67,11 +67,11 @@ def calculate_sentiment(symbol):
         info = manual_alg_requisition_script.request_articles(symbol)
         avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
         logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
-        return (avg_pos + avg_neg) / 2
-        # return avg_neut, avg_pos, avg_neg TODO uncomment 
+        
+        return avg_neut, avg_pos, avg_neg  
     except Exception as e:
         logging.error(f'Error calculating sentiment: {e}')
-        return 0 #TODO change back to 0, 0, 0
+        return 0, 0, 0
     
 
         
@@ -123,20 +123,19 @@ def preprocess_data(user_id, model_name):
         logging.info("Starting parallel processing for check3fib.")
         df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
         logging.info("Calculated fibs.")
-        # df['check4sa'] = parallel_apply(df['symbol'], calculate_sentiment)
-        # Calculate sentiment scores for each symbol using parallel processing
-        # try:
-        #     df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
-        # except Exception as e:
-        #     logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
-        # logging.info("Calculated symbol-specific sentiment.")
-        # # Calculate the political sentiment scores once, as they apply to all rows
-        # try:
-        #     pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
-        #     df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
-        #     logging.info("Calculated and applied daily political sentiment scores to all rows.")
-        # except Exception as e:
-        #     logging.error(f"Error calculating political sentiment: {e}")
+        
+        try:
+            df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
+        except Exception as e:
+            logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
+        logging.info("Calculated symbol-specific sentiment.")
+        # Calculate the political sentiment scores once, as they apply to all rows
+        try:
+            pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
+            df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
+            logging.info("Calculated and applied daily political sentiment scores to all rows.")
+        except Exception as e:
+            logging.error(f"Error calculating political sentiment: {e}")
         # Calculate final confidence score
         df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
         logging.info("Calculated confidence.")
