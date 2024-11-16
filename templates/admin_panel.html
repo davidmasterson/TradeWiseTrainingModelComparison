@@ -11,4 +11,11 @@
 <!-- Button to manage roles -->
 <a href="{{ url_for('assign_roles') }}"><button>Manage Roles</button></a>
 
+<a href="{{ url_for('all_metrics_view') }}"><button>View Financial Metrics of all Users</button></a>
+
+<div> Total Profits: {{total_profit}} </div>
+<div> Total Losses: {{total_loss}}</div>
+<div> Total Number of Users: {{total_number_of_users}} </div>
+
+
 {% endblock %}

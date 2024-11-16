@@ -540,7 +540,7 @@ def insert_transactions(transactions):
         insert_transaction(transaction)
 
 
-def insert_transaction(transaction, pending_order_id):
+def insert_transaction(transaction, pending_order):
     from database import pending_orders_DAOIMPL
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -626,7 +626,7 @@ def insert_transaction(transaction, pending_order_id):
         conn.commit()
         id = cur.lastrowid
         logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
-        pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order_id)
+        pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0], pending_order[3], pending_order[2])
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to insert transaction {transaction.symbol, transaction.ppps} due to : {e}')
     finally:
@@ -646,12 +646,12 @@ def update_transaction(transaction_id, values):
             proi = %s,
             actual = %s,
             result = %s,
-            pol_neu_close,
-            pol_pos_close,
-            pol_neg_close,
-            sa_neu_close,
-            sa_pos_close,
-            sa_neg_close
+            pol_neu_close = %s,
+            pol_pos_close = %s,
+            pol_neg_close = %s,
+            sa_neu_close = %s,
+            sa_pos_close = %s,
+            sa_neg_close = %s
             WHERE
             id = %s
         '''

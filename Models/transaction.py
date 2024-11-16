@@ -1,6 +1,6 @@
 import sector_finder
 import logging
-import yahoo_finance
+
 from MachineLearningModels import manual_alg_requisition_script
 
 class transaction:

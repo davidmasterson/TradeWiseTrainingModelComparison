@@ -1,6 +1,8 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import os
+os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import logging
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -74,12 +76,14 @@ def monitor_all_users():
         futures = {executor.submit(check_positions_for_user, user['user_name'], user['id']): user['user_name'] for user in users}
         
         # Wait for all tasks to complete
-        for future in as_completed(futures):
+        for future in as_completed(futures, timeout=60):
             user_name = futures[future]
             try:
                 future.result()  # Retrieve the result of the function
-            except Exception as exc:
-                logging.error(f"{user_name} generated an exception: {exc}")
+            except TimeoutError:
+                print("Monitoring tasks timed out.")
+            except Exception as e:
+                print(f"Error occurred: {e}")
 
 if __name__ == "__main__":
     monitor_all_users()

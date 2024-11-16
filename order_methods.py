@@ -24,10 +24,10 @@ def submit_limit_order(username, incoming_order):
             client_order_id=f"{datetime.now()}{incoming_order['symbol']}{incoming_order['qty']} {incoming_order['limit_price']}/{user_id}"
         )
         coid = order.id
-        logging.info(f"Order submitted: {incoming_order}, order_id {order}")
+        logging.info(f"{incoming_order['side']} Order submitted: {incoming_order}, for user {username} order_id {order}")
         pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
     except Exception as e:
-        logging.info(f"Error placing order: {e}")
+        logging.info(f"Error placing {incoming_order['side']} order: for user {username} due to {e}")
  
 def place_sell_order(symbol, qty, price, username, buystring, user_id):
     """
@@ -47,10 +47,10 @@ def place_sell_order(symbol, qty, price, username, buystring, user_id):
             client_order_id=f"sell-{symbol}-{qty}-{limit_price}-{datetime.now().strftime('%Y-%M-%d %H:%m:%S')}/{username} "  # Unique identifier for the order
         )
         coid = sell_order.id
-        logging.info(f"Order submitted: {sell_order}, order_id {sell_order.id}")
+        logging.info(f"Order submitted: {sell_order}, for user {username} order_id {sell_order.id}")
         pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'sell',purchase_string=buystring )
     except Exception as e:
-        print(f"Error placing sell order for {symbol}: {e}")
+        print(f"Error placing sell order for {symbol}: for user {username} due to  {e}")
        
     
 #--------------------------------------BELOW MAY BE USELESS IF WEBSOCKET WORKS-----------------------------------------------------------------

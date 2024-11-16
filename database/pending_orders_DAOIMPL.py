@@ -102,18 +102,18 @@ def insert_pending_order(client_order_id, user_id,side,purchase_string = None):
         cur.close()
         conn.close()
         
-def delete_pending_order_after_fill(id):
+def delete_pending_order_after_fill(id, side, user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''DELETE FROM pending_orders
-            WHERE id = %s AND side = %s'''
-    vals = [id]
+            WHERE id = %s AND side = %s AND user_id = %s'''
+    vals = [id, side, user_id]
     try:
         cur.execute(sql, vals)
         conn.commit()
-        logging.info(f'{datetime.now()}: Pending order {id} has been deleted ')
+        logging.info(f'{datetime.now()}: Pending {side} order {id} has been deleted for user {user_id} ')
     except Exception as e:
-        logging.info(f'{datetime.now()}: Unable to delete Pending order {id} due to {e}')
+        logging.info(f'{datetime.now()}: Unable to delete Pending {side} order {id} for user {user_id} due to {e}')
         return None
     finally:
         conn.close()
