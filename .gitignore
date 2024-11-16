@@ -38,3 +38,4 @@ test_processing.py
 this_script.py
 
 cron_seller.log
+logs/websocket.log
