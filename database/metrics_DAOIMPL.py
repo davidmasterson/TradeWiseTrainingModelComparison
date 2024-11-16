@@ -20,6 +20,43 @@ def get_all_metrics_for_user(user_id):
         cur.close()
         conn.close()
 
+
+def get_all_profits_for_all_users():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT sum(cumulative_profit) FROM metrics'''
+    
+    try:
+        cur.execute(sql)
+        total_profit = cur.fetchone()
+        if total_profit:
+            return total_profit[0]
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+
+def get_all_loss_for_all_users():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT sum(cumulative_loss) FROM metrics'''
+    
+    try:
+        cur.execute(sql)
+        total_loss = cur.fetchone()
+        if total_loss:
+            return total_loss[0]
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        conn.close()
+        cur.close()
+        
 def get_metrics_dates_by_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()

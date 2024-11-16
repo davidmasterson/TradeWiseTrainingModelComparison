@@ -124,7 +124,30 @@ def get_all_metrics_history_for_all_selected_models_for_user_sorted_by_model(use
     finally:
         conn.close()
         cur.close()
-    
+
+
+def get_last_trained_dates():
+    conn = dcu.get_db_connection()  # Replace with your actual DB connection function
+    cur = conn.cursor()
+    sql = '''SELECT models.user_id,MAX(model_metrics_history.timestamp) AS last_trained
+                FROM model_metrics_history
+                JOIN models 
+                ON model_metrics_history.model_id = models.id
+                WHERE models.user_id BETWEEN 1 AND 6
+                GROUP BY models.user_id;
+    '''
+    try:
+        cur.execute(sql)
+        results = cur.fetchall()
+        if results:
+            return results
+        return []
+    except Exception as e:
+        print(f"Error fetching last trained dates: {e}")
+    finally:
+        cur.close()
+        conn.close()
+            
 def insert_metrics_history(metrics_history):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
