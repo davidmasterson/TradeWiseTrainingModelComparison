@@ -14,7 +14,7 @@ def create_user_table(user_id):
             id INT AUTO_INCREMENT,
             first VARCHAR(50) NOT NULL,
             last VARCHAR(50) NOT NULL,
-            email VARCHAR(100) NOT NULL,
+            email VARCHAR(100) NOT NULL UNIQUE,
             user_name VARCHAR(20) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             alpaca_key VARCHAR(255) NOT NULL,
@@ -91,6 +91,44 @@ def get_user_by_user_id(user_id):
         id = cur.fetchone()
         if id:
             return id
+        return None
+        
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+        
+def get_user_by_email(email):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM users WHERE email = %s'''
+    vals = [email]
+    try:
+        cur.execute(sql, vals)
+        count = cur.fetchone()
+        if count:
+            return count
+        return None
+        
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
+def get_total_number_of_users():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT count(*) FROM users'''
+    
+    try:
+        cur.execute(sql)
+        count = cur.fetchone()
+        if count:
+            return count[0]
         return None
         
     except Exception as e:

@@ -23,9 +23,9 @@ from flask_cors import CORS
 import asyncio
 from datetime import datetime
 import json
-
+from authlib.integrations.flask_client import OAuth
 import cProfile
-
+from collections import defaultdict
 
 app = Flask(__name__)
 
@@ -48,23 +48,41 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
+# logging.basicConfig(
+#     filename='app.log',
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+# # Attach logging to Flask's logger and configure it to log to the console as well
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+# app.logger.setLevel(logging.ERROR)  # Logs errors only
+
+
+#Set up Google OAuth2.0
+oauth = OAuth(app)
+oauth.register(
+    name='google',
+    client_id=os.getenv('GOOGLE_CLIENT_ID'),
+    client_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
+    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',  # Fetch metadata
+    client_kwargs={
+        'scope': 'openid email profile'
+    },
+    api_base_url='https://www.googleapis.com/oauth2/v1/',  # Set base URL
+    userinfo_endpoint='https://www.googleapis.com/oauth2/v3/userinfo'  # Explicitly define userinfo endpoint
 )
-# Attach logging to Flask's logger and configure it to log to the console as well
-app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 #Public Homepage
 @app.route('/', methods=['GET'])
 def home():
-    # If the user is logged in, redirect to the dashboard
+    # Check if the user is logged in
     if session.get('logged_in'):
         return redirect(url_for('dashboard'))
+    if session.get('google_token'):
+        return redirect(url_for('dashboard'))
     return render_template('home.html')  # Renders new homepage with Sign In and Sign Up buttons
+
 
 # Authenticated user's homepage
 @app.route('/index', methods=['GET'])
@@ -139,66 +157,88 @@ def signup():
         return render_template('login.html', success = 'Your account was created successfully!')  # Redirect to login page after successful sign-up
     return render_template('signup.html')
 
+@app.route('/google_callback')
+def google_callback():
+    try:
+        # Handle Google OAuth callback
+        token = oauth.google.authorize_access_token()
+        user_info = oauth.google.get('userinfo').json()
+
+        if not user_info or not user_info.get('email'):
+            flash('Google authentication failed. Please try again.', 'error')
+            return redirect(url_for('login'))
+
+        google_email = user_info['email']
+        google_name = user_info['name']
+
+        # Check if the user exists in your database
+        user_data = user_DAOIMPL.get_user_by_email(google_email)
+        if user_data:
+            # User exists, log them in
+            session['logged_in'] = True
+            session['user_id'] = user_data[0]
+            session['user_name'] = user_data[4]
+            session['google_token'] = token
+        else:
+            # User doesn't exist, auto-register or redirect to registration
+            user_name = google_email.split('@')[0]  # Default username from email
+            new_user = user.User(first=google_name.split()[0], last=google_name.split()[-1],
+                                  user_name=user_name, email=google_email, password=None)
+            new_user_id = user_DAOIMPL.insert_user(new_user)
+
+            # Set session variables for the new user
+            session['logged_in'] = True
+            session['user_id'] = new_user_id
+            session['user_name'] = user_name
+            session['google_token'] = token
+
+        # Redirect to dashboard after successful login
+        return redirect(url_for('dashboard'))
+
+    except Exception as e:
+        logging.error(f"Google OAuth Callback Error: {e}")
+        flash('An error occurred during Google authentication. Please try again.', 'error')
+        return redirect(url_for('login'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        # Get form data and validate
+        # Handle traditional username/password login
         username = request.form.get('username')
         password = request.form.get('password')
-        
-        # Ensure form fields are not empty
+
         if not username or not password:
             return render_template('login.html', error='Username and password are required.')
 
         try:
-            # Fetch user from the database
             user_data = user_DAOIMPL.get_user_by_username(username)
             if not user_data:
                 return render_template('login.html', error='Invalid username or password.')
-            
-            user_data = user_data[0]  # Assuming user_DAOIMPL returns a list of results
-            
-            # Validate password using bcrypt
+
+            user_data = user_data
             if bcrypt.checkpw(password.encode('utf-8'), user_data['password'].encode('utf-8')):
+                # Set session variables for traditional login
                 session['logged_in'] = True
                 session['user_name'] = user_data['user_name']
                 session['user_id'] = user_data['id']
-
-                # Try users Alpaca API Keys
-                conn = alpaca_request_methods.create_alpaca_api(username)
-                try:
-                    account = conn.get_account()
-                    if account:
-                        try:
-                            username = user_data['user_name']
-                            user_id = user_data['id']
-                            alpaca_key = user_data['alpaca_key']
-                            alpaca_secret = user_data['alpaca_secret']
-                            
-                            
-                            
-                            
-
-                        except Exception as e:
-                            logging.error(f"Failed to start background task: {e}")
-
-                        return redirect(url_for('dashboard'))
-                except Exception as e:
-                    logging.error(f"Error with Alpaca API: {e}")
-                    # Render API key update form for user to resubmit their keys
-                    return render_template('APIKeys_resubmission_form.html', user=username, first=user_data['first'], 
-                                           last=user_data['last'], email=user_data['email'])
+                return redirect(url_for('dashboard'))
             else:
-                # Invalid password
                 return render_template('login.html', error='Invalid username or password.')
         except Exception as e:
-            logging.error(f"Error during login process: {e}")
+            logging.error(f"Login error: {e}")
             return render_template('login.html', error='An unexpected error occurred. Please try again.')
-    
-    # For GET request, simply render the login page
-    return render_template('login.html')
+
+    # For GET requests, include Google OAuth login option
+    return render_template('login.html', google_login_url=url_for('google_login'))
+
+
+@app.route('/google_login')
+def google_login():
+    """Redirects the user to Google's OAuth authorization page."""
+    return oauth.google.authorize_redirect(url_for('google_callback', _external=True))
+
+
 
 
 @app.route('/update_user_api_keys', methods=['POST'])
@@ -292,10 +332,19 @@ def user_profile():
         user = user_DAOIMPL.get_user_by_username(session.get('user_name'))[0]
         conn = alpaca_request_methods.create_alpaca_api(session.get('user_name'))
         account = conn.get_account()
-        profit_loss = float(account.equity) - float(account.cash)
+        metric = metrics_DAOIMPL.get_last_metric_for_user(user_id)
+        if metric:
+            profit = metric[6]
+            profit = float(profit[0]) if profit else 0
+            loss = float(metric[7])
+            loss = float(loss[0]) if loss else 0
+            total_profit = profit + loss
+        else:
+            total_profit = 0.00
+        
         equity = float(account.equity)
         cash = float(account.cash)
-        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=profit_loss)
+        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=total_profit)
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 @app.route('/update_profile', methods=['POST'])
@@ -356,7 +405,11 @@ def admin_panel():
     if not user_role.UserRole.check_if_admin():
         abort(403) #not authorized
     message = 'This is a protected admin-only area. Your actions are being logged.'
-    return render_template('admin_panel.html', message=message)
+    total_profit = metrics_DAOIMPL.get_all_profits_for_all_users()
+    total_loss = metrics_DAOIMPL.get_all_loss_for_all_users()
+    total_number_of_users = user_DAOIMPL.get_total_number_of_users()
+    return render_template('admin_panel.html', message=message, total_profit=total_profit, total_loss=total_loss,
+                           total_number_of_users=total_number_of_users)
 
 @app.route('/admin/users', methods=['GET'])
 def admin_users():
@@ -365,6 +418,34 @@ def admin_users():
         abort(403) #deny access
     users = roles_DAOIMPL.get_all_users_and_roles(id) #get all users from database
     return render_template('admin_users.html', users=users)
+
+@app.route('/admin/all_tester_user_metrics', methods = ['GET'])
+def all_metrics_view():
+    id = user.User.get_id()
+    if not user_role.UserRole.check_if_admin():
+        abort(403) #deny access
+    last_trained = model_metrics_history_DAOIMPL.get_last_trained_dates()
+    user_1_date =    last_trained[0][1]
+    ud1 = user_1_date.strftime('%B %d %Y')
+    user_2_date =    last_trained[1][1]
+    ud2 = user_2_date.strftime('%B %d %Y')
+    user_3_date = last_trained[2][1]
+    ud3 = user_3_date.strftime('%B %d %Y')
+    user_4_date = last_trained[3][1]
+    ud4 = user_4_date.strftime('%B %d %Y')
+    user_5_date = last_trained[4][1]
+    ud5 = user_5_date.strftime('%B %d %Y')
+    user_6_date = last_trained[5][1]
+    ud6 = user_6_date.strftime('%B %d %Y')
+    last_trained_dict = {
+        1 : ud1,
+        2 : ud2,
+        3 : ud3,
+        4 : ud4,
+        5 : ud5,
+        6 : ud6
+    }
+    return render_template('all_tester_metrics.html', last_trained=last_trained_dict)   
 
 @app.route('/admin/assign_role', methods=['POST'])
 def assign_role():
@@ -688,6 +769,7 @@ def upload_training_scripts():
         # If GET request, render the upload form
         scripts = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
         return render_template('training_scripts.html', scripts=scripts)
+    return redirect(url_for('home'))
 
 @app.route('/select_model/<int:model_id>', methods=['POST'])
 def select_model(model_id):
@@ -772,40 +854,25 @@ def process_symbols():
 
 @app.route('/dashboard', methods=['GET'])
 def dashboard():
-    from collections import defaultdict
-
-    if session.get('logged_in'):
-        user_id = user.User.get_id()
+    if session.get('logged_in') or session.get('google_token'):
+        user_id = session.get('user_id')
 
         # Fetch selected models separately from model metrics
-        selected_models = models_DAOIMPL.get_selected_models_for_user(user_id)  # New function to fetch selected models
-
-        # Fetch model metrics and historical metrics
+        selected_models = models_DAOIMPL.get_selected_models_for_user(user_id)
         model_metrics = model_metrics_history_DAOIMPL.get_most_recent_metric_history_for_all_selected_ml_models() or []
         historical_metrics = model_metrics_history_DAOIMPL.get_all_metrics_history_for_all_selected_models_for_user_sorted_by_model(user_id) or []
 
-        logging.info(f"historical_metrics: {historical_metrics}")
-        logging.info(f'model metrics: {model_metrics}')
-
-        # Initialize an empty metrics_data to dynamically populate based on selected models
         metrics_data = []
-
-        # Prepare a set of model names that have metrics
         model_names_with_metrics = {metric[0] for metric in model_metrics}
 
-        # Populate metrics_data with actual metrics and placeholders for selected models
         for model in selected_models:
             model_name = model[1]
-
-            # If metrics exist for this model, add them
             metric = next((m for m in model_metrics if m[0] == model_name), None)
             if metric:
                 top_features_str = metric[5] if isinstance(metric[5], str) else '{}'
                 top_features_dict = json.loads(top_features_str)
                 for feature in top_features_dict:
                     feature["Importance"] = float(feature["Importance"]) * 100
-
-                # Sort and get the top 5 features by Importance
                 top_features_sorted = sorted(top_features_dict, key=lambda x: x["Importance"], reverse=True)[:5]
                 metrics_data.append({
                     'model_name': metric[0],
@@ -817,7 +884,6 @@ def dashboard():
                     'timestamp': metric[6].strftime('%Y-%m-%d %H:%M:%S')
                 })
             else:
-                # Placeholder metrics for models without existing metrics
                 metrics_data.append({
                     'model_name': model_name,
                     'accuracy': None,
@@ -828,12 +894,9 @@ def dashboard():
                     'timestamp': "No data - Run training"
                 })
 
-        # Process historical metrics
         chart_data = defaultdict(lambda: {'dates': [], 'accuracy': [], 'precision': [], 'recall': [], 'f1_score': []})
 
-        if not historical_metrics:
-            logging.info("No historical metrics found; using placeholders.")
-        else:
+        if historical_metrics:
             for entry in historical_metrics:
                 model_name, accuracy, precision, recall, f1_score, _, timestamp = entry
                 chart_data[model_name]['dates'].append(timestamp.strftime('%Y-%m-%d %H:%M:%S'))
@@ -842,20 +905,14 @@ def dashboard():
                 chart_data[model_name]['recall'].append(recall)
                 chart_data[model_name]['f1_score'].append(f1_score)
 
-        # Convert defaultdict to a normal dict for JSON serialization
         chart_data = dict(chart_data)
-        logging.info(f'ChartDataHistorical: {chart_data}')
-        logging.info(f'ChartDataJSON: {json.dumps(chart_data)}')
-
-        # Fetch options for preprocessed data and training scripts
         preprocessed_data_options = preprocessing_scripts_DAOIMPL.get_all_preprocessed_data_for_user(user_id)
         training_script_options = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
         dataset_options = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
 
-        # Render the dashboard template and pass metrics and historical data
         return render_template('index.html', metrics_data=metrics_data, historical_metrics=json.dumps(chart_data),
                                preprocessed_data_options=preprocessed_data_options, training_script_options=training_script_options,
-                               dataset_options = dataset_options)
+                               dataset_options=dataset_options)
 
     return redirect(url_for('home'))
 
@@ -903,9 +960,7 @@ def transactions():
 # New logout route
 @app.route('/logout')
 def logout():
-    if session.get('logged_in'):
-        session.clear()
-        return redirect(url_for('home'))  # Redirect to homepage after logout
+    session.clear()
     return redirect(url_for('home'))
 
 @app.errorhandler(Exception)
@@ -920,8 +975,8 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 
-
-
+def get_google_oauth_token():
+    return session.get('google_token')
 
 
 
@@ -1142,10 +1197,7 @@ def upload_script():
 
 
 
-######DEBUG FUNCTIONS#################
-def log_event_loop_status(prefix=""):
-    loop = asyncio.get_event_loop()
-    logging.info(f"{prefix} Event loop running: {loop.is_running()}, closed: {loop.is_closed()}")
+
 
 
 
