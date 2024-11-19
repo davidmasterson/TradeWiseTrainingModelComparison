@@ -22,13 +22,21 @@ logging.debug("Starting preprocessing script.")
 
 # Function to calculate target based on hitting tp1 within 12 days
 def calculate_target(row):
-    date_purchased = pd.to_datetime(row['dp'])
-    date_sold = pd.to_datetime(row['ds'])
-    actual_return = row['actual']
-    
-    if pd.isnull(date_sold) or (date_sold - date_purchased).days > 12:
+    """
+    Determines if tp1 was hit before sop based on 'actual'.
+    - Returns 1 if 'actual' > 0 (tp1 hit before sop).
+    - Returns 0 if 'actual' <= 0 (sop hit before tp1 or no profit).
+    """
+    try:
+        actual = row['actual']
+        
+        if pd.isnull(actual):
+            return 0  # Default to 0 if 'actual' is missing
+        
+        return 1 if actual > 0 else 0
+    except Exception as e:
+        logging.error(f"Error calculating target for row {row}: {e}")
         return 0
-    return 1 if actual_return >= 0 else 0
 
 # Function to calculate result based on date difference
 def calculate_result(row):
@@ -79,8 +87,8 @@ def preprocess_first_dataframe(user_id):
         print(transactions[0])
         columns = ['id','symbol','dp','ppps','qty','total_buy','pstring','ds','spps','tsp','sstring','expected',
                    'proi','actual','tp1','sop','confidence','result','user_id','sector', 'processed','pol_neu_open',
-                   'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open','pol_neu_open',
-                   'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open']
+                   'pol_pos_open','pol_neg_open','sa_neu_open','sa_pos_open','sa_neg_open','pol_neu_close',
+                   'pol_pos_close','pol_neg_close','sa_neu_close','sa_pos_close','sa_neg_close']
         df1 = pd.DataFrame(data=transactions, columns=columns)
         
         # Drop rows with missing 'ds' and apply transformations
@@ -130,7 +138,7 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
             logging.info("Calculated fibs.")
             # Calculate final confidence score
-            df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
+            df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
             logging.info("Calculated confidence.")
             # ---------------------------------------------------------------------------------------------------------------------------
             logging.info("Calculated confidence.")
@@ -140,19 +148,22 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             df['purchase_day'] = df['dp'].dt.day
             df['purchase_month'] = df['dp'].dt.month
             df['purchase_year'] = df['dp'].dt.year
+            
             df['ds'] = pd.to_datetime(df['ds'])
             df['sell_day'] = df['ds'].dt.day
             df['sell_month'] = df['ds'].dt.month
             df['sell_year'] = df['ds'].dt.year
+            
+            
             logging.info("Performed date-based feature engineering.")
         #        # Drop unnecessary columns
-            df = df.drop([ 'id','pstring','spps','tsp','sstring','expected','proi','result','user_id',
-                        'processed','sell_day','sell_month','sell_year'], axis=1)
+            df['hit_tp1'] = df.apply(calculate_target, axis=1)
+            df = df.drop([ 'id','pstring', 'spps','tsp','sstring','expected','result','user_id',
+                        'processed','dp', 'confidence', 'ds', 'actual','proi'], axis=1)
+            
             logging.info("Dropped unnecessary columns.")
             # Ensure the target column is reset
-            df['hit_tp1_within_12'] = df.apply(calculate_target, axis=1)
-            logging.info(f"Recalculated target. Distribution:\n{df['hit_tp1_within_12'].value_counts()}")
-        
+            logging.info(f"Recalculated target. Distribution:\n{df['hit_tp1'].value_counts()}")
             # COMBINE DATAFRAMES TO A FULL DF CONTAINING NEW AND OLD TRANSACTION DATA ROWS
             dataset_id = int(dataset_id)
             finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
@@ -169,8 +180,6 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
                 df_final = df_final.loc[:, ~df_final.columns.duplicated()]
             else:
                 df_final = df
-        
-            
             try:
                 df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
             except:
@@ -184,19 +193,19 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
             df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
             logging.info("Encoded categorical features.")
-            df_final.to_csv('LAST.csv')
-            df_final = df_final.drop(['dp','ds', 'actual', 'confidence'], axis=1)
+            
+            
         
             new_dataset = df_final
-            df_final = df_final.drop(['sector', 'symbol'], axis=1)
+            df_final.drop(['sector','symbol'], axis=1, inplace=True)
             
             # Separate features and target
-            X = df_final.drop(['hit_tp1_within_12'], axis=1)
+            X = df_final.drop(['hit_tp1'], axis=1)
             columns_list = X.columns.to_list()
             pd.reset_option('display.max_rows')
             pd.reset_option('display.max_columns')
             logging.info(f'Columns are: {columns_list}')
-            y = df_final['hit_tp1_within_12']
+            y = df_final['hit_tp1']
             logging.info("Separated features and target.")
 
             # Ensure all data in X is numeric

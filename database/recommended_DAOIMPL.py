@@ -13,6 +13,7 @@ def create_recommended_table():
         price float NOT NULL,
         confidence INT NOT NULL,
         user_id INT NOT NULL,
+        sector VARCHAR(50) NOT NULL,
         FOREIGN KEY (user_id) REFERENCES users(id))'''
     try:
         cur.execute(sql)
@@ -52,13 +53,15 @@ def insert_recommendation(recommendation):
             symbol,
             price,
             confidence,
-            user_id)
+            user_id,
+            sector)
             VALUES(
-                %s,%s,%s,%s)'''
+                %s,%s,%s,%s,%s)'''
     vals = [recommendation.symbol,
             recommendation.price,
             recommendation.confidence,
-            recommendation.user_id]
+            recommendation.user_id,
+            recommendation.sector]
     try:
         cur.execute(sql, vals)
         conn.commit()

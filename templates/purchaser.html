@@ -78,6 +78,7 @@
                     <th>Limit Price</th>
                     <th>Qty</th>
                     <th>Confidence</th>
+                    <th>Sector</th>
                     
                     
                     
@@ -101,6 +102,7 @@
                     <td>{{ details.limit_price }}</td>
                     <td>{{ details.qty }}</td>
                     <td>{{ details.confidence }}</td>
+                    <td>{{ details.sector }}</td>
                     <td>
                         <!-- Purchase button with form -->
                         <form action="/purchase" method="POST">
@@ -109,6 +111,7 @@
                             <input type="hidden" name="limit_price" value="{{ details.limit_price }}">
                             <input type="hidden" name="qty" value="{{ details.qty }}">
                             <input type="hidden" name="confidence" value="{{ details.confidence}}">
+                            <input type="hidden" name="sector" value="{{ details.sector}}">
                             <button type="submit" class="btn btn-success">Purchase</button>
                         </form>
                     </td>

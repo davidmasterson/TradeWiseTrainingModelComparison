@@ -137,7 +137,7 @@ def preprocess_data(user_id, model_name):
         except Exception as e:
             logging.error(f"Error calculating political sentiment: {e}")
         # Calculate final confidence score
-        df['check5con'] = df['check1sl'] + df['check2rev'] + df['check3fib']
+        df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
         logging.info("Calculated confidence.")
 
         # Drop unnecessary columns
@@ -160,13 +160,14 @@ def preprocess_data(user_id, model_name):
         # Encode categorical features
         label_encoder = LabelEncoder()
         symdf = pd.DataFrame(df['symbol'])
+        secdf = pd.DataFrame(df['sector'])
         df['symbol_encoded'] = label_encoder.fit_transform(df['symbol'])
         df['sector_encoded'] = label_encoder.fit_transform(df['sector'])
         df.drop(['sector', 'dp', 'symbol', 'actual'], axis=1, inplace=True)
         logging.info("Encoded categorical features.")
-        df['hit_tp1_within_12'] = None
+        df['hit_tp1'] = None
 
-        X = df.drop(['hit_tp1_within_12'], axis=1)
+        X = df.drop(['hit_tp1'], axis=1)
         logging.error(f'X = {X.columns.to_list()}')
         logging.error(f'DF = {df.columns.to_list()}')
         X = X.apply(pd.to_numeric, errors='coerce').fillna(0)  # Ensure all data in X is numeric
@@ -184,9 +185,10 @@ def preprocess_data(user_id, model_name):
         probabilities = model.predict_proba(X_scaled)[:, 1]  # Probability of hitting the target (class 1 probability)
         confidence_scores = df['check5con'].tolist()
         # Filter symbols based on probability threshold (e.g., >= 0.7 for recommendation)
-        symbols = symdf['symbol'].tolist()  # List of symbols for each row
-        results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con}
-                   for symbol, pred, prob, con in zip(symbols, predictions, probabilities, confidence_scores) if pred == 1 and prob >= .5]
+        symbols = symdf['symbol'].tolist()
+        sectors = secdf['sector'].tolist()
+        results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
+                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if pred == 1 and prob >= .5]
 
         logging.info("Predictions and probabilities calculated successfully.")
         

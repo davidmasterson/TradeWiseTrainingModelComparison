@@ -10,6 +10,8 @@ def calculate_daily_metrics_values(user_id):
         accuracy = cumulative_correct_predictions / (cumulative_correct_predictions + cumulative_incorrect_predictions)
         error_rate = 1 - accuracy
         time_to_close_correct_predictions = transactions_DAOIMPL.calculate_average_days_to_close_for_user(user_id)
+        if not time_to_close_correct_predictions:
+            time_to_close_correct_predictions = 0
         cumulative_loss_result = transactions_DAOIMPL.calculate_cumulative_loss_for_user(user_id)
         cumulative_profit_result = transactions_DAOIMPL.calculate_cumulative_profit_for_user(user_id)
         if cumulative_profit_result != None:

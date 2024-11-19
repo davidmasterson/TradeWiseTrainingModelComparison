@@ -49,7 +49,7 @@ def rank_sectors(sector_breakdown):
     sorted_sectors = sorted(sector_breakdown.items(), key=lambda x: x[1], reverse=True)
     return {sector: rank for rank, (sector, _) in enumerate(sorted_sectors, 1)}
 
-def process_symbols_for_purchase(symbols_list, orders, max_total_spend):
+def process_symbols_for_purchase(symbols_list, orders, max_total_spend, sectors):
     orders_list = {}
 
     # Loop through symbols_list and orders together using zip
@@ -64,7 +64,8 @@ def process_symbols_for_purchase(symbols_list, orders, max_total_spend):
             'tif': 'day',
             'updated_last': datetime.now(),
             'confidence': order['Confidence'],
-            'probability': order['Probability']
+            'probability': order['Probability'],
+            'sector' : order['Sector']
         }
 
     return orders_list

@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block content }
+    <div class="container">
+        <h1>Financial News Sentiment Analyzer</h1>
+        <form method="POST" action="/political_sentiment">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="query">Enter your query:</label>
+            <input type="text" id="query" name="query" placeholder="e.g., financial news August 2020" required>
+            <button type="submit">Analyze</button>
+        </form>
+    </div>
+
+    {% if articles %}
+        <h1>Analysis Results</h1>
+        <table>
+            <thead>
+                <tr>
+                    <th>Article URL</th>
+                    <th>Excerpt</th>
+                    <th>Negative</th>
+                    <th>Neutral</th>
+                    <th>Positive</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                <tr>
+                    <td><a href="{{ article.url }}" target="_blank">Link</a></td>
+                    <td>{{ article.text }}</td>
+                    <td>{{ article.negative }}</td>
+                    <td>{{ article.neutral }}</td>
+                    <td>{{ article.positive }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/">Back to Home</a>
+    {% endif %}
+
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        background-color: #f4f4f4;
+    }
+    
+    .container {
+        width: 80%;
+        margin: auto;
+        overflow: hidden;
+        padding: 20px;
+        background: #fff;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    h1 {
+        text-align: center;
+        color: #333;
+    }
+    
+    form {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-top: 20px;
+    }
+    
+    input, button {
+        padding: 10px;
+        margin: 10px;
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    button {
+        background: #007BFF;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+    
+    button:hover {
+        background: #0056b3;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    table, th, td {
+        border: 1px solid #ddd;
+    }
+    
+    th, td {
+        padding: 10px;
+        text-align: left;
+    }
+</style>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    {% endblock %}
