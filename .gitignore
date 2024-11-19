@@ -39,3 +39,12 @@ this_script.py
 
 cron_seller.log
 logs/websocket.log
+historical_ds_base.csv
+new_result.png
+search_results.png
+search_results2.png
+search_results3.png
+Total_df.csv
+
+Selenium/google-chrome-stable_current_amd64.deb
+SentenceBuilder/sentence_builder.py
