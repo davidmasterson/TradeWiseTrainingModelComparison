@@ -29,6 +29,7 @@ from collections import defaultdict
 from HistoricalFetcherAndScraper import scraper
 import time
 
+
 app = Flask(__name__)
 
 CORS(app, supports_credentials=True)
@@ -153,7 +154,7 @@ def signup():
         new_user_id = user_DAOIMPL.insert_user(new_user)
         user_sign_up_trade_settings = trade_setting.TradeSetting(new_user_id,minpps,maxpps,risk,conf_thresh,mints,maxts)
         trade_settings_DAOIMPL.insert_trade_setting(user_sign_up_trade_settings)
-        role_id = roles_DAOIMPL.get_role_id_by_role_name('retail investor',admin_id)
+        role_id = roles_DAOIMPL.get_role_id_by_role_name('retail',admin_id)
         new_user_roll = user_role.UserRole(new_user_id,role_id)
         user_roles_DAOIMPL.insert_user_role(new_user_roll, admin_id)
         return render_template('login.html', success = 'Your account was created successfully!')  # Redirect to login page after successful sign-up
@@ -342,9 +343,9 @@ def user_profile():
         metric = metrics_DAOIMPL.get_last_metric_for_user(user_id)
         if metric:
             profit = metric[6]
-            profit = float(profit[0]) if profit else 0
+            profit = float(profit) if profit else 0
             loss = float(metric[7])
-            loss = float(loss[0]) if loss else 0
+            loss = float(loss) if loss else 0
             total_profit = profit + loss
         else:
             total_profit = 0.00
@@ -452,7 +453,21 @@ def all_metrics_view():
         5 : ud5,
         6 : ud6
     }
-    return render_template('all_tester_metrics.html', last_trained=last_trained_dict)   
+    user_trade_settings = {}
+    trade_settings = trade_settings_DAOIMPL.get_trade_settings_for_test_users()
+    for setting in trade_settings:
+        user_trade_settings[setting[1] ]= {       
+                'user_id': setting[1],
+                'min_price':setting[2],
+                'max_price':setting[3],
+                'risk_tolerance':setting[4],
+                'confidence_threshold':setting[5],
+                'min_total':setting[6],
+                'max_total':setting[7]
+            
+        }
+        
+    return render_template('all_tester_metrics.html', last_trained=last_trained_dict, user_trade_settings=user_trade_settings)   
 
 @app.route('/admin/assign_role', methods=['POST'])
 def assign_role():
@@ -1211,66 +1226,48 @@ from sector_finder import get_stock_company_name
 @app.route('/finnews_sentiment', methods=['GET', 'POST'])
 def finnews_fetcher():
     if request.method == 'POST':
-        required_kw = list(request.form['required_kw']) # take in list of keywords
+        
         # use stock symbol to get company name and append company name to required_keywords list
         stock_symbol = request.form['stock_symbol'] if request.form['stock_symbol'] else None
-        company = get_stock_company_name(stock_symbol) if stock_symbol else None
-        required_kw.append(company)
         # split required kew list by comma
-        required_kw = request.form['required_kw'].split(",") if request.form['required_kw'] else None
-        required_keywords = ",".join(required_kw) if required_kw else None
         date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
-        return redirect(url_for('finnews_results', required_keywords=required_keywords, date_requirement=date_requirement))
+        return redirect(url_for('finnews_results', date_requirement=date_requirement, stock_symbol=stock_symbol))
     return render_template('finnews_sentiment_fetcher.html')
 
 @app.route('/finnews_results')
 def finnews_results():
+    user_id = user.User.get_id()
     import ast
+    from MachineLearningModels import manual_alg_requisition_script
 
     # Initialize variables
-    articles = []
-    max_pages = 20
-    required_keywords = request.args.get('required_keywords').split(",") if request.args.get('required_keywords') else []
+    headlines = []
+    article_texts = []
+    urls = []
+    stock_symbol = request.args.get('stock_symbol') if request.args.get('stock_symbol') else []
     date_requirement = request.args.get('date_requirement')
     date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
     
-    # Generate potential date groupings
-    date_groupings = [
-        date_object.strftime(fmt) for fmt in [
-            "%B %d, %Y", "%B %dth, %Y", "%B %dst, %Y", "%B %dnd, %Y", "%B %drd, %Y",
-            "%B %Y", "%B of %Y", "%d %B %Y", "%dth %B %Y", "%d/%m/%Y", "%m/%d/%Y",
-            "%b %d, %Y", "%b %Y", "%A, %B %d, %Y", "%a, %b %d, %Y",
-            "%d of %B, %Y", "%dth of %B, %Y", "%Y-%m-%d"
-        ]
-    ]
-
     # Initial search to get the first batch of links
-    links, encoded_query, page = scraper.search(required_keywords, current_page=1)
-    print(links)
-
-    if not links:
+    response_text = scraper.search(date_requirement,stock_symbol,user_id)
+    response_json = json.loads(response_text)
+    articles = response_json.get("news", [])
+    if not response_text:
         return render_template('finnews_results.html', articles=[])
-
+    for article in articles:
+        headline = article.get("headline", "No headline available")
+        summary = article.get("summary", "No summary available")
+        url = article.get("url", "No url available")
+        headlines.append(headline)
+        article_texts.append(summary)
+        urls.append(url)
+    sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
+    headline_url_pairs = zip(headlines, urls)
+    date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
+    new_date_format = date_format.strftime("%B %d %Y")
     # Process links and scrape articles
-    while len(articles) < 10 and page < max_pages:
-        for link in links:
-            article_text = scraper.scrape_article(link)
-            with open('results.tx', 'w') as writer:
-                writer.write(article_text)
-                writer.close()
-            # Check if any of the date formats exist in the article text
-            if any(date in article_text for date in date_groupings):
-                articles.append(article_text)
-        
-        # If we have enough articles, stop
-        if len(articles) >= 10:
-            break
-        page += 1
-        # Fetch more links from the next page
-        links, encoded_query, page = scraper.search(None, encoded_query, page)
-        print(links)
-
-    return render_template('finnews_results.html', articles=articles)
+    return render_template('finnews_results.html',stock_symbol=stock_symbol,new_date_format=new_date_format, 
+                           headline_url_pairs=headline_url_pairs, sa_neu=sa_neu, sa_pos=sa_pos, sa_neg=sa_neg)
     
 
 @app.route('/political_results')
@@ -1297,12 +1294,15 @@ def political_results():
     # Pass results to the template
     return render_template('political_sentiment_fetcher.html', articles=articles)
 
-
+@app.route('/display_profile', methods=['GET'])
+def show_profile():
+    return render_template('profile.html')
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
-    cProfile.run('generate_recommendations_task(user_id = session.get("user_id"))', 'profiling_output')
+    
+    app.run(debug=False)
+    
     
     
    

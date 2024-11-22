@@ -49,6 +49,27 @@ def get_trade_settings_by_user(user_id):
     finally:
         conn.close()
         cur.close()
+
+def get_trade_settings_for_test_users():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM trade_settings 
+                WHERE user_id BETWEEN 1 AND 6
+                GROUP BY user_id'''
+    
+    try:
+        cur.execute(sql)
+        trade_settings = cur.fetchall()
+        if trade_settings:
+            logging.info(f"{datetime.now()}: trade settings successfully retrieved for testing account users")
+            return trade_settings
+        return []
+    except Exception as e:
+        logging.error(f'{datetime.now()}: could not retrieve trade setttins for testing account users due to {e}')
+        return []
+    finally:
+        conn.close()
+        cur.close()
         
 def insert_trade_setting(trade_setting):
     conn = dcu.get_db_connection()
