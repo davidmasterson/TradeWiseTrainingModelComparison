@@ -14,6 +14,9 @@ from datetime import datetime, date
 import json
 import websocket
 from concurrent.futures import ThreadPoolExecutor
+import pickle
+import alpaca_request_methods
+from HistoricalFetcherAndScraper import scraper
 
 
 logging.basicConfig(
@@ -97,7 +100,8 @@ async def monitor_new_users(interval=10):
 # Asynchronous message handler
 async def on_message_async(ws, message, username, user_id):
     try:
-        data = json.loads(message)
+        data_string = message.decode('utf-8')
+        data = json.loads(data_string)
         logging.info(f'Websocket recieved new message for {username}. Message: {message}')
         if data['stream'] == 'authorization':
             if data['data']['status'] == 'authorized':
@@ -106,7 +110,13 @@ async def on_message_async(ws, message, username, user_id):
                 logging.info(f' User : {username} successfully subscribed to trade updates data stream.')
         elif data['stream'] == 'trade_updates':
             logging.info(f'User {username} received a datastream message sending to handle trade updates.')
-            handle_trade_updates(ws, data['data']['event'], data['data'], username, user_id)
+            logging.error(f" {data['data']['event']} - {data['data']} - {username}-{user_id}")
+            try: 
+                testing = await handle_trade_updates(ws, data['data']['event'], data['data'], username, user_id)
+                print(testing)
+            except Exception as e:
+                logging.error(f'unable to handle trade updates due to {e}')
+            logging.info('Made it past the send call to send to handle trade updates')
     except Exception as e:
         logging.error(f'Error with message async function due to {e}')
 
@@ -189,6 +199,7 @@ def start_user_websocket(username,user_id, alpaca_key, alpaca_secret, alpaca_end
         logging.error(f' Error with start user websocket due to {e} for user {username}')
     
 async def handle_trade_updates(ws, event, data, username, user_id):
+        logging.error('Inside the handle trade updates method')
         try:
             logging.info(f"Starting handle_trade_updates for user {username}, event: {event}")
             if data['event'] == 'fill':  # Ensure the event is 'fill'
@@ -286,7 +297,7 @@ async def handle_trade_updates(ws, event, data, username, user_id):
                         pol_neu_close, pol_pos_close, pol_neg_close = MachineLearningModels.manual_alg_requisition_script.process_daily_political_sentiment()
                         logging.info(f'Political scores{pol_neu_close, pol_pos_close, pol_neg_close}')
                         logging.info(f'Fetching SA articles for user {username} Transaction {transaction_id}')
-                        info = MachineLearningModels.manual_alg_requisition_script.request_articles(symbol)
+                        info = scraper.search(date.today().strftime("%Y-%m-%d"),symbol,user_id)
                         logging.info(f'SA articles found for user {username} Transaction {transaction_id}')
                         sa_neu_close, sa_pos_close, sa_neg_close = MachineLearningModels.manual_alg_requisition_script.process_phrase_for_sentiment(info)
                         logging.info(f'SA scores {sa_neu_close, sa_pos_close, sa_neg_close} for {username} Transaction {transaction_id}')
