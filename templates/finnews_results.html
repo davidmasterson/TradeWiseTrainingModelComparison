@@ -2,29 +2,26 @@
 {% block content %}
     <div class="container">
         <h1>Analysis Results</h1>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Article URL</th>
-                        <th>Excerpt</th>
-                        <th>Negative</th>
-                        <th>Neutral</th>
-                        <th>Positive</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for article in articles %}
-                    <tr>
-                        <td><a href="{{ article.url }}" target="_blank">Link</a></td>
-                        <td>{{ article.text }}</td>
-                        <td>{{ article.negative }}</td>
-                        <td>{{ article.neutral }}</td>
-                        <td>{{ article.positive }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <a href="/">Back to Home</a>
+        <div><h3>Overall Sentiment:</h3></div>
+        <div class="container2"><h4>Neutral:{{sa_neu}}%</h4>&nbsp&nbsp<h4>Positive:{{sa_pos}}%</h4>&nbsp&nbsp<h4>Negative:{{sa_neg}}%</h4></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Headlines&nbsp&nbsp&nbsp&nbsp{{stock_symbol}}: {{new_date_format}}</th>
+                    <th>Article URL</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for headline, url in headline_url_pairs%}
+                   
+                <tr>
+                    <td>{{ headline }}</td>
+                    <td><a href="{{ url }}" target="_blank">Link</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/">Back to Home</a>
         
     </div>
     <style>
@@ -37,6 +34,18 @@
         }
         
         .container {
+            width: 80%;
+            margin: auto;
+            overflow: hidden;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .container2 {
+            display:flex;
+            flex-direction:row;
+            justify-content: center;
             width: 80%;
             margin: auto;
             overflow: hidden;

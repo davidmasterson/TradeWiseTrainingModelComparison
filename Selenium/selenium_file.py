@@ -63,7 +63,7 @@ def get_historical_stock_specific_sentiment_scores(stock_symbol, date_of_lookup)
         # Limit to top 5 results
         sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(headings)
         print(f'SENTIMENT: {sa_neu, sa_pos, sa_neg}')
-        return sa_neu, sa_pos, sa_neg
+        return [[sa_neu, sa_pos, sa_neg], headings]
         
     except Exception as e:
         logging.error(f"Unable to get stock detail for selected date due to: {e}")
@@ -127,7 +127,7 @@ def get_historical_political_sentiment_scores(date_of_lookup):
 
         # Cache the result
         political_scores_cache[date_of_lookup] = (pol_neu, pol_pos, pol_neg)
-        return pol_neu, pol_pos, pol_neg
+        return [[pol_neu, pol_pos, pol_neg], article_texts]
 
     except Exception as e:
         logging.error(f"Unable to get political detail for selected date due to: {e}")

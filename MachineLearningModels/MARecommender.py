@@ -125,14 +125,14 @@ def preprocess_data(user_id, model_name):
         logging.info("Calculated fibs.")
         
         try:
-            df['sa_neu'], df['sa_pos'], df['sa_neg'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
+            df['sa_neu_open'], df['sa_pos_open'], df['sa_neg_open'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
         except Exception as e:
             logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
         logging.info("Calculated symbol-specific sentiment.")
         # Calculate the political sentiment scores once, as they apply to all rows
         try:
             pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
-            df['pol_neu'], df['pol_pos'], df['pol_neg'] = pol_neu, pol_pos, pol_neg
+            df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = pol_neu, pol_pos, pol_neg
             logging.info("Calculated and applied daily political sentiment scores to all rows.")
         except Exception as e:
             logging.error(f"Error calculating political sentiment: {e}")
@@ -146,16 +146,18 @@ def preprocess_data(user_id, model_name):
         df['purchase_day'] = df['dp'].dt.day
         df['purchase_month'] = df['dp'].dt.month
         df['purchase_year'] = df['dp'].dt.year
-        df['ds'] = pd.to_datetime(df['ds'])
-        df['sell_day'] = df['ds'].dt.day
-        df['sell_month'] = df['ds'].dt.month
-        df['sell_year'] = df['ds'].dt.year
+        df['sell_day'] , df['sell_month'] , df['sell_year'] = 0, 0, 0
+        df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = 0, 0, 0
+        df['sa_neu_close'], df['sa_pos_close'], df['sa_neg_close'] = 0, 0, 0
+        
+        
         logging.info("Performed date-based feature engineering.")
 
         # Drop more unnecessary columns
-        df = df.drop(['id', 'pstring','ds', 'spps', 'tsp', 'sstring', 'expected', 'proi', 'result', 'user_id',
-                      'processed', 'sell_day', 'sell_month', 'sell_year'], axis=1)
+        df = df.drop([ 'id','pstring', 'spps','tsp','sstring','expected','result','user_id',
+                        'processed','dp', 'ds', 'actual','proi'], axis=1)
         logging.info("Dropped unnecessary columns.")
+        
        
         # Encode categorical features
         label_encoder = LabelEncoder()
@@ -163,7 +165,7 @@ def preprocess_data(user_id, model_name):
         secdf = pd.DataFrame(df['sector'])
         df['symbol_encoded'] = label_encoder.fit_transform(df['symbol'])
         df['sector_encoded'] = label_encoder.fit_transform(df['sector'])
-        df.drop(['sector', 'dp', 'symbol', 'actual'], axis=1, inplace=True)
+        df.drop(['sector', 'symbol', ], axis=1, inplace=True)
         logging.info("Encoded categorical features.")
         df['hit_tp1'] = None
 

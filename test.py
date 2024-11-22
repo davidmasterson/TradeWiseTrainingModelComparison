@@ -51,11 +51,11 @@ import pickle
 # from datetime import datetime
 # from datetime import date
 # '''------------- Change these parameters only---------------'''
-# symbol = 'CWBC'
-# qty = 97
-# ppps = 20.45
+# symbol = 'PIM'
+# qty = 9
+# ppps = 3.23
 # total_buy = ppps * qty
-# user_id = 1
+# user_id = 3
 # '''--------------------------------------------------------------'''
 # dp = date(2024,11,15)
 # pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
@@ -74,20 +74,20 @@ import pickle
 
 '''Close out a transaction that was not closed automatically by the system'''
 # from datetime import datetime, date
-# symbol = 'CXW'
-# user_id = 1
-# transaction_id = 65
-# filled_avg_price = 21.18
-# filled_qty = 92
-# total_purchase = 1982.60
-# client_order_id = '2024-11-15 19:00:11.339700-CXW-2024-11-15-21.55-92-1982.6000000000001'
-# purchase_string = '2024-11-15 19:00:11.339700-CXW-2024-11-15-21.55-92-1982.6000000000001'
+# symbol = 'GCMGW'
+# user_id = 2
+# transaction_id = 12
+# filled_avg_price = .93
+# filled_qty = 4
+# total_purchase = 29.62
+# client_order_id = 'af1d3568-5906-499d-827e-895c1001e2f6'
+# purchase_string = 'af1d3568-5906-499d-827e-895c1001e2f6'
 # pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
 # pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# # ----------------------------------------------
+# ds = date(2024,11,21)
 
+# # ----------------------------------------------
 # tsp = filled_qty * filled_avg_price
-# ds = date(2024,11,18)
 # logging.info({ds})
 # spps = filled_avg_price
 # logging.info({filled_avg_price})
@@ -282,11 +282,12 @@ import pickle
 '''Load dataset object dataset data by dataset id'''
 # pd.set_option('display.max_rows', None)
 # pd.set_option('display.max_columns', None)
-# pp_bin = dataset_DAOIMPL.get_dataset_data_by_id(35)
-# dataset_obj = dataset_DAOIMPL.get_dataset_object_by_id(35)
+# pp_bin = dataset_DAOIMPL.get_dataset_data_by_id(13)
+# dataset_obj = dataset_DAOIMPL.get_dataset_object_by_id(13)
 # df = pd.read_csv('historical_ds_base.csv')
-# # # df.to_csv('historical_ds_base.csv')
-# df.drop(['id'], axis=1, inplace=True)
+# # df.to_csv('historical_ds_base.csv')
+# df.drop(['id', 'sa_neu_open','sa_pos_open','sa_neg_open','sa_neu_close','sa_pos_close','sa_neg_close','pol_neu_open',
+#          'pol_pos_open','pol_neg_open','pol_neu_close','pol_pos_close','pol_neg_close'], axis=1, inplace=True)
 # df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 # print(df.columns.to_list())
 # df.drop(['ds','dp'], axis=1, inplace=True)
@@ -411,7 +412,173 @@ import pickle
 
 '''Create dataset object and update dataset based on a dataset id lastly print columns list for df'''
 # # df_final = pd.read_csv('presave.csv')
-# new_ds = dataset.Dataset(dataset_obj[1], dataset_obj[2], pickle.dumps(df), datetime.now(),6)
-# dataset_DAOIMPL.update_dataset(new_ds,35)
+# new_ds = dataset.Dataset('MATP1pre_SAPOL', 'MATP1_preSAPOL'[2], pickle.dumps(df), datetime.now(),1)
+# dataset_DAOIMPL.insert_dataset(new_ds)
 # print(df.columns.to_list())
 
+
+'''Handle trade update'''
+# def handle_trade_updates(ws, event, data, username, user_id):
+   
+#     try:
+#         logging.info(f"Starting handle_trade_updates for user {username}, event: {event}")
+#         if data['event'] == 'fill':  # Ensure the event is 'fill'
+#             logging.info(f"Processing fill event for symbol: {data['order']['symbol']}, user: {username}")
+#             logging.info(f'''Trade update received: Symbol: {data['order']['symbol']} Quantity: {data['order']['filled_qty']} Price: {data['order']['filled_avg_price']}
+#                         Side: {data['order']['side']} Client order ID: {data['order']['client_order_id']}''')
+#             symbol = data['order']['symbol']
+#             filled_qty = int(data['order']['filled_qty'])
+#             filled_avg_price = float(data['order']['filled_avg_price'])
+#             side = data['order']['side']
+#             client_order_id = data['order']['id']
+#             logging.info(f"Extracted details - Symbol: {symbol}, Quantity: {filled_qty}, Price: {filled_avg_price}, Side: {side}, Order ID: {client_order_id}")
+#             logging.info(f'Logging client order id for user{username} due to new fill')
+            
+#             if side == 'buy':
+#                 logging.info(f' User: {username} had a new buy total fill')
+#                 # Handle buy side
+#                 try:
+#                     logging.info(f"Order {client_order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}. For USER: {user_id}")
+#                     total_buy = float(filled_avg_price) * int(filled_qty)
+#                     tp1 = (float(filled_avg_price) * .03) + float(filled_avg_price)
+#                     sop = float(filled_avg_price) - (float(filled_avg_price) * .01)
+#                     expected = total_buy * .03
+#                     logging.info(f' Initial variables created for user {username}\'s new filled order')
+                    
+#                     logging.info(f'Attempting to create new transaction object.')
+#                     new_trans = transaction.transaction(
+#                         symbol=symbol,
+#                         dp=date.today(),
+#                         ppps=filled_avg_price,
+#                         qty=filled_qty,
+#                         total_buy=total_buy,
+#                         pstring=client_order_id,
+#                         user_id=user_id,
+#                         expected=expected,
+#                         tp1=tp1,
+#                         sop=sop
+#                     )
+#                     logging.info(f'New transaction object has been created for {username} due to new transaction purchase fill')
+#                     # Insert the transaction
+                    
+#                     # pending_orders_DAOIMPL.insert_pending_order(client_order_id,user_id,side)
+#                     logging.info(f'Fetching pending order for {symbol} for user {username} ')
+#                     try:
+#                         pending = pending_orders_DAOIMPL.get_pending_buy_orders_by_user_id_and_client_order_id(user_id, client_order_id)
+#                         if pending:
+#                             logging.info(f'Pending order found')
+#                         else:
+#                             logging.warning(f' Pending order was not found for {symbol} {filled_qty} for user {username}')
+#                     except Exception as e:
+#                         logging.error(f"Error fetching pending orders: {e}")
+#                     try:
+#                         logging.info(f'Attempting to add new transaction to database for user {username}')
+#                         transactions_DAOIMPL.insert_transaction(new_trans, pending)
+#                         logging.info(f'Transaction has been successfully added to database for user {username}')
+#                     except Exception as e:
+#                         logging.error(f'Error inserting transaction due to {e}')
+#                     logging.info(f"{datetime.now()}: Deleting pending transaction")
+#                 except Exception as e:
+#                     logging.error(f"{datetime.now()}: Unable to insert transaction or delete pending transaction {client_order_id} due to {e}")
+#             elif side == 'sell':
+#                 # Handle sell side
+#                 logging.info(f" Filled sell order has been filled for user {username} Order {client_order_id} filled for {filled_qty} shares of {symbol} at {filled_avg_price}.")
+#                 logging.info(f'Attempting to get pending order for {symbol} {filled_qty} for user {username}')
+#                 pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id,client_order_id)
+#                 if pending_order:
+#                     logging.info(f' Pending order found for {symbol} {filled_qty} for user {username}')
+#                     purchase_string = pending_order[4]
+#                     logging.info(f'Purchase string is {purchase_string}')
+#                     pending_order_id = int(pending_order[0])
+#                     logging.info(f'Pending order id is {pending_order_id}')
+#                 logging.info(f' Getting open transactions for {purchase_string} for user {username}')    
+#                 transaction2 = transactions_DAOIMPL.get_open_transaction_by_pstring_for_user(purchase_string, user_id)
+#                 if transaction2:
+#                     logging.info(f'Open transaction has been found for {purchase_string} for user {username}')
+#                     ds = date.today()
+#                     logging.info({ds})
+#                     spps = filled_avg_price
+#                     logging.info({filled_avg_price})
+#                     tsp = filled_avg_price * filled_qty
+#                     logging.info({tsp})
+#                     total_purchase = float(transaction2[5])
+#                     logging.info({total_purchase})
+#                     actual = tsp - total_purchase
+#                     logging.info({actual})
+#                     proi = round(actual / total_purchase, 2)
+#                     logging.info({proi})
+#                     result = 'loss' if actual <= 0 else 'profit'
+#                     logging.info({result})
+#                     sstring = f"{client_order_id}~sell({datetime.now()})"
+#                     logging.info({sstring})
+#                     transaction_id = int(transaction2[0])
+#                     logging.info({transaction_id})
+#                     pol_neu_close, pol_pos_close, pol_neg_close = MachineLearningModels.manual_alg_requisition_script.process_daily_political_sentiment()
+#                     logging.info(f'Political scores{pol_neu_close, pol_pos_close, pol_neg_close}')
+#                     logging.info(f'Fetching SA articles for user {username} Transaction {transaction_id}')
+#                     info = MachineLearningModels.manual_alg_requisition_script.request_articles(symbol)
+#                     logging.info(f'SA articles found for user {username} Transaction {transaction_id}')
+#                     sa_neu_close, sa_pos_close, sa_neg_close = MachineLearningModels.manual_alg_requisition_script.process_phrase_for_sentiment(info)
+#                     logging.info(f'SA scores {sa_neu_close, sa_pos_close, sa_neg_close} for {username} Transaction {transaction_id}')
+                    
+#                     values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]
+#                     logging.info(f' Updating transaction Symbol:{symbol} Transaction ID:{transaction_id}')
+#                     transactions_DAOIMPL.update_transaction(transaction_id, values)
+#                     logging.info(f'Successfully updated transaction. Now deleting pending order {pending_order_id}')
+#                     pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0], pending_order[3], pending_order[2])
+#                     logging.info(f'Pending order id {pending_order_id} successfully deleted')
+#         else:
+#             logging.warning(f"Unhandled event: {event}")
+#     except Exception as e:
+#         logging.error(f'Unable to handle trade updates due to {e}')
+
+
+# '''Check preprocessing script for correct number of expected feature'''
+# ppscript_bin = preprocessing_scripts_DAOIMPL.get_preprocessed_data_by_preprocessing_script_id(83)
+# ppscript = pickle.loads(ppscript_bin)
+# print(ppscript['columns'])
+
+
+
+
+
+
+
+
+
+
+
+# 'ppps', 'qty', 'total_buy', 'tp1', 'sop', 'pol_neu_open', 
+# 'pol_pos_open', 'pol_neg_open', 'sa_neu_open', 'sa_pos_open', 
+# 'sa_neg_open', 'pol_neu_close', 'pol_pos_close', 'pol_neg_close', 
+# 'sa_neu_close', 'sa_pos_close', 'sa_neg_close', 'check1sl', 
+# 'check2rev', 'check3fib', 'check5con', 'purchase_day', 'purchase_month', 
+# 'purchase_year', 'sell_day', 'sell_month', 'sell_year', 'symbol_encoded', 
+# 'sector_encoded'
+
+# 'ppps', 'qty', 'total_buy', 'tp1', 'sop', 'check1sl', 
+# 'check2rev', 'check3fib',  'check5con', 'purchase_day', 
+# 'purchase_month', 'purchase_year', 'symbol_encoded', 'sector_encoded',
+# 'pol_neu_open','pol_pos_open','pol_neg_open'
+
+# 'sell_day','sell_month','sell_year','pol_neu_open','pol_pos_open', 
+# 'pol_neg_open', 'sa_neu_open', 'sa_pos_open', 
+# 'sa_neg_open', 'pol_neu_close', 'pol_pos_close', 'pol_neg_close', 
+# 'sa_neu_close', 'sa_pos_close', 'sa_neg_close',
+
+
+'''fake info to test with'''
+# username = 'sb2user4'
+# user_id = 5
+# ws = ' '
+# import json
+# data=b'{"stream":"trade_updates","data":{"event":"fill","timestamp":"2024-11-19T14:47:05.721Z","order":{"id":"6a7f7003-57fc-4ec5-bb8d-aa7730c49213","client_order_id":"sell-GNL-4-7.185-2024-47-19 09:11:05/sb2User4 ","created_at":"2024-11-19T14:47:05.706757064Z","updated_at":"2024-11-19T14:47:05.727883993Z","submitted_at":"2024-11-19T14:47:05.709346899Z","filled_at":"2024-11-19T14:47:05.721Z","expired_at":null,"cancel_requested_at":null,"canceled_at":null,"failed_at":null,"replaced_at":null,"replaced_by":null,"replaces":null,"asset_id":"b94e2aa2-2e40-4827-b660-f4d22d59c3d5","symbol":"GNL","asset_class":"us_equity","notional":null,"qty":"4","filled_qty":"4","filled_avg_price":"7.1831","order_class":"","order_type":"limit","type":"limit","side":"sell","time_in_force":"day","limit_price":"7.18","stop_price":null,"status":"filled","extended_hours":false,"legs":null,"trail_percent":null,"trail_price":null,"hwm":null},"price":"7.1831","qty":"4","position_qty":"0","execution_id":"d93c6c67-e216-4053-acfa-7967692a1a34"}}' 
+# data_string = data.decode('utf-8')
+# data = json.loads(data_string)
+
+# handle_trade_updates(ws, data['data']['event'], data['data'], username, user_id)
+from Models import user_role
+from database import user_roles_DAOIMPL, roles_DAOIMPL
+role_id = roles_DAOIMPL.get_role_id_by_role_name('retail',1)
+new_role = user_role.UserRole(6,role_id)
+user_roles_DAOIMPL.insert_user_role(new_role, 1)

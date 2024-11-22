@@ -4,8 +4,6 @@
         <h1>Financial News Sentiment Analyzer</h1>
         <form method="POST" action="/finnews_sentiment">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label for="required_kw">Required Keywords:</label>
-            <input type="text" id="required_kw" name="required_kw" placeholder="seperate each word by a ," >
             <label for="stock_symbol">Stock Symbol:</label>
             <input type="text" id="stock_symbol" name="stock_symbol" placeholder="only one symbol"  required>
             <label for="date_selector">Select Date:</label>

@@ -39,6 +39,7 @@
                                 <th>S.A Neutral close</th>
                                 <th>S.A Positive close</th>
                                 <th>S.A Negative close</th>
+                                <th>Processed</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,6 +72,11 @@
                                 <td>{{ transaction.sa_neu_close }}</td>
                                 <td>{{ transaction.sa_pos_close }}</td>
                                 <td>{{ transaction.sa_neg_close }}</td>
+                                {% if transaction.processed == 0%}
+                                    <td>No</td>
+                                {% else %}
+                                    <td>Yes</td>
+                                {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
