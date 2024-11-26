@@ -323,3 +323,16 @@ def update_model_data_by_name(model_name, model_data, user_id):
         cur.close()
         conn.close()
     
+def delete_model_by_id(model_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    sql = "DELETE FROM models WHERE id = %s"
+    vals = [model_id]
+    try:
+        cursor.execute(sql, vals)
+        conn.commit()
+    except Exception as e:
+        logging.error(f'Unable to delete model {model_id} due to {e}')
+    finally:
+        conn.close()
+        cursor.close()

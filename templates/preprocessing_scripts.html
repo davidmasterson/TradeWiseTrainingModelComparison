@@ -46,10 +46,20 @@
                     <h5 class="card-title">{{ script[1] }}</h5> <!-- script Name -->
                     <p class="card-text">{{ script[2] }}</p> <!-- script Description -->
                     <p class="card-text"><small class="text-muted">Uploaded on: {{ script[4] }}</small></p>
+                    <form action="{{ url_for('delete_ppscript') }}" method="POST" onsubmit="return confirmDelete()">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="ppscrpt_id"   value="{{script[0]}}"/>
+                        <button type="submit"  class="btn btn-danger">Delete</button>
+                    </form>
                 </div>
             </div>
         </div>
         {% endfor %}
     </div>
 </div>
+<script>
+    function confirmDelete() {
+        return confirm("Are you sure you want to delete this preprocessing script?");
+    }
+</script>
 {% endblock %}

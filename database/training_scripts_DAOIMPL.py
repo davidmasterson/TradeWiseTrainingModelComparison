@@ -163,3 +163,21 @@ def update_training_script(training_script,ts_id):
     finally:
         cur.close()
         conn.close()
+        
+def delete_training_script(t_script_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+        DELETE 
+        FROM training_scripts
+        WHERE id = %s
+    '''
+    vals = [t_script_id]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+    except Exception as e:
+        logging.error(f'Unable to delete training script with id {t_script_id} due to {e}')
+    finally:
+        cur.close()
+        conn.close()

@@ -117,3 +117,18 @@ def update_dataset(dataset, dataset_id):
     finally:
         cur.close()
         conn.close()
+        
+def delete_dataset(dataset_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''DELETE FROM datasets
+            WHERE id = %s'''
+    vals = [dataset_id]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+    except Exception as e:
+         logging.info( f'{datetime.now()}:Unable to delete dataset {dataset_id} due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
