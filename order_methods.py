@@ -50,7 +50,7 @@ def place_sell_order(symbol, qty, price, username, buystring, user_id):
         logging.info(f"Order submitted: {sell_order}, for user {username} order_id {sell_order.id}")
         pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'sell',purchase_string=buystring )
     except Exception as e:
-        print(f"Error placing sell order for {symbol}: for user {username} due to  {e}")
+        print(f"{datetime.now()}: Error placing sell order for {symbol}: for user {username} due to  {e}")
        
     
 #--------------------------------------BELOW MAY BE USELESS IF WEBSOCKET WORKS-----------------------------------------------------------------
