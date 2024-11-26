@@ -51,15 +51,15 @@ csrf = CSRFProtect(app)
 # make celery to run background tasks
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.ERROR)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.ERROR)  # Logs errors only
 
 
 #Set up Google OAuth2.0
@@ -75,6 +75,12 @@ oauth.register(
     api_base_url='https://www.googleapis.com/oauth2/v1/',  # Set base URL
     userinfo_endpoint='https://www.googleapis.com/oauth2/v3/userinfo'  # Explicitly define userinfo endpoint
 )
+
+
+
+@app.before_request
+def log_request():
+    logging.info(f"Incoming request: {request.method} {request.url}")
 
 #Public Homepage
 @app.route('/', methods=['GET'])
@@ -615,7 +621,30 @@ def train_model(model_name):
         result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
         # LOGGING PURPOSES FOR DEBUGGING
         logging.info(f"Subprocess output: {result.stdout}")
-        logging.error(f"Subprocess error (if any): {result.stderr}")
+        
+        # Save preprocessed data
+        try:
+            # Deserialize the pickle output
+            output_data = pickle.loads(result.stdout)
+        
+        # Access individual components dynamically
+            preprocessing_object = output_data.get("preprocessing_object")
+            dataset = output_data.get("dataset")
+            
+            
+    
+            ppdata = pickle.dumps(preprocessing_object)
+            preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(preprocessing_script_id, ppdata)
+            logging.info("Saved preprocessed data successfully.")
+        
+            # Save finalized dataset
+            final_df_bin = pickle.dumps(dataset)
+            dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
+            new_dataset = dataset.Dataset(dsobject[1], dsobject[2], final_df_bin, datetime.now(), user_id)
+            dataset_DAOIMPL.update_dataset(new_dataset, dataset_id)
+            logging.info("Finalized dataset saved successfully.")
+        except Exception as e:
+            logging.error(f"Subprocess error (if any): {result.stderr} Exception error due to {e}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
         if closed_transactions:
@@ -698,6 +727,14 @@ def upload_models():
             models = models
         return render_template('models.html', models=models, training_scripts=training_scripts, preprocessing_scripts=preprocessing_scripts,
                                datasets=datasets)
+        
+@app.route('/delete_model', methods=['POST'])
+def delete_model():
+    model_id = request.form.get('model_id')
+    model_id = int(model_id)
+    models_DAOIMPL.delete_model_by_id(model_id)
+    flash(f"ML Model  with ID {model_id} has been deleted.")
+    return redirect(url_for('upload_models'))
        
     
 
@@ -750,7 +787,13 @@ def upload_preprocessing_scripts():
         scripts = preprocessing_scripts_DAOIMPL.get_scripts_by_user_id(user_id)
         return render_template('preprocessing_scripts.html', scripts=scripts, datasets=datasets)
 
-
+@app.route('/delete_ppscript', methods=['POST'])
+def delete_ppscript():
+    ppscript_id = request.form.get('ppscript_id')
+    ppscript_id = int(ppscript_id)
+    preprocessing_scripts_DAOIMPL.delete_user_preprocessing_script(ppscript_id)
+    flash(f"Preprocessing Script with ID {ppscript_id} has been deleted.")
+    return redirect(url_for('upload_preprocessing_scripts'))
 
 
 
@@ -792,6 +835,13 @@ def upload_training_scripts():
         scripts = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
         return render_template('training_scripts.html', scripts=scripts)
     return redirect(url_for('home'))
+
+@app.route('/delete_training_script', methods=['POST'])
+def delete_training_script():
+    training_script_id = request.form.get('training_script_id')
+    training_script_id = int(training_script_id)
+    flash(f"Training Script with ID {training_script_id} has been deleted.")
+    training_scripts_DAOIMPL.delete_training_script(training_script_id)
 
 @app.route('/select_model/<int:model_id>', methods=['POST'])
 def select_model(model_id):
@@ -836,6 +886,15 @@ def upload_dataset():
         # Fetch datasets to display
         datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
         return render_template('datasets.html', datasets=datasets)
+
+@app.route('/delete_dataset', methods=['POST'])
+def delete_dataset():
+    dataset_id = request.form.get('dataset_id')
+    dataset_id = int(dataset_id)
+    dataset_DAOIMPL.delete_dataset(dataset_id)
+    flash(f"Dataset with ID {dataset_id} has been deleted.")
+    return redirect(url_for('upload_dataset'))
+    
 # -------------------------------------------------------------END MODEL TRAINING -----------------------------------------------------------------
 # ----------------------------------------------------------------START ORDERS --------------------------------------------------------------------
 from database import pending_orders_DAOIMPL
@@ -1249,7 +1308,7 @@ def finnews_results():
     date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
     
     # Initial search to get the first batch of links
-    response_text = scraper.search(date_requirement,stock_symbol,user_id)
+    response_text = scraper.search(date_object,stock_symbol,user_id)
     response_json = json.loads(response_text)
     articles = response_json.get("news", [])
     if not response_text:
