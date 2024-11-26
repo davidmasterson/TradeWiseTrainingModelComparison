@@ -51,13 +51,13 @@ import pickle
 # from datetime import datetime
 # from datetime import date
 # '''------------- Change these parameters only---------------'''
-# symbol = 'PIM'
-# qty = 9
-# ppps = 3.23
+# symbol = 'EMD'
+# qty = 10
+# ppps = 9.78
 # total_buy = ppps * qty
-# user_id = 3
+# user_id = 6
 # '''--------------------------------------------------------------'''
-# dp = date(2024,11,15)
+# dp = date(2024,11,19)
 # pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
 # ds = None
 # spps = None
@@ -74,17 +74,17 @@ import pickle
 
 '''Close out a transaction that was not closed automatically by the system'''
 # from datetime import datetime, date
-# symbol = 'GCMGW'
-# user_id = 2
-# transaction_id = 12
-# filled_avg_price = .93
-# filled_qty = 4
-# total_purchase = 29.62
-# client_order_id = 'af1d3568-5906-499d-827e-895c1001e2f6'
-# purchase_string = 'af1d3568-5906-499d-827e-895c1001e2f6'
+# symbol = 'BAK'
+# user_id = 4
+# transaction_id = 93
+# filled_avg_price = 5.36
+# filled_qty = 5
+# total_purchase = 25.08
+# client_order_id = '2024-11-21 12:39:31.346610-BAK-2024-11-21-5.02-5-25.099999999999998'
+# purchase_string = '2024-11-21 12:39:31.346610-BAK-2024-11-21-5.02-5-25.099999999999998'
 # pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
 # pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# ds = date(2024,11,21)
+# ds = date(2024,11,25)
 
 # # ----------------------------------------------
 # tsp = filled_qty * filled_avg_price
@@ -284,8 +284,8 @@ import pickle
 # pd.set_option('display.max_columns', None)
 # pp_bin = dataset_DAOIMPL.get_dataset_data_by_id(13)
 # dataset_obj = dataset_DAOIMPL.get_dataset_object_by_id(13)
-# df = pd.read_csv('historical_ds_base.csv')
-# # df.to_csv('historical_ds_base.csv')
+# df = pickle.loads(pp_bin)
+# print(df)# # df.to_csv('historical_ds_base.csv')
 # df.drop(['id', 'sa_neu_open','sa_pos_open','sa_neg_open','sa_neu_close','sa_pos_close','sa_neg_close','pol_neu_open',
 #          'pol_pos_open','pol_neg_open','pol_neu_close','pol_pos_close','pol_neg_close'], axis=1, inplace=True)
 # df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
@@ -577,8 +577,17 @@ import pickle
 # data = json.loads(data_string)
 
 # handle_trade_updates(ws, data['data']['event'], data['data'], username, user_id)
-from Models import user_role
-from database import user_roles_DAOIMPL, roles_DAOIMPL
-role_id = roles_DAOIMPL.get_role_id_by_role_name('retail',1)
-new_role = user_role.UserRole(6,role_id)
-user_roles_DAOIMPL.insert_user_role(new_role, 1)
+# from Models import user_role
+# from database import user_roles_DAOIMPL, roles_DAOIMPL
+# role_id = roles_DAOIMPL.get_role_id_by_role_name('retail',1)
+# new_role = user_role.UserRole(6,role_id)
+# user_roles_DAOIMPL.insert_user_role(new_role, 1)
+
+
+# user = user_DAOIMPL.get_all_users()
+# print(user)
+
+from HistoricalFetcherAndScraper import scraper
+
+sa_neu, sa_pos, sa_neg = scraper.get_sa(date.today(),'KITT',1)
+print(sa_neu, sa_pos, sa_neg)
