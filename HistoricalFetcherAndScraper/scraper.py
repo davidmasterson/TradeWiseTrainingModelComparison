@@ -6,6 +6,8 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import random
 import urllib
 from database import user_DAOIMPL
+from MachineLearningModels import manual_alg_requisition_script
+import json
 
 from datetime import date, timedelta, datetime
 
@@ -13,7 +15,7 @@ from datetime import date, timedelta, datetime
 
 def search(date_requirement, symbol, user_id):
     import requests
-    start = datetime.strptime(date_requirement, "%Y-%M-%d") - timedelta(days=3) 
+    start = datetime.strptime(date_requirement.strftime("%Y-%m-%d"), "%Y-%M-%d") - timedelta(days=3) 
     start = start.strftime("%Y-%M-%d")
     end = date_requirement
     
@@ -112,3 +114,15 @@ def filter_results_by_date(links, target_date):
     return matching_links, links
 
 
+def get_sa(date_requirement, stock_symbol, user_id):
+        article_texts =[]
+        response_text = search(date_requirement,stock_symbol,user_id)
+        response_json = json.loads(response_text)
+        articles = response_json.get("news", [])
+        if not response_text or not articles:
+            return 0,0,0
+        for article in articles:
+            summary = article.get("summary", "No summary available")
+            article_texts.append(summary)
+            sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
+        return sa_neu, sa_pos, sa_neg
