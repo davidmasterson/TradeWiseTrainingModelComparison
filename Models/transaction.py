@@ -30,8 +30,7 @@ class transaction:
         self.sector = sector_finder.get_stock_sector(self.symbol)
         self.processed = processed
         self.pol_neu_open, self.pol_pos_open, self.pol_neg_open = manual_alg_requisition_script.process_daily_political_sentiment()
-        self.open_json_text = scraper.search(date.today().strftime("%Y-%m-%d"),symbol, user_id)
-        self.sa_neu_open, self.sa_pos_open, self.sa_neg_open = self.parse_json_for_body_text(self.open_json_text)
+        self.sa_neu_open, self.sa_pos_open, self.sa_neg_open = scraper.get_sa(dp,symbol,user_id)
         self.pol_neu_close, self.pol_pos_close, self.pol_neg_close = None, None, None
         self.sa_neu_close, self.sa_pos_close, self.sa_neg_close = None, None, None
 
@@ -58,15 +57,4 @@ class transaction:
             logging.error(f'Error calculating sentiment: {e}')
             return 0, 0, 0
         
-    def parse_json_for_body_text(json_string):
-        article_texts = []
-        response_json = json.loads(json_string)
-        articles = response_json.get("news", [])
-        if not json_string:
-            return 0,0,0
-        for article in articles:
-            summary = article.get("summary", "No summary available")
-            url = article.get("url", "No url available")
-            article_texts.append(summary)
-        sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
-        return sa_neu, sa_pos, sa_neg
+    
