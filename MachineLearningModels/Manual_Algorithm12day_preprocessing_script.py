@@ -238,17 +238,15 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
                 'testing_features': testing_only_features,
                 'structure': 'train_test_split'    # Metadata for structure description
             }
-            # Save preprocessed data
-            ppdata = pickle.dumps(preprocessed_data)
-            preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(script_id, ppdata)
-            logging.info("Saved preprocessed data successfully.")
-
-            # Save finalized dataset
-            final_df_bin = pickle.dumps(df_final)
-            dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
-            new_dataset = dataset.Dataset(dsobject[1], dsobject[2], final_df_bin, datetime.now(), user_id)
-            dataset_DAOIMPL.update_dataset(new_dataset, dataset_id)
-            logging.info("Finalized dataset saved successfully.")
+            
+            output_data = {
+                "preprocessing_object": preprocessed_data,
+                "dataset": new_dataset
+            }
+            
+            # Serialize the combined object using pickle
+            sys.stdout.buffer.write(pickle.dumps(output_data))
+            
 
             # Mark transactions as processed
             for transaction in transactions:
