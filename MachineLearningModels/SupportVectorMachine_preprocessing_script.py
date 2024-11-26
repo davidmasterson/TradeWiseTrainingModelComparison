@@ -44,8 +44,8 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
         df = df.drop(columns=['symbol', 'sector'], axis=1)
 
         # Prepare features and target
-        X = df.drop(columns=['hit_tp1_within_12'])  # Features
-        y = df['hit_tp1_within_12']  # Target
+        X = df.drop(columns=['hit_tp1'])  # Features
+        y = df['hit_tp1']  # Target
 
         # Scale the features
         scaler = MinMaxScaler(feature_range=(0, 1))

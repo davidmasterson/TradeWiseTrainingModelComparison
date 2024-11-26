@@ -63,9 +63,9 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
 
        
         # Split features (X) and target (y)
-        X = df.drop(columns=['hit_tp1_within_12'])
+        X = df.drop(columns=['hit_tp1'])
         columns = X.columns.to_list()
-        y = df['hit_tp1_within_12']
+        y = df['hit_tp1']
 
         # Scale features
         scaler = MinMaxScaler()

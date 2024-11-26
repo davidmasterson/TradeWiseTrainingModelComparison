@@ -63,8 +63,8 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
         df.fillna(0, inplace=True)
 
         # Prepare features and target
-        X = df.drop(columns=['hit_tp1_within_12'])  # Exclude target column 'tp1'
-        y_continuous = df['hit_tp1_within_12']  # Target
+        X = df.drop(columns=['hit_tp1'])  # Exclude target column 'tp1'
+        y_continuous = df['hit_tp1']  # Target
 
         # Binning the target variable
         num_bins = 10

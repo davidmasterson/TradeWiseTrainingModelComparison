@@ -35,14 +35,22 @@ def prepare_data(df, target_column, time_steps):
     return X, y, scaler
 
 # Condition to determine target variable
-def calculate_hit_tp1_within_12(row):
-    date_purchased = pd.to_datetime(row['date_purchased'])
-    date_sold = pd.to_datetime(row['date_sold'])
-    actual_return = row['actual_return']
-    
-    if pd.isnull(date_sold) or (date_sold - date_purchased).days > 12:
+def calculate_target(row):
+    """
+    Determines if tp1 was hit before sop based on 'actual'.
+    - Returns 1 if 'actual' > 0 (tp1 hit before sop).
+    - Returns 0 if 'actual' <= 0 (sop hit before tp1 or no profit).
+    """
+    try:
+        actual = row['actual']
+        
+        if pd.isnull(actual):
+            return 0  # Default to 0 if 'actual' is missing
+        
+        return 1 if actual > 0 else 0
+    except Exception as e:
+        logging.error(f"Error calculating target for row {row}: {e}")
         return 0
-    return 1 if actual_return >= 0 else 0
 
 # Main preprocessing function
 def preprocess_data(output_path, dataset_id):
@@ -54,7 +62,7 @@ def preprocess_data(output_path, dataset_id):
             logging.error("Failed to retrieve dataset.")
             return None
 
-        df = pd.read_csv(BytesIO(dataset_data), encoding='ISO-8859-1')
+        df = pickle.loads(dataset_data)
         logging.info("Data loaded into DataFrame.")
         
         # Basic DataFrame checks
@@ -69,7 +77,7 @@ def preprocess_data(output_path, dataset_id):
         df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
         target_column = 3  # Column index for the target variable
         time_steps = 60  # Define the number of time steps
-
+        df['hit_tp1'] = df.apply()
         # Prepare the input data (X) and target variable (y)
         X, y, scaler = prepare_data(df, target_column, time_steps)
         # Split data into training and testing sets
