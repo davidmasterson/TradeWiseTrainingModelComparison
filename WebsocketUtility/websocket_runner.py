@@ -334,12 +334,12 @@ async def handle_trade_updates(ws, event, data, username, user_id):
                         logging.info({sstring})
                         transaction_id = int(transaction2[0])
                         logging.info({transaction_id})
-                        pol_neu_close, pol_pos_close, pol_neg_close = MachineLearningModels.manual_alg_requisition_script.process_daily_political_sentiment()
+                        pol_neu_close, pol_pos_close, pol_neg_close = 0, 0, 0
                         logging.info(f'Political scores{pol_neu_close, pol_pos_close, pol_neg_close}')
                         logging.info(f'Fetching SA articles for user {username} Transaction {transaction_id}')
                         logging.info(f'SA articles found for user {username} Transaction {transaction_id}')
                         non_string_date = datetime.strptime(ds, "%Y-%m-%d")
-                        sa_neu_close, sa_pos_close, sa_neg_close = scraper.get_sa(non_string_date,symbol,user_id)
+                        sa_neu_close, sa_pos_close, sa_neg_close = 0, 0, 0
                         logging.info(f'SA scores {sa_neu_close, sa_pos_close, sa_neg_close} for {username} Transaction {transaction_id}')
                         
                         values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]

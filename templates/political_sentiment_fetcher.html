@@ -1,43 +1,15 @@
 {% extends 'base.html' %}
-{% block content }
+{% block content %}
     <div class="container">
-        <h1>Financial News Sentiment Analyzer</h1>
+        <h1>News Sentiment Analyzer</h1>
         <form method="POST" action="/political_sentiment">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <label for="query">Enter your query:</label>
-            <input type="text" id="query" name="query" placeholder="e.g., financial news August 2020" required>
+            <label for="date_selector">Select Date:</label>
+            <input type="date" id="date_selector" name="date_selector">
             <button type="submit">Analyze</button>
+
         </form>
     </div>
-
-    {% if articles %}
-        <h1>Analysis Results</h1>
-        <table>
-            <thead>
-                <tr>
-                    <th>Article URL</th>
-                    <th>Excerpt</th>
-                    <th>Negative</th>
-                    <th>Neutral</th>
-                    <th>Positive</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for article in articles %}
-                <tr>
-                    <td><a href="{{ article.url }}" target="_blank">Link</a></td>
-                    <td>{{ article.text }}</td>
-                    <td>{{ article.negative }}</td>
-                    <td>{{ article.neutral }}</td>
-                    <td>{{ article.positive }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <a href="/">Back to Home</a>
-    {% endif %}
-
-
 <style>
     body {
         font-family: Arial, sans-serif;
@@ -102,6 +74,7 @@
         text-align: left;
     }
 </style>
+{% endblock %}
 
 
 
@@ -124,4 +97,4 @@
 
 
 
-    {% endblock %}
+  

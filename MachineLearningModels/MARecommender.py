@@ -4,14 +4,20 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import pickle
-from database import dataset_DAOIMPL, transactions_DAOIMPL
 from MachineLearningModels import manual_alg_requisition_script
-import sector_finder
 import logging
+from sector_finder import get_stock_sector
+from database import  trade_settings_DAOIMPL, dataset_DAOIMPL
+import concurrent.futures
+from database import models_DAOIMPL
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sector_finder import get_stock_sector
+
+
 logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log', 
                     level=logging.INFO, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
@@ -19,6 +25,8 @@ logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_
 # Sample logging statements
 logging.debug("Starting preprocessing script.")
 
+
+'''------------------------------Preprocessing helper functions-------------------------------------------------------'''
 # Function to calculate target based on hitting tp1 within 12 days
 def calculate_target(row):
     date_purchased = pd.to_datetime(row['dp'])
@@ -47,7 +55,7 @@ def calculate_first_check(symbol):
 def calculate_second_check(symbol): 
     try:  
         if manual_alg_requisition_script.second_check_engulfing_candle_with_reversal(symbol):
-            return 10
+            return 20
         return 0
     except:
         return 0
@@ -61,144 +69,209 @@ def calculate_third_check(symbol):
     except:
         return 0
     
-
-def calculate_sentiment(symbol):
+def calculate_historical_sentiment(symbol, date_requirement):
+    from datetime import datetime
+    from HistoricalFetcherAndScraper import scraper
+    import json
+    article_texts = []
     try:
-        info = manual_alg_requisition_script.request_articles(symbol)
-        avg_neut, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
-        logging.info(f'Sentiment is {avg_neut, avg_pos, avg_neg}')
+        date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
         
-        return avg_neut, avg_pos, avg_neg  
+        response_text = scraper.search(date_object,symbol,user_id)
+        response_json = json.loads(response_text)
+        articles = response_json.get("news", [])
+        if not response_text:
+            return 0, 0, 0
+        for article in articles:
+            summary = article.get("headline", "No summary available")
+            article_texts.append(summary)
+        sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
+        
+        return sa_neu, sa_pos, sa_neg  
     except Exception as e:
         logging.error(f'Error calculating sentiment: {e}')
         return 0, 0, 0
     
-
-        
-import concurrent.futures
-import logging
-import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, MinMaxScaler
-import pickle
-from database import dataset_DAOIMPL, transactions_DAOIMPL
-from MachineLearningModels import manual_alg_requisition_script
-import sector_finder
-
-logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log', 
-                    level=logging.INFO, 
-                    format='%(asctime)s - %(levelname)s - %(message)s')
-
-def parallel_apply(symbols, func, max_workers=20):
-    """ Helper function to apply a calculation in parallel. """
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        results = list(executor.map(func, symbols))
-    return results
-
-# Main preprocessing function
-def preprocess_data(user_id, model_name):
-    from sector_finder import get_stock_sector
-    from database import preprocessing_scripts_DAOIMPL
-    from flask import flash
-    from Models import preprocessing_script
-    
+def calculate_historical_political_climate(date_requirement):
+    from Selenium import selenium_file
+    from datetime import datetime
+    date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
+    selenium_return = selenium_file.get_historical_political_sentiment_scores(date_requirement)
     try:
-        # Load the CSV file
-        df = pd.read_csv('Hypothetical_Predictor/transactions.csv')
-        
+        if selenium_return:
+            pol_neu, pol_pos, pol_neg = selenium_return[0][0], selenium_return[0][1], selenium_return[0][2]
+    except:
+        pol_neu, pol_pos, pol_neg = selenium_return[0], selenium_return[1], selenium_return[2]
+        return pol_neu, pol_pos, pol_neg
+    else:
+        return 0, 0, 0
+    
+def get_stock_sector_for_df_symbol(symbol):
+    """
+    Fetches the stock sector for a given symbol.
+    Logs an error and returns None if the fetch fails.
+    """
+    try:
+        return get_stock_sector(symbol)  # Replace with your actual API or logic to fetch the sector
+    except Exception as e:
+        logging.error(f"Error getting stock sector for symbol '{symbol}': {e}")
+        return None
+
+
+def parallel_apply_single_arg(symbols, func, max_workers=20):
+    """
+    Helper function to apply a calculation in parallel.
+    
+    Args:
+        symbols (iterable): List or Series of symbols to process.
+        func (callable): Function to apply to each symbol.
+        max_workers (int): Maximum number of parallel workers.
+
+    Returns:
+        List: Results of applying the function to each symbol.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        return list(executor.map(func, symbols))
+
+
+''' ---------------------------END PREPROCESSING HELPER FUNCTIONS-------------------------------------------------------------------'''
+
+
+
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+def preprocess_and_train(user_id, output_file_path, dataset_id):
+    try:
+        # Load trade settings and dataset
         pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
-        logging.info("Calculated technical indicators.")
-        df['sector'] = df['symbol'].apply(get_stock_sector)
-        
-        # Calculate Stocksbot manual algo checks in parallel
-        logging.info("Starting parallel processing for check1sl.")
-        df['check1sl'] = parallel_apply(df['symbol'], calculate_first_check)
-        logging.info("Calculated slopes.")
+        trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)
+        confidence_threshold = int(trade_settings[5])
+        logging.info(f"Loaded trade settings with confidence threshold: {confidence_threshold}")
 
-        logging.info("Starting parallel processing for check2rev.")
-        df['check2rev'] = parallel_apply(df['symbol'], calculate_second_check)
-        logging.info("Calculated reversals.")
+        df = pd.read_csv('Hypothetical_Predictor/transactions.csv')
+        logging.info("Data loaded successfully.")
 
-        logging.info("Starting parallel processing for check3fib.")
-        df['check3fib'] = parallel_apply(df['symbol'], calculate_third_check)
-        logging.info("Calculated fibs.")
-        
-        try:
-            df['sa_neu_open'], df['sa_pos_open'], df['sa_neg_open'] = zip(*parallel_apply(df['symbol'], calculate_sentiment))
-        except Exception as e:
-            logging.error(f"Unable to unpack values for symbol sentiment analysis due to {e}")
-        logging.info("Calculated symbol-specific sentiment.")
-        # Calculate the political sentiment scores once, as they apply to all rows
-        try:
-            pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_daily_political_sentiment()
-            df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = pol_neu, pol_pos, pol_neg
-            logging.info("Calculated and applied daily political sentiment scores to all rows.")
-        except Exception as e:
-            logging.error(f"Error calculating political sentiment: {e}")
-        # Calculate final confidence score
-        df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
-        logging.info("Calculated confidence.")
+        # Process indicators in parallel (Assuming parallel_apply is defined elsewhere)
+        df['check1sl'] = parallel_apply_single_arg(df['symbol'], calculate_first_check)
+        df['check2rev'] = parallel_apply_single_arg(df['symbol'], calculate_second_check)
+        df['check3fib'] = parallel_apply_single_arg(df['symbol'], calculate_third_check)
+        df['sector'] = parallel_apply_single_arg(df['symbol'], get_stock_sector_for_df_symbol)
+        # Assuming df['symbol'] has all the symbols
+                
+        df['ds'] = '1900-1-1'
+        logging.info("Technical indicators calculated.")
+        df[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
+        pol_neu_open, pol_pos_open, pol_neg_open = calculate_historical_political_climate(df.loc[0, 'dp'])
+        df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = pol_neu_open, pol_pos_open, pol_neg_open
 
-        # Drop unnecessary columns
-        # df.dropna(inplace=True)
+        # Calculate confidence score and process dates
         df['dp'] = pd.to_datetime(df['dp'])
         df['purchase_day'] = df['dp'].dt.day
         df['purchase_month'] = df['dp'].dt.month
         df['purchase_year'] = df['dp'].dt.year
-        df['sell_day'] , df['sell_month'] , df['sell_year'] = 0, 0, 0
-        df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = 0, 0, 0
+        df['ds'] = pd.to_datetime(df['ds'])
+        df['sell_day'] = df['ds'].dt.day
+        df['sell_month'] = df['ds'].dt.month
+        df['sell_year'] = df['ds'].dt.year
+        logging.info("Processed dates and confidence scores.")
         df['sa_neu_close'], df['sa_pos_close'], df['sa_neg_close'] = 0, 0, 0
-        
-        
-        logging.info("Performed date-based feature engineering.")
+        df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = 0, 0, 0
+        df['check5con'] = df[['check1sl', 'check2rev', 'check3fib', 'sa_pos_open', 'pol_pos_open']].sum(axis=1)
 
-        # Drop more unnecessary columns
-        df = df.drop([ 'id','pstring', 'spps','tsp','sstring','expected','result','user_id',
-                        'processed','dp', 'ds', 'actual','proi'], axis=1)
-        logging.info("Dropped unnecessary columns.")
-        
-       
-        # Encode categorical features
+        # Drop unnecessary columns
+
+        # Combine with additional dataset
+        finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+        if finalized_dataset_data:
+            finalized_dataset_data = pickle.loads(finalized_dataset_data)
+            df = pd.concat([df, finalized_dataset_data], axis=0).drop_duplicates()
+            logging.info("Combined with finalized dataset.")
+
+        drop_columns = ['id', 'pstring', 'spps', 'tsp', 'sstring', 'expected', 
+                        'result', 'user_id', 'processed', 'dp', 'confidence', 
+                        'ds', 'actual', 'proi']
+        df = df.drop(columns=drop_columns, errors='ignore')
+        logging.info("Unnecessary columns dropped.")
+        # Encode categorical features and normalize data
         label_encoder = LabelEncoder()
-        symdf = pd.DataFrame(df['symbol'])
-        secdf = pd.DataFrame(df['sector'])
         df['symbol_encoded'] = label_encoder.fit_transform(df['symbol'])
         df['sector_encoded'] = label_encoder.fit_transform(df['sector'])
-        df.drop(['sector', 'symbol', ], axis=1, inplace=True)
-        logging.info("Encoded categorical features.")
-        df['hit_tp1'] = None
+        symbol_backup = df['symbol']
+        sector_backup = df['sector']
+        df.drop(['symbol', 'sector'], axis=1, inplace=True)
 
-        X = df.drop(['hit_tp1'], axis=1)
-        logging.error(f'X = {X.columns.to_list()}')
-        logging.error(f'DF = {df.columns.to_list()}')
-        X = X.apply(pd.to_numeric, errors='coerce').fillna(0)  # Ensure all data in X is numeric
+        # Now I need to split the train, test, prediction sets
+        X = df.drop('hit_tp1', axis=1)  # Features for entire dataset
+        y = df['hit_tp1']               # Target for entire dataset
 
-        # Scale features
-        scaler = MinMaxScaler(feature_range=(0, 1))
+        # Scaling features (if needed)
+        scaler = MinMaxScaler()
         X_scaled = scaler.fit_transform(X)
 
-        from database import models_DAOIMPL
-        model_blob = models_DAOIMPL.get_model_blob_from_db_by_model_name_and_user_id(model_name, user_id)
-        model = pickle.loads(model_blob)  # Deserialize model
+        
+        known_indices = y.notna()
+        unknown_indices = y.isna()
+        
+        X_known_scaled = X_scaled[known_indices]
+        y_known = y[known_indices]
 
-        # Make predictions using the trained model
-        predictions = model.predict(X_scaled)
-        probabilities = model.predict_proba(X_scaled)[:, 1]  # Probability of hitting the target (class 1 probability)
+        X_unknown_scaled = X_scaled[unknown_indices]
+
+        # Train-test split
+        X_train, X_test, y_train, y_test = train_test_split(X_known_scaled, y_known, test_size=0.2, random_state=42)
+
+        print(np.bincount(y_train))
+        # Train the model
+        model = RandomForestClassifier()
+        model.fit(X_train, y_train)
+
+        # Evaluate the model
+       # Evaluate the model on the test data
+        accuracy = model.score(X_test, y_test)
+        print(f"Model accuracy: {accuracy}")
+
+        # Predict future values for the data where the target is unknown
+        predictions = model.predict(X_unknown_scaled)
+        probabilities = model.predict_proba(X_unknown_scaled)[:, 1]  # Get probabilities for the positive class
+        # Add predictions and probabilities to DataFrame
+        df.loc[unknown_indices, 'Prediction'] = predictions
+        df.loc[unknown_indices, 'Probability'] = probabilities
+
+        df['symbol'] = symbol_backup
+        df['sector'] = sector_backup
+        symbols = df['symbol'].tolist()
+        sectors = df['sector'].tolist()
         confidence_scores = df['check5con'].tolist()
-        # Filter symbols based on probability threshold (e.g., >= 0.7 for recommendation)
-        symbols = symdf['symbol'].tolist()
-        sectors = secdf['sector'].tolist()
+        trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)  # example threshold, set as needed
+        confidence_threshold = trade_settings[5]
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
-                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if pred == 1 and prob >= .5]
+                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5 and con >= confidence_threshold) or con >= 40]
 
-        logging.info("Predictions and probabilities calculated successfully.")
+
         
-        return results  # Return only recommended symbols with high probability
+        try:
+            output_data_bin = pickle.dumps(results)
+            
+            with open(output_file_path, 'wb') as bin_writer:
+                bin_writer.write(output_data_bin)
+        except IOError as e:
+            print(f"Error writing to file {e}")
         
+       
+
     except Exception as e:
-        logging.error(f"Error during preprocessing: {e}")
+        logging.error(f"Error during preprocessing and training: {e}")
         return None
 
 
 
+# # # Execution check
+if __name__ == "__main__":
+    output_path =  sys.argv[0]    
+    user_id = sys.argv[1]  
+    tempfile_path2 = sys.argv[2]
+    dataset_id = sys.argv[3]
+    preprocess_and_train(user_id,tempfile_path2,dataset_id)

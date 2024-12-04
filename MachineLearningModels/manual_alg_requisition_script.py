@@ -230,7 +230,8 @@ def second_check_engulfing_candle_with_reversal(asset):
     last_four_candles = get_last_4__closes_full_candle_detail(asset)
     try:
         reversal_present = look_for_engulfing_candle_long_reversal(last_four_candles,asset)
-        return reversal_present
+        if reversal_present:
+            return reversal_present
     except Exception as e:
         print(e)
         pass

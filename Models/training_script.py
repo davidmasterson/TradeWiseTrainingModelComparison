@@ -1,6 +1,10 @@
-from database import training_scripts_DAOIMPL
+from database import training_scripts_DAOIMPL, models_DAOIMPL, model_metrics_history_DAOIMPL
+from Models import model, model_metrics_history
+from datetime import datetime
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import tempfile, subprocess
 import os
+import json, pickle, logging, pandas as pd
 
 
 class TrainingScript:
@@ -24,7 +28,7 @@ class TrainingScript:
             
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
-        result2 = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3', 
+        result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3', 
                                   tempfile_path3,
                                   str(preprocessing_script_id),str(model_id),
                         str(user_id), model_name],
@@ -32,3 +36,75 @@ class TrainingScript:
                                  text=True,
                                  env=env)
         training_writer.close()
+        
+        # Check if the script ran successfully
+        if result.returncode == 0:
+            try:
+                # Parse the JSON output
+                output = json.loads(result.stdout)
+
+                # Deserialize the model_binary
+                model_binary = pickle.loads(bytes.fromhex(output['model_binary']))
+
+                # Retrieve predictions
+                y_pred = output['y_pred']
+                y_test = output['y_test']
+                columns = output['columns']
+                
+                
+
+                
+            except Exception as e:
+                print(f"Error deserializing output: {e}")
+        else:
+            print(f"Training script failed: {result.stderr}")
+        
+        
+        
+        # Check if model exists and update/insert accordingly
+        model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(model_name, user_id)
+        if model_exists:
+            new_model = model.Model(model_exists[1], model_exists[2], model_binary, user_id, selected=1)
+            model_id = models_DAOIMPL.update_model_for_user(new_model, int(model_exists[0]))
+            logging.info(f"Updated existing model in the database with model_id: {model_id}")
+        else:
+            new_model = model.Model(
+                model_name,
+                "Random Forest for 12-day profit/loss prediction.",
+                model_binary,
+                user_id,
+                selected=1
+            )
+            model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
+            logging.info(f"Inserted new model into the database with model_id: {model_id}")
+
+        if not isinstance(model_id, int):
+            raise ValueError("Invalid model_id returned from database function.")
+
+        # Calculate metrics
+        accuracy = accuracy_score(y_test, y_pred)
+        precision = precision_score(y_test, y_pred, average='weighted')
+        recall = recall_score(y_test, y_pred, average='weighted')
+        f1 = f1_score(y_test, y_pred, average='weighted')
+
+        # Feature importance and top features
+        this_model = pickle.loads(model_binary)
+        feature_importances = this_model.feature_importances_
+        top_features_df = pd.DataFrame({
+            'Feature': columns,  # Use indices as feature identifiers
+            'Importance': feature_importances
+        }).sort_values(by='Importance', ascending=False)
+        top_features_json = top_features_df.head(5).to_json(orient='records')
+
+        logging.info(f"Metrics - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1-Score: {f1}")
+
+        # Insert metrics into model_metrics_history table
+        new_history = model_metrics_history.Model_Metrics_History(
+            model_id, accuracy, precision, recall, f1, top_features_json, datetime.now()
+        )
+        metrics_saved = model_metrics_history_DAOIMPL.insert_metrics_history(new_history)
+
+        if metrics_saved:
+            logging.info("Metrics saved successfully.")
+        else:
+            logging.error("Failed to save metrics in the database.")

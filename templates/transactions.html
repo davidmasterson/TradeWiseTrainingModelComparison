@@ -27,18 +27,7 @@
                                 <th>SOP</th>
                                 <th>Sector</th>
                                 <th>Result</th>
-                                <th>Political Neutral Open</th>
-                                <th>Political Positive Open</th>
-                                <th>Political Negative Open</th>
-                                <th>S.A Neutral Open</th>
-                                <th>S.A Positive Open</th>
-                                <th>S.A Negative Open</th>
-                                <th>Political Neutral close</th>
-                                <th>Political Positive close</th>
-                                <th>Political Negative close</th>
-                                <th>S.A Neutral close</th>
-                                <th>S.A Positive close</th>
-                                <th>S.A Negative close</th>
+                                
                                 <th>Processed</th>
                         </tr>
                     </thead>
@@ -60,18 +49,7 @@
                                 <td>{{ transaction.sop }}</td>
                                 <td>{{ transaction.sector }}</td>
                                 <td>{{ transaction.result }}</td>
-                                <td>{{ transaction.pol_neu_open }}</td>
-                                <td>{{ transaction.pol_pos_open }}</td>
-                                <td>{{ transaction.pol_neg_open }}</td>
-                                <td>{{ transaction.sa_neu_open }}</td>
-                                <td>{{ transaction.sa_pos_open }}</td>
-                                <td>{{ transaction.sa_neg_open }}</td>
-                                <td>{{ transaction.pol_neu_close }}</td>
-                                <td>{{ transaction.pol_pos_close }}</td>
-                                <td>{{ transaction.pol_neg_close }}</td>
-                                <td>{{ transaction.sa_neu_close }}</td>
-                                <td>{{ transaction.sa_pos_close }}</td>
-                                <td>{{ transaction.sa_neg_close }}</td>
+                               
                                 {% if transaction.processed == 0%}
                                     <td>No</td>
                                 {% else %}

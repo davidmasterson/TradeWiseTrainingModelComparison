@@ -51,13 +51,13 @@ import pickle
 # from datetime import datetime
 # from datetime import date
 # '''------------- Change these parameters only---------------'''
-# symbol = 'EMD'
-# qty = 10
-# ppps = 9.78
+# symbol = 'GTI'
+# qty = 9
+# ppps = 2.95
 # total_buy = ppps * qty
-# user_id = 6
+# user_id = 3
 # '''--------------------------------------------------------------'''
-# dp = date(2024,11,19)
+# dp = date(2024,11,26)
 # pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
 # ds = None
 # spps = None
@@ -72,19 +72,19 @@ import pickle
 # transactions_DAOIMPL.insert_transaction(new_transaction,pending)
 
 
-'''Close out a transaction that was not closed automatically by the system'''
-# from datetime import datetime, date
-# symbol = 'BAK'
-# user_id = 4
-# transaction_id = 93
-# filled_avg_price = 5.36
-# filled_qty = 5
-# total_purchase = 25.08
-# client_order_id = '2024-11-21 12:39:31.346610-BAK-2024-11-21-5.02-5-25.099999999999998'
-# purchase_string = '2024-11-21 12:39:31.346610-BAK-2024-11-21-5.02-5-25.099999999999998'
+# '''Close out a transaction that was not closed automatically by the system'''
+# # from datetime import datetime, date
+# symbol = 'CAPL'
+# user_id = 1
+# transaction_id = 156
+# filled_avg_price = 21.31
+# filled_qty = 98
+# total_purchase = 1996.26
+# client_order_id = 'a216d910-e215-46bf-a23b-01eef19dc5f4'
+# purchase_string = 'a216d910-e215-46bf-a23b-01eef19dc5f4'
 # pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
 # pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# ds = date(2024,11,25)
+# ds = date(2024,11,22)
 
 # # ----------------------------------------------
 # tsp = filled_qty * filled_avg_price
@@ -282,14 +282,15 @@ import pickle
 '''Load dataset object dataset data by dataset id'''
 # pd.set_option('display.max_rows', None)
 # pd.set_option('display.max_columns', None)
-# pp_bin = dataset_DAOIMPL.get_dataset_data_by_id(13)
+# ds = dataset_DAOIMPL.get_dataset_data_by_id(13)
 # dataset_obj = dataset_DAOIMPL.get_dataset_object_by_id(13)
-# df = pickle.loads(pp_bin)
-# print(df)# # df.to_csv('historical_ds_base.csv')
+# df = pickle.loads(dataset_obj[3])
+# # df = pd.read_csv('historical_ds_base.csv')
+# df.to_csv('historical_ds_base.csv')
 # df.drop(['id', 'sa_neu_open','sa_pos_open','sa_neg_open','sa_neu_close','sa_pos_close','sa_neg_close','pol_neu_open',
 #          'pol_pos_open','pol_neg_open','pol_neu_close','pol_pos_close','pol_neg_close'], axis=1, inplace=True)
 # df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-# print(df.columns.to_list())
+# print(df.head(5))
 # df.drop(['ds','dp'], axis=1, inplace=True)
 # df['hit_tp1'] = df.apply(calculate_target , axis=1)
 # df['dp'] = pd.to_datetime(df['dp'])
@@ -300,13 +301,15 @@ import pickle
 # df['sell_day'] = df['ds'].dt.day
 # df['sell_month'] = df['ds'].dt.month
 # df['sell_year'] = df['ds'].dt.year
-# df.drop(['actual'], axis=1, inplace=True)
+# df.drop(['actual', id], axis=1, inplace=True)
 
 # df.drop(['formatted_buy_date', 'formatted_sell_date','check4sa', 'processed','confidence', 'user_id','result','proi','expected',
-#          'pstring','tsp','spps','sstring' ], axis=1, inplace=True)
+        #  'pstring','tsp','spps','sstring' ], axis=1, inplace=True)
 # df = df.dropna()
+# df = df.drop(['id'], axis=1, inplace=True)
 # print(df.columns.to_list())
 # print(df.isnull().sum())
+# df.to_csv('historical_ds_base.csv')
 '''Normalize all open political, close politcal, open sa, and close sa data.'''
 # def normalize_all_pol_and_sa_data(dataframe):
 #     # SET conditions that will be used for determining removal of rows
@@ -412,8 +415,8 @@ import pickle
 
 '''Create dataset object and update dataset based on a dataset id lastly print columns list for df'''
 # # df_final = pd.read_csv('presave.csv')
-# new_ds = dataset.Dataset('MATP1pre_SAPOL', 'MATP1_preSAPOL'[2], pickle.dumps(df), datetime.now(),1)
-# dataset_DAOIMPL.insert_dataset(new_ds)
+# new_ds = dataset.Dataset(dataset_obj[1], dataset_obj[2], pickle.dumps(df), datetime.now(),1)
+# dataset_DAOIMPL.update_dataset(new_ds,dataset_obj[0])
 # print(df.columns.to_list())
 
 
@@ -587,7 +590,15 @@ import pickle
 # user = user_DAOIMPL.get_all_users()
 # print(user)
 
-from HistoricalFetcherAndScraper import scraper
+# from HistoricalFetcherAndScraper import scraper
 
-sa_neu, sa_pos, sa_neg = scraper.get_sa(date.today(),'KITT',1)
-print(sa_neu, sa_pos, sa_neg)
+# sa_neu, sa_pos, sa_neg = scraper.get_sa(date.today(),'KITT',1)
+# print(sa_neu, sa_pos, sa_neg)
+
+
+# If the model is a scikit-learn model, check if it has an attribute that stores feature names
+# This is not always available, depends on how the model was constructed and saved
+# ppscript = preprocessing_scripts_DAOIMPL.get_preprocessed_data_by_preprocessing_script_id(94)
+# pp_bin = ppscript
+# pp = pickle.loads(pp_bin)
+# print(pp)

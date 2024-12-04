@@ -56,24 +56,37 @@ from MachineLearningModels import manual_alg_requisition_script
 #     return symbols
 
 
-def get_model_recommendations_for_recommender(new_list,preprocessing_script_id, model_name, model_id, user_id, 
+def get_model_recommendations_for_recommender(new_list,recommendations_script_id, dataset_id, user_id, 
                                               max_total_spend,recommendation_count, progression = 20, count=0, iter=0, symbols=None):
+    import pickle
+    import tempfile
     from MachineLearningModels import MARecommender
-    from Models import progress_object
+    from Models import progress_object, recommendation_script
+    from database import recommendation_scripts_DAOIMPL
+    import pandas as pd
+    
+    
+    project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
+        
+        
+    
     if symbols is None:
-        
-        
-        
-        
-        
-        
-        
-        
         symbols = []  # Initialize symbols as an empty list if not provided
         
         
     # Process the stock list in chunks
     while len(symbols) < recommendation_count:
+        total_stocks_iter = iter * 50
+        progress_text = f'Checking stocks {total_stocks_iter} to {total_stocks_iter + 50} out of  {len(new_list)}'
+        try:
+            progression_text = progression_DAOIMPL.get_progression_text_by_user(user_id)
+            if progression_text:
+                progression_DAOIMPL.update_progression_text(progress_text,user_id,progression_text[0])
+            else:
+                progression_DAOIMPL.insert_progression_text(progress_text,user_id)
+        except Exception as e:
+            logging.info(f' unable to insert progression text due to {e}')
+        logging.info(progress_text)
         progress_now = len(symbols) * (100 - progression) / recommendation_count
         current_progress = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
         if current_progress:
@@ -88,7 +101,8 @@ def get_model_recommendations_for_recommender(new_list,preprocessing_script_id, 
             break
 
         # Write temporary CSV file with stock data
-        CSV_Writer.CSV_Writer.write_temporary_csv(this_iter_list)
+        csv_ds = CSV_Writer.CSV_Writer.write_temporary_csv(this_iter_list)
+        df = pd.read_csv('Hypothetical_Predictor/transactions.csv')
 
         # Fetch the stock data
         
@@ -98,7 +112,7 @@ def get_model_recommendations_for_recommender(new_list,preprocessing_script_id, 
         # Run preprocessing
 
         # Get predictions from the model
-        probs = MARecommender.preprocess_data(user_id, model_name)
+        probs = recommendation_script.RecommendationScript.retrainer_for_recommender(recommendations_script_id,project_root, user_id, dataset_id)
 
 
         # Open the file in append mode after the first iteration
@@ -117,8 +131,10 @@ def get_model_recommendations_for_recommender(new_list,preprocessing_script_id, 
         # Update iteration and count for the next loop
         iter += 1
         count += 50
+        logging.info(progress_text)
         
-
+        
+    
     logging.info('Finished processing symbols:', symbols)
     return symbols
 

@@ -107,3 +107,68 @@ def update_recommender_progress(new_progress, user_id, progress_id):
     finally:
         cur.close()
         conn.close()
+        
+def insert_progression_text(text, user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''INSERT INTO progression_texts(
+                progression_text,
+                user_id)
+                VALUES(%s,%s)'''
+    vals = [text,
+            user_id]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+        logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to insert progresss text for user  due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
+def update_progression_text(text, user_id, progress_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''UPDATE progression_texts SET
+                progression_text = %s,
+                user_id = %s
+            WHERE id = %s
+            '''
+    vals = [text,
+            user_id,
+            progress_id
+            ]
+    try:
+        cur.execute(sql, vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, record(s) affected updated progress text {datetime.now()}id:{progress_id}")
+        else:
+            logging.info(f"{datetime.now()}:progression text record {progress_id} has not been updated.")
+        return progress_id
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to update progression text {progress_id} due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
+def get_progression_text_by_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM
+            progression_texts
+            WHERE user_id=%s'''
+    vals = [user_id]
+    try:
+        cur.execute(sql,vals)
+        progress = cur.fetchone()
+        if progress:
+            return progress
+        return None
+    except Exception as e:
+        logging.error(f'{datetime.now()}: Unable to retrieve progression text for user {user_id} due to {e}')
+        return False
+    finally:
+        conn.close()
+        cur.close()

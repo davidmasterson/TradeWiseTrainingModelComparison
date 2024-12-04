@@ -1,8 +1,10 @@
-from database import preprocessing_scripts_DAOIMPL
+from database import preprocessing_scripts_DAOIMPL, dataset_DAOIMPL
+from Models import dataset
+from datetime import datetime
 import pickle
 import tempfile
 import subprocess
-import os
+import os, logging
 
 
 class Preprocessing_Script:
@@ -81,6 +83,10 @@ class Preprocessing_Script:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_writer:
             preprocess_writer.write(preprocess_script)
             tempfile_path1 = preprocess_writer.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_ouptut_writer:
+            tempfile_path2 = preprocess_ouptut_writer.name
+            
             
         
         # Path where the preprocessed data will be saved by the script
@@ -90,13 +96,40 @@ class Preprocessing_Script:
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
                                  tempfile_path1, 
                                  str(dataset_id), 
-                                 str(user_id), model_name,str(preprocessing_script_id)], 
+                                 str(user_id), tempfile_path2,str(preprocessing_script_id)], 
                                 capture_output=True,
                                 text=True,
                                 env=env  # Pass the modified environmen
                             )
+        try:
+            with open(tempfile_path2, 'rb') as bin_reader:
+                loaded_data = pickle.load(bin_reader)
+                
+           
+            # Deserialize the pickle output
+            
+        
+        # Access individual components dynamically
+            preprocessing_object = loaded_data.get("preprocessing_object")
+            dataset_object = loaded_data.get("dataset")
+            
+            
+    
+            ppdata = pickle.dumps(preprocessing_object)
+            preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(preprocessing_script_id, ppdata)
+            logging.info("Saved preprocessed data successfully.")
+        
+            # Save finalized dataset
+            final_df_bin = pickle.dumps(dataset_object)
+            dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
+            new_dataset = dataset.Dataset(dsobject[1], dsobject[2], final_df_bin, datetime.now(), user_id)
+            dataset_DAOIMPL.update_dataset(new_dataset, dataset_id)
+            logging.info("Finalized dataset saved successfully.")
+        except Exception as e:
+            logging.error(f"Subprocess error (if any): Exception error due to {e}")
+            
         preprocess_writer.close()
-        return result
+        preprocess_ouptut_writer.close()
     
     def retrainer_preprocessor_for_recommender(preprocessing_script_id, project_root, dataset_id, user_id, model_name):
         #get preprocess script and convert from binary Save to temp file location.
@@ -109,10 +142,13 @@ class Preprocessing_Script:
         if isinstance(preprocess_script, bytes):
             preprocess_script = preprocess_script.decode('utf-8')  # Convert binary to text if necessary
 
-        # Write the script content to a temporary Python file
+         # Write the script content to a temporary Python file
         with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_writer:
             preprocess_writer.write(preprocess_script)
             tempfile_path1 = preprocess_writer.name
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".py", mode='w') as preprocess_ouptut_writer:
+            tempfile_path2 = preprocess_ouptut_writer.name
             
         
         # Path where the preprocessed data will be saved by the script
@@ -120,7 +156,7 @@ class Preprocessing_Script:
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
-                                 '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/Manual_Algorithm12day_preprocessing_script.py', 
+                                 tempfile_path1, 
                                  str(dataset_id), 
                                  str(user_id), model_name,str(preprocessing_script_id)], 
                                 capture_output=True,

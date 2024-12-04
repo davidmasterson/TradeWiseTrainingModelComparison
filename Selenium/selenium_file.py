@@ -13,18 +13,32 @@ from datetime import date
 from MachineLearningModels import manual_alg_requisition_script
 import logging
 from sector_finder import get_stock_company_name
+import requests
+from bs4 import BeautifulSoup
 import time
-# Set Chrome options
-options = Options()
-options.add_argument('--headless')  # Run in headless mode
-options.add_argument('--no-sandbox')  # Required for running in Docker or some headless environments
-options.add_argument('--disable-dev-shm-usage')  # Prevent crashes due to low shared memory
+
+
+
 
 # Initialize WebDriver
 
 def get_historical_stock_specific_sentiment_scores(stock_symbol, date_of_lookup):
     try:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        
+        import os
+        logging.debug(os.environ['PATH'])
+    
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')  # Runs Chrome in headless mode
+        options.add_argument('--no-sandbox')  # Prevents sandboxing for Chrome
+        options.add_argument('--disable-dev-shm-usage')  # Reduces shared memory usage
+        options.add_argument("--remote-debugging-port=9222")
+        options.add_argument('--window-size=1920x1080')  # Set a default window size
+        options.add_argument('--log-level=3')  # Set log level
+        options.add_argument('--verbose')  # Enable verbose logging
+
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         # Open Google
         driver.get("https://google.com")
         
@@ -74,71 +88,62 @@ def get_historical_stock_specific_sentiment_scores(stock_symbol, date_of_lookup)
         
 political_scores_cache = {}
 
-def get_historical_political_sentiment_scores(date_of_lookup):
-    # global political_scores_cache
-
-    # # Check if the score for the given date is already cached
-    # if date_of_lookup in political_scores_cache:
-    #     print(f"Using cached political scores for {date_of_lookup}")
-    #     return political_scores_cache[date_of_lookup]
-
+def get_historical_political_sentiment_scores(date_of_lookup, driver=None):
+    
     try:
-        article_texts = []
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+        # Check if the date is already cached
+        if date_of_lookup in political_scores_cache:
+            return political_scores_cache[date_of_lookup]
+        
+        # Format date for Wikipedia query
         month = date_of_lookup.strftime('%B').lower()
-        date_string = date_of_lookup.strftime(f'{month}-%d-%Y')
-        query = f'https://theweek.com {date_string}'
-        url = 'https://google.com'
-        driver.get(url)
-
-        # Search for the query
-        search_bar = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@name="q"]'))
-        )
-        search_bar.send_keys(query)
-        search_bar.send_keys(Keys.RETURN)
-        print(f"Searching for: {query}")
-
-        # Wait for search results to load
-        WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.ID, "search"))
-        )
-        print("Search results loaded.")
-
-        # Click on the first link
-        this_link = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="rso"]/div[1]/div/div/div/div[1]/div/div/span/a/h3'))
-        )
-        this_link.click()
-
-        # Scrape article content
-        article_body = WebDriverWait(driver, 20).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="article-body"]'))
-        )
-        art = article_body.find_elements(By.TAG_NAME, 'p')
-        for cld in art:
-            article_texts.append(cld.text)
-
-        print("Top financial news links:")
+        day = date_of_lookup.strftime('%d')
+        finished_day = day.lstrip('0')  # Remove leading zero
+        caps_month = month.capitalize()
+        wikipedia_month_search = f"{date_of_lookup.year}_{caps_month}_{finished_day}"
+        date_string = f"{date_of_lookup.year} {caps_month} {finished_day}"
+        
+        # Wikipedia portal URL for current events
+        wiki_url = f"https://en.wikipedia.org/wiki/Portal:Current_events/{wikipedia_month_search}"
+        # Send GET request to Wikipedia
+        response = requests.get(wiki_url)
+        if response.status_code != 200:
+            logging.error(f"Failed to fetch page: {wiki_url} (Status Code: {response.status_code})")
+            return None, None, None
+        # Parse the page with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'html.parser')
+        
+        # Find the main content section for the day
+        content_section = soup.find('div', id=wikipedia_month_search)
+        if not content_section:
+            logging.warning(f"Content not found for {date_of_lookup} on {wiki_url}")
+            return None, None, None
+        # Extract relevant excerpts
+        article_excerpts = []
+        for ul in content_section.find_all('ul'):
+            article_excerpts.append(ul.get_text(strip=True))
+        # Deduplicate excerpts
+        articles_set = set(article_excerpts)
         
         # Process sentiment
-        pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
-        print(f'POLITICAL SCORES: {pol_neu, pol_pos, pol_neg}')
-
+        pol_neu, pol_pos, pol_neg = manual_alg_requisition_script.process_phrase_for_sentiment(articles_set)
         # Cache the result
         political_scores_cache[date_of_lookup] = (pol_neu, pol_pos, pol_neg)
-        return [[pol_neu, pol_pos, pol_neg], article_texts]
-
+        return [[pol_neu, pol_pos, pol_neg], articles_set]
     except Exception as e:
-        logging.error(f"Unable to get political detail for selected date due to: {e}")
-        # Return default sentiment values in case of error
+        logging.error(f"Error fetching political sentiment for {date_of_lookup}: {e}")
         return None, None, None
 
-    finally:
-        driver.quit()
     
 
 
    
-    
+def get_correctly_formatted_day(day):
+    formatted_day = day
+    if day[0] == '0':
+        formatted_day = day[1]
+    return formatted_day
+            
+
+
 

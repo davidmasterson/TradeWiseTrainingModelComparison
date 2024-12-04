@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+    <h1>Upload Recommendations Scripts</h1>
+    <p>Use the form below to upload recommendations scripts to the database.</p>
+
+    <!-- Form to upload training scripts -->
+    <form action="{{ url_for('upload_recommendations_scripts') }}" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+
+        <div class="form-group">
+            <label for="scriptName">Script Name</label>
+            <input type="text" id="scriptName" name="script_name" class="form-control" placeholder="Enter script name" required>
+        </div>
+
+        <div class="form-group">
+            <label for="scriptDescription">Script Description</label>
+            <textarea id="scriptDescription" name="script_description" class="form-control" placeholder="Describe the script" required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="scriptFile">Training Script File (.h5, .json, or other format)</label>
+            <input type="file" id="scriptFile" name="script_file" class="form-control-file" accept=".h5,.json,.pkl" required>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Upload Script</button>
+    </form>
+
+    <!-- Section to display list of uploaded scripts -->
+    <hr>
+    <h2>Uploaded Recommendations Scripts</h2>
+    <div class="row">
+        {% for script in scripts %}
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ script[2] }}</h5> <!-- Script Name -->
+                    <p class="card-text">{{ script[4] }}</p> <!-- Script Description -->
+                    <p class="card-text"><small class="text-muted">Model Type: {{ script[1] }}</small></p>
+                    <p class="card-text"><small class="text-muted">Uploaded on: {{ script[5] }}</small></p>
+                    <form action="{{ url_for('delete_recommendation_script') }}" method="POST" onsubmit="return confirmDelete()">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="recommendation_script_id"   value="{{script[0]}}"/>
+                        <button type="submit"  class="btn btn-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+<script>
+    function confirmDelete() {
+        return confirm("Are you sure you want to delete this recommendation script?");
+    }
+</script>
+{% endblock %}

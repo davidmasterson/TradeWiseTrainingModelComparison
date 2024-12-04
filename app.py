@@ -2,15 +2,16 @@ import sys
 from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, flash
 import logging
 from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
+import Selenium.selenium_file
 import alpaca_request_methods
 import model_trainer_predictor_methods
-from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user, model, training_script, dataset
+from Models import preprocessing_script, metric, trade_setting, user_preferences, model_metrics_history, user, model, training_script, dataset, recommendation_script
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
 # import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL
+from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL, recommendation_scripts_DAOIMPL
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
@@ -31,6 +32,8 @@ import time
 
 
 app = Flask(__name__)
+
+
 
 CORS(app, supports_credentials=True)
 # Check if the environment is production
@@ -136,7 +139,9 @@ def signup():
         first_name = request.form.get('first')
         last_name = request.form.get('last')
         user_name = request.form.get('user')
+        user_name = user_name.strip(' ')
         password = request.form.get('password')
+        password = password.strip(' ')
         email = request.form['email']
         alpaca_key = request.form['alpaca_key']
         alpaca_secret = request.form['alpaca_secret_key']
@@ -153,7 +158,7 @@ def signup():
         if user_found:
             error_message = 'Please choose a different user_name.'
             return render_template('signup.html', error_message=error_message)
-        new_user = user.User(first=first_name, last=last_name, user_name=user_name, password=password, email=email, alpaca_key=alpaca_key, alpaca_secret=alpaca_secret)
+        new_user = user.User(first=first_name, last=last_name, user_name=user_name, password=password, email=email, alpaca_key=alpaca_key, alpaca_secret=alpaca_secret, alpaca_endpoint=alpaca_endpoint)
         admin_id = user_DAOIMPL.get_user_by_username('shadow073180')
         if admin_id:
             admin_id = admin_id[0]['id']
@@ -215,7 +220,9 @@ def login():
     if request.method == 'POST':
         # Handle traditional username/password login
         username = request.form.get('username')
+        username = username.strip(' ')
         password = request.form.get('password')
+        password = password.strip(' ')
 
         if not username or not password:
             return render_template('login.html', error='Username and password are required.')
@@ -620,31 +627,10 @@ def train_model(model_name):
         closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
         result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
         # LOGGING PURPOSES FOR DEBUGGING
-        logging.info(f"Subprocess output: {result.stdout}")
+        # logging.info(f"Subprocess output: {result.stdout}")
         
         # Save preprocessed data
-        try:
-            # Deserialize the pickle output
-            output_data = pickle.loads(result.stdout)
         
-        # Access individual components dynamically
-            preprocessing_object = output_data.get("preprocessing_object")
-            dataset = output_data.get("dataset")
-            
-            
-    
-            ppdata = pickle.dumps(preprocessing_object)
-            preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(preprocessing_script_id, ppdata)
-            logging.info("Saved preprocessed data successfully.")
-        
-            # Save finalized dataset
-            final_df_bin = pickle.dumps(dataset)
-            dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
-            new_dataset = dataset.Dataset(dsobject[1], dsobject[2], final_df_bin, datetime.now(), user_id)
-            dataset_DAOIMPL.update_dataset(new_dataset, dataset_id)
-            logging.info("Finalized dataset saved successfully.")
-        except Exception as e:
-            logging.error(f"Subprocess error (if any): {result.stderr} Exception error due to {e}")
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
         if closed_transactions:
@@ -661,6 +647,7 @@ def train_model(model_name):
 @app.route('/upload_models', methods = ['GET','POST'])
 def upload_models():
     import pickle
+    from Models import transaction
     if user.User.check_logged_in():
         user_id = user.User.get_id()
         if request.method == 'POST':
@@ -674,6 +661,7 @@ def upload_models():
                 dataset = int(dataset)
                 tscript = int(tscript)
             
+            transaction_id = transaction.transaction.create_a_base_no_loss_or_gain_transaction(user_id)
             # Save model without binary model to database.
             new_model = model.Model(model_name, model_description, model_data = None, user_id=user_id, selected=0)
             model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
@@ -696,27 +684,21 @@ def upload_models():
             
             project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
             # create a preprocessed data object
-            result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(ppscript,project_root,dataset,user_id,model_name)
-            # LOGGING PURPOSES FOR DEBUGGING
-            logging.info(f"Subprocess output: {result.stdout}")
-            logging.error(f"Subprocess error (if any): {result.stderr}")
-            # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
-            training_script.TrainingScript.model_trainer(tscript,ppscript, model_id, user_id, model_name, project_root)
+            try:
+                result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(ppscript,project_root,dataset,user_id,model_name)
+                
             
-        # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script
-            # # get blobs from database for initial training of model blob
-            # ppscript_bin = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(preprocessing_script)
-            # dataset_bin = dataset_DAOIMPL.get_dataset_data_by_id(dataset)
-            # trainscript_bin = training_scripts_DAOIMPL.get_training_script_data_by_id(training_script)
-            
-            # # convert from binary using pickle
-            # ppscript = pickle.loads(ppscript_bin)
-            # dataset = pickle.loads(dataset_bin)
-            # train_script = pickle.loads(trainscript_bin)
-            
-        # Save the uploaded file to the specified folder
-            flash('Model has been uploaded successfully','info')
-            return redirect(url_for('upload_models'))
+                # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
+                training_script.TrainingScript.model_trainer(tscript,ppscript, model_id, user_id, model_name, project_root)
+                
+                
+            # Notify user of successful model creation, and delete temporary transaction.
+                flash('Model has been uploaded successfully','info')
+                transactions_DAOIMPL.delete_transaction(transaction_id)
+                return redirect(url_for('upload_models'))
+            except Exception as e:
+                logging.error(f'Unable to add model due to {e}')
+                return 
 
     # If GET request, render the upload form
         models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
@@ -894,6 +876,44 @@ def delete_dataset():
     dataset_DAOIMPL.delete_dataset(dataset_id)
     flash(f"Dataset with ID {dataset_id} has been deleted.")
     return redirect(url_for('upload_dataset'))
+
+
+@app.route('/upload_recommendations_scripts', methods=['GET', 'POST'])
+def upload_recommendations_scripts():
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        username = session.get('user_name')
+        if request.method == 'POST':
+            script_name = request.form['script_name']
+            description = request.form['script_description']
+            script_file = request.files['script_file']
+
+            # Save the uploaded file to the database without executing
+            if script_file  and script_name and description:
+                script_content = script_file.read().decode('utf-8')  # Read and decode script content
+                script_bin = pickle.dumps(script_content)
+
+                # Insert script data into the database
+                new_script = recommendation_script.RecommendationScript(
+                    script_name,description,script_bin,user_id,datetime.now()
+                )
+                
+                recommendation_scripts_DAOIMPL.insert_recommendation_script_for_user(new_script)
+                flash('recommendation script uploaded successfully', 'info')
+                return redirect(url_for('upload_recommendations_scripts'))
+
+        # If GET request, render the upload form
+        scripts = recommendation_scripts_DAOIMPL.get_recommendation_scripts_for_user(user_id)
+        return render_template('recommendations_scripts.html', scripts=scripts)
+    return redirect(url_for('home'))
+
+@app.route('/delete_recommendation_script', methods=['POST'])
+def delete_recommendation_script():
+    recommendation_script_id = request.form.get('recommendation_script_id')
+    recommendation_script_id = int(recommendation_script_id)
+    flash(f"Recommendation Script with ID {recommendation_script_id} has been deleted.")
+    recommendation_scripts_DAOIMPL.delete_user_recommendations_script(recommendation_script_id)
+    return redirect(url_for('upload_recommendations_scripts'))
     
 # -------------------------------------------------------------END MODEL TRAINING -----------------------------------------------------------------
 # ----------------------------------------------------------------START ORDERS --------------------------------------------------------------------
@@ -1088,14 +1108,14 @@ def purchaser_page():
     
 
         if request.method == 'POST':
+            
             # Generate recommendations and store them in the session
             #get form data from frontend
-            preprocessing_script_id = request.form.get('preprocessed_data')
+            dataset_id = request.form.get('dataset_data')
+            recommendation_script_id = request.form.get('recommender_data')
             training_script = request.form.get('training_script')
             recommendation_count = request.form.get('recommendation_count')
             recommendation_count = int(recommendation_count)
-            model_name = preprocessing_scripts_DAOIMPL.get_model_name_for_preprocessing_scripts_preprocessing_script_id(preprocessing_script_id)
-            model_id = models_DAOIMPL.get_model_id_for_model_by_model_name(model_name)
             recommended_DAOIMPL.delete_all_recommended_for_user(user_id)
             # create new dataset using the recommender TODO ------
             progress_now = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
@@ -1104,28 +1124,45 @@ def purchaser_page():
             else:
                 new_progress = progress_object.Progress(1, user_id)
                 progression_DAOIMPL.insert_recommender_progress(new_progress)
+            
+            progress_text = progression_DAOIMPL.get_progression_text_by_user(user_id)
+            if progress_text:
+                progression_DAOIMPL.update_progression_text('Getting list of tradeable positions', user_id, progress_text[0])
+            else:
+                progression_DAOIMPL.insert_progression_text('Getting list of tradeable positions', user_id)   
+                progress_now = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
+                
             assets_list = symbol_finder.get_list_of_tradeable_stocks()
             progress_now = progression_DAOIMPL.get_recommender_progress_by_user(user_id)
             progression_DAOIMPL.update_recommender_progress(10, user_id, progress_now[0])
+            progression_DAOIMPL.update_progression_text('Getting price data for positions', user_id, progress_now[0])
+            
             assets_list = symbol_finder.fetch_price_data_concurrently(assets_list,min_spend,max_spend)
             progression_DAOIMPL.update_recommender_progress(20, user_id, progress_now[0])
+            progression_DAOIMPL.update_progression_text('Sorting list', user_id, progress_now[0])
             assets_list = symbol_finder.sort_list_from_lowest_price_to_highest_price(assets_list)
             new_list = list(map(lambda x: x[0], assets_list))
-            orders = recommender.get_model_recommendations_for_recommender(new_list, preprocessing_script_id, model_name, model_id, user_id, max_total_spend,recommendation_count, 20)
+            
+            progression_DAOIMPL.update_progression_text('Getting recommendations based on most recent trained model',user_id, progress_now[0])
+            orders = recommender.get_model_recommendations_for_recommender(new_list, recommendation_script_id, dataset_id, user_id, max_total_spend,recommendation_count, 20)
             symbols = [item['Symbol'] for item in orders]
             sectors = [item['Sector'] for item in orders]
+            
+            progression_DAOIMPL.update_progression_text('Processing recommended positions for display', user_id, progress_now[0])
             symbols_for_purchase = score_based_purchaser.process_symbols_for_purchase(symbols,orders, max_total_spend,sectors)
             
             for symbol, order_details in symbols_for_purchase.items():
                 recommendation = recommended.Recommended(order_details['symbol'],order_details['limit_price'],order_details['confidence'],user_id)
-                recommended_DAOIMPL.insert_recommendation(recommendation)    
+                recommended_DAOIMPL.insert_recommendation(recommendation) 
+            progression_DAOIMPL.update_progression_text(' ', user_id, progress_now[0])   
             return redirect(url_for('purchaser_page'))
                 # Load recommendations from session if they exist
         recommendations = []
         orders = recommended_DAOIMPL.get_recommended_for_user(user_id)
         logging.info(orders)
-        preprocessors = preprocessing_scripts_DAOIMPL.get_preprocessing_scripts_for_user(user_id)
+        recommendations_scripts = recommendation_scripts_DAOIMPL.get_recommendation_scripts_for_user(user_id)
         trainers = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
         for order in orders:
             recommendations.append( {
                 'symbol': order[1],
@@ -1135,10 +1172,23 @@ def purchaser_page():
                 'sector': order[5]  
             })
         
-        return render_template('purchaser.html', recommendations=recommendations, user_cash=cash, preprocessors=preprocessors, trainers=trainers, max_total_spend=max_total_spend
+        return render_template('purchaser.html', datasets=datasets, recommendations=recommendations, user_cash=cash, recommendations_scripts=recommendations_scripts, trainers=trainers, max_total_spend=max_total_spend
                                )
     return redirect(url_for('home'))
     
+@app.route('/get_progress_text')
+def get_progress_text():
+    user_id = user.User.get_id()
+    from database import progression_DAOIMPL
+    try:
+        progression_text = progression_DAOIMPL.get_progression_text_by_user(user_id)
+        progression_text = progression_text[1]
+    except:
+        pass
+    
+    logging.info(f'progress_text is {progression_text}')
+    # Assuming these values are updated in your stock processing logic
+    return jsonify(progressText=progression_text)
 
 @app.route('/purchase', methods=['POST'])
 def purchase_stock():
@@ -1328,30 +1378,41 @@ def finnews_results():
     return render_template('finnews_results.html',stock_symbol=stock_symbol,new_date_format=new_date_format, 
                            headline_url_pairs=headline_url_pairs, sa_neu=sa_neu, sa_pos=sa_pos, sa_neg=sa_neg)
     
+@app.route('/political_sentiment', methods=['GET', 'POST'])
+def political_fetcher():
+    if request.method == 'POST':
+        
+        # use stock symbol to get company name and append company name to required_keywords list
+        # split required kew list by comma
+        date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
+        return redirect(url_for('political_results', date_requirement=date_requirement))
+    return render_template('political_sentiment_fetcher.html')
 
 @app.route('/political_results')
 def political_results():
-    query = request.args.get('query')
-    links = scraper.google_search(query)
-    articles = []
+    user_id = user.User.get_id()
+    import ast
+    from Selenium import selenium_file
+    from MachineLearningModels import manual_alg_requisition_script
 
-    # Scrape articles and analyze sentiment
-    analyzer = scraper.SentimentIntensityAnalyzer()
-    for link in links:
-        text = scraper.scrape_article(link)
-        if text:
-            sentiment = analyzer.polarity_scores(text)
-            articles.append({
-                "url": link,
-                "text": text[:200] + "...",  # Show first 200 characters
-                "negative": sentiment['neg'],
-                "neutral": sentiment['neu'],
-                "positive": sentiment['pos']
-            })
-        time.sleep(2)  # Avoid being flagged by Google
-
-    # Pass results to the template
-    return render_template('political_sentiment_fetcher.html', articles=articles)
+    # Initialize variables
+    hyperlinks = []
+    
+    
+    date_requirement = request.args.get('date_requirement')
+    date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
+    
+    # Initial search to get the first batch of links
+    selenium_return = selenium_file.get_historical_political_sentiment_scores(date_object)
+    date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
+    new_date_format = date_format.strftime("%B %d %Y")
+    articles = selenium_return[1]
+    new_date_format = new_date_format
+    pol_neu = selenium_return[0][0]
+    pol_pos = selenium_return[0][1]
+    pol_neg = selenium_return[0][2]
+    return render_template('political_results.html', articles=articles, new_date_format=new_date_format,
+                           pol_neu = pol_neu,pol_pos = pol_pos,pol_neg = pol_neg)
 
 @app.route('/display_profile', methods=['GET'])
 def show_profile():

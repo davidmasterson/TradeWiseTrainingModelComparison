@@ -633,6 +633,99 @@ def insert_transaction(transaction, pending_order):
         cur.close()
         conn.close()
 
+def initial_model_creation_trans_insert(transaction):
+    
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            INSERT INTO transactions
+            (
+            symbol,
+            dp,
+            ppps,
+            qty,
+            total_buy,
+            pstring,
+            ds,
+            spps,
+            tsp,
+            sstring,
+            expected,
+            proi,
+            actual,
+            tp1,
+            sop,
+            result,
+            user_id,
+            sector,
+            processed,
+            pol_neu_open,
+            pol_pos_open,
+            pol_neg_open,
+            sa_neu_open,
+            sa_pos_open,
+            sa_neg_open,
+            pol_neu_close,
+            pol_pos_close,
+            pol_neg_close,
+            sa_neu_close,
+            sa_pos_close,
+            sa_neg_close
+            
+            ) VALUES (
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s,%s,%s,%s,%s,
+            %s
+            )
+            '''
+    vals = [transaction.symbol,
+            transaction.dp,
+            transaction.ppps,
+            transaction.qty,
+            transaction.total_buy,
+            transaction.pstring,
+            transaction.ds,
+            transaction.spps,
+            transaction.tsp,
+            transaction.sstring,
+            transaction.expected,
+            transaction.proi,
+            transaction.actual,
+            transaction.tp1,
+            transaction.sop,
+            transaction.result,
+            transaction.user_id,
+            transaction.sector,
+            transaction.processed,
+            transaction.pol_neu_open,
+            transaction.pol_pos_open,
+            transaction.pol_neg_open,
+            transaction.sa_neu_open,
+            transaction.sa_pos_open,
+            transaction.sa_neg_open,
+            transaction.pol_neu_close,
+            transaction.pol_pos_close,
+            transaction.pol_neg_close,
+            transaction.sa_neu_close,
+            transaction.sa_pos_close,
+            transaction.sa_neg_close
+            ]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        id = cur.lastrowid
+        logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted")
+        return id
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to insert transaction {transaction.symbol, transaction.ppps} due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+
 def update_transaction(transaction_id, values):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
@@ -707,6 +800,30 @@ def update_processed_status_after_training(trans_id,user_id):
             logging.info(f"{datetime.now()}:record {trans_id} has not been updated as processed.")
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to update transaction {trans_id} as processed due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+
+def delete_transaction(trans_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            DELETE FROM transactions
+            WHERE
+            id = %s
+        '''
+    vals = [
+            trans_id
+            ]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, record(s) affected deleted transaction {datetime.now()}id:{trans_id}")
+        else:
+            logging.info(f"{datetime.now()}:record {trans_id} has not been deleted.")
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to delete transaction {trans_id} due to : {e}')
     finally:
         cur.close()
         conn.close()
