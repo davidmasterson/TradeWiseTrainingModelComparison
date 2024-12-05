@@ -3,18 +3,6 @@
     <div class="container mt-5">
         <h1>Stock Recommendations</h1>
 
-        <!-- Flash messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="alert-container">
-              {% for category, message in messages %}
-                <div class="alert alert-{{ category }}">
-                  {{ message }}
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
 
         <!-- Button to generate recommendations -->
          <div class="container" style="display:flex;justify-content:space-between;">
@@ -203,4 +191,29 @@
             });
         });
     </script>
+    <script>
+        // Add event listeners to all forms with action '/purchase'
+        document.addEventListener('DOMContentLoaded', function() {
+            const purchaseForms = document.querySelectorAll('form[action="/purchase"]');
+            
+            purchaseForms.forEach(form => {
+                form.addEventListener('submit', function(event) {
+                    const symbol = form.querySelector('input[name="symbol"]').value;
+                    const qty = form.querySelector('input[name="qty"]').value;
+                    const limitPrice = form.querySelector('input[name="limit_price"]').value;
+    
+                    // Customize the confirmation message
+                    const message = `Are you sure you want to purchase ${qty} shares of ${symbol} at $${limitPrice} each?`;
+                    
+                    // Show confirmation dialog
+                    if (!confirm(message)) {
+                        // Prevent form submission if user cancels
+                        event.preventDefault();
+                    }
+                });
+            });
+        });
+    </script>
+    
 {% endblock %}
+
