@@ -187,7 +187,7 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
             df[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
             
             df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = zip(*df['dp'].apply(calculate_historical_political_climate))
-            df['check5con'] = df[['check1sl', 'check2rev', 'check3fib', 'sa_pos_open']].sum(axis=1)
+            df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
             
             df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = zip(*df['ds'].apply(calculate_historical_political_climate))
             df[['sa_neu_close', 'sa_pos_close', 'sa_neg_close']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['ds'])), axis=1)
