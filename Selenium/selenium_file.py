@@ -145,5 +145,30 @@ def get_correctly_formatted_day(day):
     return formatted_day
             
 
+def normalize_and_percentage(pol_neu, pol_pos, pol_neg):
+    # Step 1: Calculate the total sum
+    total = pol_neu + pol_pos + pol_neg
+    if total == 0:
+        # Handle edge case where all variables are zero
+        return 0, 0, 0
 
+    # Step 2: Calculate percentages for each variable
+    pol_neu = int((pol_neu / total) * 100)
+    pol_pos = int((pol_pos / total) * 100)
+    pol_neg = int((pol_neg / total) * 100)
+
+    # Store values in a list for easier adjustment
+    ratings_list = [pol_neu, pol_pos, pol_neg]
+
+    # Step 3: Adjust the sum if it's less than 100
+    while sum(ratings_list) < 100:
+        for i in range(len(ratings_list)):
+            if ratings_list[i] == 0:  # Increase only non-zero values
+                ratings_list[i] = 1
+            else:
+                ratings_list[0] += 1
+                break  # Break to distribute evenly
+
+    # Step 4: Return the updated values
+    return ratings_list[0], ratings_list[1], ratings_list[2]
 
