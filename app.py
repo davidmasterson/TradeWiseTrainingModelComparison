@@ -1211,10 +1211,13 @@ def purchase_stock():
                 'confidence': confidence
             }
             # Call Alpaca's purchase method to execute the order
-            order_methods.submit_limit_order(session.get('user_name'), order)
+            message = order_methods.submit_limit_order(session.get('user_name'), order)
             
             # Flash a success message
-            flash(f"Successfully placed an order for {qty} shares of {symbol} at ${limit_price}!", 'success')
+            if "not submitted" in message:   
+                flash(message, 'error')
+            else:
+                flash(message, 'success')
         except Exception as e:
             # Flash an error message
             flash(f"Failed to place order for {symbol}. Error: {e}", 'danger')
@@ -1371,6 +1374,8 @@ def finnews_results():
         article_texts.append(summary)
         urls.append(url)
     sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
+    sa_neu, sa_pos, sa_neg = Selenium.selenium_file.normalize_and_percentage(sa_neu, sa_pos, sa_neg)
+    
     headline_url_pairs = zip(headlines, urls)
     date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
     new_date_format = date_format.strftime("%B %d %Y")
@@ -1411,6 +1416,7 @@ def political_results():
     pol_neu = selenium_return[0][0]
     pol_pos = selenium_return[0][1]
     pol_neg = selenium_return[0][2]
+    pol_neu, pol_pos, pol_neg = Selenium.selenium_file.normalize_and_percentage(pol_neu, pol_pos, pol_neg)
     return render_template('political_results.html', articles=articles, new_date_format=new_date_format,
                            pol_neu = pol_neu,pol_pos = pol_pos,pol_neg = pol_neg)
 
