@@ -179,7 +179,7 @@ def preprocess_and_train(user_id, output_file_path, dataset_id):
         logging.info("Processed dates and confidence scores.")
         df['sa_neu_close'], df['sa_pos_close'], df['sa_neg_close'] = 0, 0, 0
         df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = 0, 0, 0
-        df['check5con'] = df[['check1sl', 'check2rev', 'check3fib', 'sa_pos_open', 'pol_pos_open']].sum(axis=1)
+        df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
 
         # Drop unnecessary columns
 
@@ -248,7 +248,7 @@ def preprocess_and_train(user_id, output_file_path, dataset_id):
         trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)  # example threshold, set as needed
         confidence_threshold = trade_settings[5]
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
-                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5 and con >= confidence_threshold) or con >= 40]
+                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5 and con >= confidence_threshold)]
 
 
         
