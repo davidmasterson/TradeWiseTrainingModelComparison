@@ -62,9 +62,32 @@ def check_positions_for_user(username, user_id):
         logging.error(f"Exception encountered for user {username}: {e}")
 
     finally:
+        from datetime import date
+        from EmailSender import email_sender
         # End-of-day cleanup
-        connection.cancel_all_orders()
-        pending_orders_DAOIMPL.truncate_pending_orders_at_eod(db_conn)
+        opens = f'SYMBOL        QTY        P-PRICE        TOTAL-P\n'
+        closes = f'SYMBOL        QTY        P-PRICE        TOTAL-P        S-PRICE        TOTAL-S        RETURN        ROI\n'
+        closed_trans = transactions_DAOIMPL.get_transactions_for_user_by_sell_date(user_id,date.today(), db_conn)
+        opened_trans = transactions_DAOIMPL.get_transactions_for_user_by_purchase_date(user_id,date.today(), db_conn)
+        for trp in opened_trans:
+            symbol = trp[1]
+            purchase_price = float(trp[3])
+            qty = int(trp[4])
+            total_purchase = purchase_price * qty
+            opens += f'{symbol}          {qty}         ${purchase_price}          ${total_purchase}\n'
+
+        for trs in closed_trans:
+            symbol = trs[1]
+            purchase_price = float(trs[3])
+            qty = int(trs[4])
+            total_purchase = purchase_price * qty
+            sell_price = float(trs[8])
+            total_sell = float(trs[9])
+            actual_return = float(trs[13])
+            percentroi = float(trs[12])
+            closes += f'{symbol}         {qty}         ${purchase_price}         ${total_purchase}         ${sell_price}         ${total_sell}         ${actual_return}         %{percentroi}\n'
+
+        email_sender.send_email_of_closed_positions(opens,closes,user_id)         
         db_conn.close()
         logging.info(f"End of day: All open orders canceled and pending orders truncated for user {username}.")
 
