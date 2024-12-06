@@ -65,17 +65,24 @@ def check_positions_for_user(username, user_id):
         from datetime import date
         from EmailSender import email_sender
         # End-of-day cleanup
-        opens = f'SYMBOL        QTY        P-PRICE        TOTAL-P\n'
-        closes = f'SYMBOL        QTY        P-PRICE        TOTAL-P        S-PRICE        TOTAL-S        RETURN        ROI\n'
-        closed_trans = transactions_DAOIMPL.get_transactions_for_user_by_sell_date(user_id,date.today(), db_conn)
-        opened_trans = transactions_DAOIMPL.get_transactions_for_user_by_purchase_date(user_id,date.today(), db_conn)
+        closed_trans = transactions_DAOIMPL.get_transactions_for_user_by_sell_date(user_id, date.today(), db_conn)
+        opened_trans = transactions_DAOIMPL.get_transactions_for_user_by_purchase_date(user_id, date.today(), db_conn)
+
+        # Prepare opened and closed positions as lists of dictionaries for better formatting in HTML
+        opens = []
         for trp in opened_trans:
             symbol = trp[1]
             purchase_price = float(trp[3])
             qty = int(trp[4])
             total_purchase = purchase_price * qty
-            opens += f'{symbol}          {qty}         ${purchase_price}          ${total_purchase}\n'
+            opens.append({
+                "symbol": symbol,
+                "qty": qty,
+                "purchase_price": purchase_price,
+                "total_purchase": total_purchase
+            })
 
+        closes = []
         for trs in closed_trans:
             symbol = trs[1]
             purchase_price = float(trs[3])
@@ -85,9 +92,19 @@ def check_positions_for_user(username, user_id):
             total_sell = float(trs[9])
             actual_return = float(trs[13])
             percentroi = float(trs[12])
-            closes += f'{symbol}         {qty}         ${purchase_price}         ${total_purchase}         ${sell_price}         ${total_sell}         ${actual_return}         %{percentroi}\n'
+            closes.append({
+                "symbol": symbol,
+                "qty": qty,
+                "purchase_price": purchase_price,
+                "total_purchase": total_purchase,
+                "sell_price": sell_price,
+                "total_sell": total_sell,
+                "actual_return": actual_return,
+                "percentroi": percentroi
+            })
 
-        email_sender.send_email_of_closed_positions(opens,closes,user_id)         
+        # Send email using structured data
+        email_sender.send_email_of_closed_positions(opens, closes, user_id)         
         db_conn.close()
         logging.info(f"End of day: All open orders canceled and pending orders truncated for user {username}.")
 
