@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 def check_positions_for_user(username, user_id):
     connection = alpaca_request_methods.create_alpaca_api(username)
     db_conn = database_connection_utility.get_db_connection()
+    logging.info(f'{datetime.now()}: Started sell loop for user {username}')
     
     try:
         while True:
@@ -49,6 +50,7 @@ def check_positions_for_user(username, user_id):
                             
                             if float(pos.current_price) >= tp1 or float(pos.current_price) <= sop:
                                 order_methods.place_sell_order(pos.symbol, qty, round(float(pos.current_price), 2), username, buy_string, user_id)
+                logging.info(f'{datetime.now()}: Finished running seller loop for {username}')
             else:
                 logging.info(f"No open positions found for user {username}.")
             
@@ -64,6 +66,7 @@ def check_positions_for_user(username, user_id):
     finally:
         from datetime import date
         from EmailSender import email_sender
+        logging.info(f'{datetime.now()}: Started end of day clean up for user {username}')
         # End-of-day cleanup
         closed_trans = transactions_DAOIMPL.get_transactions_for_user_by_sell_date(user_id, date.today(), db_conn)
         opened_trans = transactions_DAOIMPL.get_transactions_for_user_by_purchase_date(user_id, date.today(), db_conn)
@@ -107,6 +110,7 @@ def check_positions_for_user(username, user_id):
         email_sender.send_email_of_closed_positions(opens, closes, user_id)         
         db_conn.close()
         logging.info(f"End of day: All open orders canceled and pending orders truncated for user {username}.")
+        
 
 def monitor_all_users():
     users = user_DAOIMPL.get_all_users()  # Retrieve all users from the database
