@@ -342,6 +342,44 @@ def get_open_transactions_for_user_by_symbol(symbol,user_id):
         cur.close()
         conn.close()
 
+def get_transactions_for_user_by_sell_date(user_id, date_sold, conn):
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE ds = %s
+                AND user_id = %s
+                '''
+    vals = [date_sold, user_id]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    
+        
+def get_transactions_for_user_by_purchase_date(user_id, date_purchased, conn):
+    
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE dp = %s
+                AND user_id = %s
+                '''
+    vals = [ date_purchased, user_id ]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    
+        
+
 def get_open_transactions_for_user_by_symbol_with_db_conn(symbol,user_id, conn):
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
