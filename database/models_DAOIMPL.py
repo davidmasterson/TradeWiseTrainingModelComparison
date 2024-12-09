@@ -1,4 +1,4 @@
-from database import database_connection_utility as dcu
+from database import database_connection_utility as dcu, transaction_model_status_DAOIMPL
 import logging 
 from datetime import datetime
 import tensorflow as tf
@@ -147,6 +147,24 @@ def get_selected_models_for_user(user_id):
             return result
         return []
     except Exception as e:
+        return []
+    finally:
+        conn.close()
+        cursor.close()
+
+def get_selected_model_names_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cursor = conn.cursor()
+    query = "SELECT model_name FROM models WHERE user_id = %s AND selected = 1"
+    vals = [user_id]
+    try:
+        cursor.execute(query, vals)
+        result = cursor.fetchall()
+        if result:
+            return result
+        return []
+    except Exception as e:
+        logging.error(f'Unable to get selected model names for user {user_id} due to {e}')
         return []
     finally:
         conn.close()
