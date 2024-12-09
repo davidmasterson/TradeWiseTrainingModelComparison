@@ -1,5 +1,6 @@
 from sklearn.preprocessing import MinMaxScaler
 import numpy as np
+import pandas as pd
 
 
 def calculate_rsi(data, window=14):
@@ -51,11 +52,3 @@ def prepare_data_with_indicators_and_target(df, time_steps, target_horizon=12, t
     
     return X, y, scaler
 
-# Example Usage
-# Load your dataset
-df = pd.read_csv('/mnt/data/080724-transactiondata.csv')
-
-# Prepare the data
-time_steps = 30  # 30 days look-back period
-target_horizon = 12  # Predict if price hits within 12 days
-X, y, scaler = prepare_data_with_indicators_and_target(df, time_steps, target_horizon)
