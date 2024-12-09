@@ -19,7 +19,7 @@ import logging
 def send_email_of_closed_positions(opens, closes, user_id):
     
 
-    with open("static/images/MTT_logo.jpg", "rb") as image_file:
+    with open("/home/ubuntu/TradeWiseTrainingModelComparison/static/images/MTT_logo.jpg", "rb") as image_file:
         base64_logo = base64.b64encode(image_file.read()).decode()
     email_sender_account = os.getenv('EMAIL_ADDRESS')
     smtp_port = os.getenv('SMTP_PORT')
@@ -77,7 +77,7 @@ def send_email_of_closed_positions(opens, closes, user_id):
     
     message = MIMEMultipart()
     message["From"] = email_sender_account
-    message["To"] = to_emails
+    message["To"] = ', '.join(to_emails)
     message['Subject'] = f"Daily closed and purchased positions {date.today()}"
     message.attach(MIMEText(content, 'html'))
     
