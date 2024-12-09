@@ -1,5 +1,5 @@
-from database import training_scripts_DAOIMPL, models_DAOIMPL, model_metrics_history_DAOIMPL
-from Models import model, model_metrics_history
+from database import training_scripts_DAOIMPL, models_DAOIMPL, model_metrics_history_DAOIMPL, metrics_DAOIMPL
+from Models import model, model_metrics_history, metric
 from datetime import datetime
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import tempfile, subprocess
@@ -68,9 +68,10 @@ class TrainingScript:
             model_id = models_DAOIMPL.update_model_for_user(new_model, int(model_exists[0]))
             logging.info(f"Updated existing model in the database with model_id: {model_id}")
         else:
+            model_description = model_name
             new_model = model.Model(
                 model_name,
-                "Random Forest for 12-day profit/loss prediction.",
+                model_description,
                 model_binary,
                 user_id,
                 selected=1
@@ -89,22 +90,45 @@ class TrainingScript:
 
         # Feature importance and top features
         this_model = pickle.loads(model_binary)
-        feature_importances = this_model.feature_importances_
-        top_features_df = pd.DataFrame({
-            'Feature': columns,  # Use indices as feature identifiers
-            'Importance': feature_importances
-        }).sort_values(by='Importance', ascending=False)
-        top_features_json = top_features_df.head(5).to_json(orient='records')
+        try:
+            feature_importances = this_model.feature_importances_
+            top_features_df = pd.DataFrame({
+                'Feature': columns,  # Use indices as feature identifiers
+                'Importance': feature_importances
+            }).sort_values(by='Importance', ascending=False)
+            top_features_json = top_features_df.head(5).to_json(orient='records')
 
-        logging.info(f"Metrics - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1-Score: {f1}")
+             # Insert metrics into model_metrics_history table
+            new_history = model_metrics_history.Model_Metrics_History(
+                model_id, accuracy, precision, recall, f1, datetime.now(),top_features_json
+            )
+            metrics_saved = model_metrics_history_DAOIMPL.insert_metrics_history(new_history)
 
-        # Insert metrics into model_metrics_history table
-        new_history = model_metrics_history.Model_Metrics_History(
-            model_id, accuracy, precision, recall, f1, top_features_json, datetime.now()
-        )
-        metrics_saved = model_metrics_history_DAOIMPL.insert_metrics_history(new_history)
+            if metrics_saved:
+                logging.info("Metrics saved successfully.")
+            else:
+                logging.error("Failed to save metrics in the database.")
+        except:
+           
+            logging.info(f"Metrics - Accuracy: {accuracy}, Precision: {precision}, Recall: {recall}, F1-Score: {f1}")
 
-        if metrics_saved:
-            logging.info("Metrics saved successfully.")
-        else:
-            logging.error("Failed to save metrics in the database.")
+            # Insert metrics into model_metrics_history table
+            new_history = model_metrics_history.Model_Metrics_History(
+                model_id, accuracy, precision, recall, f1, datetime.now(), '{}'
+            )
+            metrics_saved = model_metrics_history_DAOIMPL.insert_metrics_history(new_history)
+
+            if metrics_saved:
+                logging.info("Metrics saved successfully.")
+            else:
+                logging.error("Failed to save metrics in the database.")
+
+
+        try:
+            new_metric = metric.calculate_daily_metrics_values(user_id)
+            metrics_DAOIMPL.insert_metric(new_metric)
+            logging.info(f'Model {model_name} has been trained successfully.')
+        except Exception as e:
+            logging.error(f'Unable to insert new metric for model {model_name} due to {e}')
+        
+            
