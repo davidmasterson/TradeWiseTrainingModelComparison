@@ -50,3 +50,7 @@ Selenium/google-chrome-stable_current_amd64.deb
 SentenceBuilder/sentence_builder.py
 profile.json
 WebsocketUtility/services_logs.txt
+logs/Websocket_logs.log
+logs/reports_sender.txt
+WebsocketUtility/output.txt
+output.txt
