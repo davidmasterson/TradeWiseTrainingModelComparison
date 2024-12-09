@@ -319,6 +319,46 @@ def get_open_transactions_for_user(user_id):
     finally:
         cur.close()
         conn.close()
+def get_all_processed_transactions_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT id FROM transactions
+                WHERE user_id = %s
+                AND processed = 1
+                '''
+    vals = [user_id]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+    
+def get_all_transaction_ids_for_user(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT id FROM transactions
+                WHERE user_id = %s
+                '''
+    vals = [None, user_id]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchall()
+        if trans:
+            return trans
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
 
 def get_open_transactions_for_user_by_symbol(symbol,user_id):
     conn = dcu.get_db_connection()
@@ -342,7 +382,8 @@ def get_open_transactions_for_user_by_symbol(symbol,user_id):
         cur.close()
         conn.close()
 
-def get_transactions_for_user_by_sell_date(user_id, date_sold, conn):
+def get_transactions_for_user_by_sell_date(user_id, date_sold):
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
                 WHERE ds = %s
@@ -360,8 +401,8 @@ def get_transactions_for_user_by_sell_date(user_id, date_sold, conn):
         return []
     
         
-def get_transactions_for_user_by_purchase_date(user_id, date_purchased, conn):
-    
+def get_transactions_for_user_by_purchase_date(user_id, date_purchased):
+    conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
                 WHERE dp = %s
@@ -838,6 +879,32 @@ def update_processed_status_after_training(trans_id,user_id):
             logging.info(f"{datetime.now()}:record {trans_id} has not been updated as processed.")
     except Exception as e:
         logging.info( f'{datetime.now()}:Unable to update transaction {trans_id} as processed due to : {e}')
+    finally:
+        cur.close()
+        conn.close()
+        
+def update_transaction_processed_to_unprocessed_for_all_users_transactions_due_to_new_model_add(user_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            UPDATE transactions
+            SET
+            processed = %s
+            WHERE
+            and user_id = %s
+        '''
+    vals = [0,
+            user_id
+            ]
+    try:
+        cur.execute(sql,vals)
+        conn.commit()
+        if cur.rowcount > 0:
+            logging.info(f"{cur.rowcount}, record(s) affected updated transactions {datetime.now()} to unprocessed")
+        else:
+            logging.info(f"{datetime.now()}:transactions for user {user_id} have not been updated as unprocessed.")
+    except Exception as e:
+        logging.info( f'{datetime.now()}:Unable to update transactions as unprocessed for user {user_id} due to : {e}')
     finally:
         cur.close()
         conn.close()
