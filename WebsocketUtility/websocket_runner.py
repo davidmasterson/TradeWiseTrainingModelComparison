@@ -162,14 +162,12 @@ def on_open(ws, username, alpaca_key, alpaca_secret):
     logging.info(f"WebSocket opened for user: {username}")
     try:
         # Send authentication data
-        auth_data = {
-            "action": "authenticate",
-            "data": {
-                "key_id": alpaca_key,
-                "secret_key": alpaca_secret
-            }
+        auth_payload = {
+            "action": "auth",
+            "key": alpaca_key,
+            "secret": alpaca_secret
         }
-        ws.send(json.dumps(auth_data))
+        ws.send(json.dumps(auth_payload))
         logging.info(f"Authentication sent for user {username}")
     except Exception as e:
         logging.error(f'Unable to open websocke for {username}')
@@ -385,9 +383,9 @@ def reconnect_user(user_id, max_retries=5, delay=5):
     if retries == max_retries:
         logging.error(f"Failed to reconnect WebSocket for user ID: {user_id} after {max_retries} attempts.")
            
-            
+websocket_tasks = {}            
 if __name__ == "__main__":
-    websocket_tasks = {}
+    
     executor = ThreadPoolExecutor()
     # Initialize a new event loop for WebSocket management
     loop = asyncio.new_event_loop()

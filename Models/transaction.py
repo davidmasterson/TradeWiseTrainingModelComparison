@@ -2,7 +2,7 @@ import sector_finder
 import logging
 from HistoricalFetcherAndScraper import scraper
 from datetime import date, datetime
-from database import transactions_DAOIMPL
+from database import transactions_DAOIMPL, transaction_model_status_DAOIMPL
 import json
 
 from MachineLearningModels import manual_alg_requisition_script
@@ -76,8 +76,10 @@ class transaction:
         result = 'profit'
          
 
-        new_transaction = transaction.transaction(symbol, dp,ppps,qty,total_buy,pstring,user_id,ds,spps,tsp,sstring,expected = (total_buy * .03),proi=proi,
+        new_transaction = transaction(symbol, dp,ppps,qty,total_buy,pstring,user_id,ds,spps,tsp,sstring,expected = (total_buy * .03),proi=proi,
                                                   actual=actual,tp1 = ppps + (ppps * .03), sop = ppps - (ppps * .01), result = result, processed = 0)
         return transactions_DAOIMPL.initial_model_creation_trans_insert(new_transaction)
         
         
+# ---------------------------------------NEW FUNCTIONS NEEDING TESTS WRITTEN
+    

@@ -132,6 +132,10 @@ def get_model_recommendations_for_recommender(new_list,recommendations_script_id
         iter += 1
         count += 50
         logging.info(progress_text)
+        if count > len(new_list):
+            logging.info('Finished processing symbols:', symbols)
+            return symbols
+
         
         
     
