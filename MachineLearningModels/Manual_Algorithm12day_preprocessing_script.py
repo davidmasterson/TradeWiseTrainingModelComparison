@@ -8,11 +8,11 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import pickle
-from database import dataset_DAOIMPL, transactions_DAOIMPL
 from MachineLearningModels import manual_alg_requisition_script
 import concurrent.futures
 import logging
-from database import dataset_DAOIMPL
+from database import dataset_DAOIMPL, models_DAOIMPL, transaction_model_status_DAOIMPL, transactions_DAOIMPL
+
 
 
 
@@ -142,10 +142,17 @@ def parallel_apply_multiple_args(args_list, func, max_workers=20):
         return list(executor.map(lambda args: func(*args), zip(*args_list)))
 
 '''------------------------------------------------------------------------------------------------------------------------------'''    
-def preprocess_first_dataframe(user_id):
+def preprocess_first_dataframe_with_unprocessed(user_id, required_models):
     try:
         # Fetch and create DataFrame
-        transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
+        
+        try:
+            required_models = [mod[0] for mod in models_DAOIMPL.get_selected_model_names_for_user(user_id)]
+            transactions = transaction_model_status_DAOIMPL.get_transactions_needing_processing(user_id, required_models)
+        except Exception as e:
+            logging.error(f"Error fetching transactions for user {user_id}: {e}")
+            return None
+
         print(transactions[0])
         columns = ['id','symbol','dp','ppps','qty','total_buy','pstring','ds','spps','tsp','sstring','expected',
                    'proi','actual','tp1','sop','confidence','result','user_id','sector', 'processed','pol_neu_open',
@@ -160,18 +167,34 @@ def preprocess_first_dataframe(user_id):
     except Exception as e:
         logging.error(f"Error in first dataset preprocessing: {e}")
         return None
-        
+
+def handle_transaction_status(transaction_id, user_id, model_name, required_models):
+    try:
+        transaction_model_status_DAOIMPL.mark_transaction_processed(transaction_id, model_name, user_id)
+    except Exception as e:
+        logging.error(f"Error marking transaction {transaction_id} as processed: {e}")
+    if transaction_model_status_DAOIMPL.check_all_models_processed(transaction_id, user_id, required_models):
+        transactions_DAOIMPL.update_processed_status_after_training(transaction_id, user_id)
+        logging.info(f"Transaction {transaction_id} fully processed.")
+    else:
+        logging.info(f"Transaction {transaction_id} pending for other models.")
 # Main preprocessing function
-def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_id):
+def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_id, model_name):
     
     user_id = int(user_id)
     dataset_id = int(dataset_id)
     script_id = int(script_id)
+    if not model_name:
+        logging.error("Model name is required but not provided.")
+        return None
+    required_models = models_DAOIMPL.get_selected_model_names_for_user(user_id)
     try:
-        df1 = preprocess_first_dataframe(user_id) 
+        df1 = preprocess_first_dataframe_with_unprocessed(user_id, required_models) 
         if df1 is not None:
             df = df1[0] 
-            transactions = df1[1] 
+            transactions = df1[1]
+        
+        
             
             # Parallel processing for technical indicators
             logging.info("Starting parallel processing for check1sl.")
@@ -271,23 +294,88 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 "dataset": new_dataset
             }   
 # ------------------------------------OUTPUT = Dict{ Dict, Dataframe} to standard out--------------------------------------
-
-            # Mark transactions as processed
+            
+            
+            
             for transaction in transactions:
-                transactions_DAOIMPL.update_processed_status_after_training(transaction[0], user_id)
-            logging.info("Updated transaction processed statuses.")
-        else:
-            return    
-            
-        # Serialize the combined object using pickle
-        try:
-            output_data_bin = pickle.dumps(output_data)
-            
-            with open(output_data_path, 'wb') as bin_writer:
-                bin_writer.write(output_data_bin)
-        except IOError as e:
-            print(f"Error writing to file: {e}")
+                handle_transaction_status(transaction[0], user_id, model_name, required_models)
+            # Serialize the combined object using pickle
+            try:
+                output_data_bin = pickle.dumps(output_data)
                 
+                with open(output_data_path, 'wb') as bin_writer:
+                    bin_writer.write(output_data_bin)
+            except IOError as e:
+                print(f"Error writing to file: {e}")
+        else:
+            old_ds = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+            if old_ds:
+                old_df = pickle.loads(old_ds)
+            else:
+                old_df = pd.DataFrame()
+            df_final = old_df
+            
+            
+            
+            df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
+
+            
+            
+            # Encoding categorical features
+            label_encoder = LabelEncoder()
+            df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
+            df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
+            
+            new_dataset = df_final.copy()
+            
+            df_final.drop(['sector', 'symbol'], axis=1, inplace=True)
+            logging.info("Encoded categorical features.")
+
+            # Splitting features and target
+            X = df_final.drop(['hit_tp1'], axis=1)  # All features for scaling
+            y = df_final['hit_tp1']  # Target variable
+
+            # Train-test split for modeling
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+            # Ensure feature names are consistent during scaling
+            scaler = MinMaxScaler(feature_range=(0, 1))
+            X_train_scaled = scaler.fit_transform(X_train)
+            X_test_scaled = scaler.transform(X_test)
+
+            # Convert scaled data back to DataFrame to preserve column names
+            X_train_df = pd.DataFrame(X_train_scaled, columns=X.columns)
+            X_test_df = pd.DataFrame(X_test_scaled, columns=X.columns)
+
+            # Package preprocessed data
+            preprocessed_data = {
+                'X_train': X_train_df,          # Scaled training data as DataFrame
+                'X_test': X_test_df,            # Scaled testing data as DataFrame
+                'y_train': y_train.reset_index(drop=True),  # Training labels
+                'y_test': y_test.reset_index(drop=True),    # Testing labels
+                'scaler': scaler,               # Scaler used for preprocessing
+                'structure': 'train_test_split', # Metadata for structure description
+                'columns' : X_train_df.columns.to_list()  # Ouput the column names for feature importance call.
+            }
+
+            logging.info("Preprocessing complete. Packaged data for modeling.")
+
+            
+            output_data = {
+                "preprocessing_object": preprocessed_data,
+                "dataset": new_dataset
+            }   
+# ------------------------------------OUTPUT = Dict{ Dict, Dataframe} to standard out--------------------------------------
+            
+            # Serialize the combined object using pickle
+            try:
+                output_data_bin = pickle.dumps(output_data)
+                
+                with open(output_data_path, 'wb') as bin_writer:
+                    bin_writer.write(output_data_bin)
+            except IOError as e:
+                print(f"Error writing to file: {e}")
+                 
     except Exception as e:
         logging.error(f"Error during preprocessing: {e}")
         return None
@@ -301,4 +389,5 @@ if __name__ == "__main__":
     user_id = sys.argv[2]  
     output_data_path = sys.argv[3]
     script_id = sys.argv[4]
-    preprocess_data(output_path, dataset_id, user_id, output_data_path, script_id)
+    model_name = sys.argv[5]
+    preprocess_data(output_path, dataset_id, user_id, output_data_path, script_id, model_name)
