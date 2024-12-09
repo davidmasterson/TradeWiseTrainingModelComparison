@@ -1,6 +1,6 @@
-from database import preprocessing_scripts_DAOIMPL, dataset_DAOIMPL
+from database import preprocessing_scripts_DAOIMPL, dataset_DAOIMPL, model_metrics_history_DAOIMPL
 from Models import dataset
-from datetime import datetime
+from datetime import datetime, date
 import pickle
 import tempfile
 import subprocess
@@ -68,7 +68,7 @@ class Preprocessing_Script:
             print(f"Error saving preprocessed data: {e}")
             
             
-    def retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name):
+    def retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_id, closed_transactions, model_name):
         #get preprocess script and convert from binary Save to temp file location.
         preprocess_script_binary = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(preprocessing_script_id)
         
@@ -96,7 +96,7 @@ class Preprocessing_Script:
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
                                  tempfile_path1, 
                                  str(dataset_id), 
-                                 str(user_id), tempfile_path2,str(preprocessing_script_id)], 
+                                 str(user_id), tempfile_path2,str(preprocessing_script_id),model_name], 
                                 capture_output=True,
                                 text=True,
                                 env=env  # Pass the modified environmen
@@ -119,6 +119,19 @@ class Preprocessing_Script:
             preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(preprocessing_script_id, ppdata)
             logging.info("Saved preprocessed data successfully.")
         
+        #get most recent model_metrics_history
+            mr_mmh = model_metrics_history_DAOIMPL.get_most_recent_mmh_for_model(model_id)
+            month = int(mr_mmh[0])
+            day = int(mr_mmh[1])
+            today = date.today()
+            td_month = today.month
+            td_day = today.day
+            if not closed_transactions:
+                if month == td_month and day == td_day:
+                    preprocess_writer.close()
+                    preprocess_ouptut_writer.close()
+                    return
+            
             # Save finalized dataset
             final_df_bin = pickle.dumps(dataset_object)
             dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
