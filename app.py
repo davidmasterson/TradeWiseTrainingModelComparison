@@ -9,9 +9,10 @@ from Models import preprocessing_script, metric, trade_setting, user_preferences
 # from asyncio import sleep
 import os
 import Hypothetical_Predictor
-# import Future_Predictor
 import subprocess
-from database import metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL, recommendation_scripts_DAOIMPL
+from database import (metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, 
+                      model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL, recommendation_scripts_DAOIMPL,
+                      transaction_model_status_DAOIMPL)
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
@@ -51,18 +52,23 @@ result_queue = queue.Queue()
 # security measures against crosssite scripting.
 csrf = CSRFProtect(app)
 
-# make celery to run background tasks
+# Define log directory and ensure it exists
+log_dir = "/home/ubuntu/TradeWiseTrainingModelComparison/logs"
+os.makedirs(log_dir, exist_ok=True)  # Create the directory if it doesn't exist
+
+# Define the log file path
+log_file = os.path.join(log_dir, "app.log")
 
 # Set up logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# Attach logging to Flask's logger and configure it to log to the console as well
-app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-app.logger.setLevel(logging.ERROR)  # Logs errors only
+# logging.basicConfig(
+#     filename='app.log',
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+# # Attach logging to Flask's logger and configure it to log to the console as well
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+# app.logger.setLevel(logging.INFO)  # Logs errors only
 
 
 #Set up Google OAuth2.0
@@ -625,22 +631,17 @@ def train_model(model_name):
         
         model_type = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
         closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
-        result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_name)
-        # LOGGING PURPOSES FOR DEBUGGING
-        # logging.info(f"Subprocess output: {result.stdout}")
         
-        # Save preprocessed data
+        result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(preprocessing_script_id, project_root, dataset_id, user_id, model_id, closed_transactions, model_name)
+        
         
         # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
         training_script.TrainingScript.model_trainer(training_script_id,preprocessing_script_id, model_id, user_id, model_name, project_root)
-        if closed_transactions:
-            new_metric = metric.calculate_daily_metrics_values(user_id)
-            metrics_DAOIMPL.insert_metric(new_metric)
         flash('Training has completed successfully as well as new metrics entry.', 'success')   
         return redirect(url_for('dashboard'))
 
-    except Exception as main_e:
-        logging.error(f"Unexpected error in train_model route: {main_e}")
+    except Exception as e:
+        logging.error(f"Unexpected error in train_model route: {e}")
         flash("An unexpected error occurred during training.", "error")
         return redirect(url_for('dashboard'))
 
@@ -681,11 +682,11 @@ def upload_models():
                 models_training_scripts_DAOIMPL.update_models_training_script_table(new_mod_trainscript)
             else:
                 models_training_scripts_DAOIMPL.insert_into_models_training_scripts_table(new_mod_trainscript)
-            
+            closed_transactions = transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
             project_root = "/home/ubuntu/TradeWiseTrainingModelComparison"
             # create a preprocessed data object
             try:
-                result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(ppscript,project_root,dataset,user_id,model_name)
+                result = preprocessing_script.Preprocessing_Script.retrainer_preprocessor(ppscript,project_root,dataset,user_id,model_id, closed_transactions, model_name)
                 
             
                 # Read preprocessed data from ouput path to ouput a preprocessed data object for use with training script    
@@ -712,10 +713,22 @@ def upload_models():
         
 @app.route('/delete_model', methods=['POST'])
 def delete_model():
+    user_id = user.User.get_id()
     model_id = request.form.get('model_id')
     model_id = int(model_id)
-    models_DAOIMPL.delete_model_by_id(model_id)
-    flash(f"ML Model  with ID {model_id} has been deleted.")
+    model_name = models_DAOIMPL.get_model_name_for_model_by_model_id(model_id)
+    try:
+        models_DAOIMPL.delete_model_by_id(model_id)
+        
+    except Exception as e:
+        logging.error(f'Unable to delete model {model_name} due to {e}')
+        flash(f'Unable to delete model {model_name}')
+    try:
+        transaction_model_status_DAOIMPL.delete_specific_model_entries_for_user(model_name, user_id)
+    except Exception as e:
+        logging.error(f'Unable to remove model {model_name} entries in tms table due to {e}')
+        flash(f'Unable to remove entries for model {model_name}')
+    flash(f"ML Model {model_name} has been deleted.")
     return redirect(url_for('upload_models'))
        
     
@@ -827,11 +840,29 @@ def delete_training_script():
 
 @app.route('/select_model/<int:model_id>', methods=['POST'])
 def select_model(model_id):
+    user_id = user.User.get_id()
     selected = request.form.get('selected', '0')
     mod = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
-    if mod:
-        mod = mod[0]
-    models_DAOIMPL.update_selected_status(selected,model_id)
+    if not mod or len(mod) == 0:
+        logging.error(f'Model {model_id} not found for user {user_id}')
+        flash('Model not found. Unable to update selected status.', 'error')
+        return redirect(url_for('upload_models'))
+    
+    try:
+        models_DAOIMPL.update_selected_status(selected,model_id)
+    except Exception as e:
+        logging.error(f'Unable to update selected for model {model_id} due to {e}')
+        flash('Unable to select model', 'error')
+        return redirect(url_for('upload_models'))
+    if selected == '1':
+        try:
+            transaction_model_status_DAOIMPL.reselect_model_actions(mod[1],user_id)
+            flash('Model status has been updated. Relevant transactions are up to date.', 'success')
+            return redirect(url_for('upload_models'))
+        except Exception as e:
+            logging.error(f'Unable to complete required steps after model has been selected due to {e}')
+            flash(f'Model {model_id} has not completed all required steps after changing selected status')
+    flash(f'Successfully updated the selected status for model {mod[1]} to unselected', 'success')
     return redirect(url_for('upload_models'))       
 
 @app.route('/upload_dataset', methods=['GET', 'POST'])
@@ -1031,7 +1062,6 @@ def plot_metrics():
         metrics = metrics_DAOIMPL.get_all_metrics_for_user(user_id)
         if metrics:
             metric.Metric.plot_model_metrics(user_id)
-            # manual_metrics.Manual_metrics.plot_manual_metrics()
             return render_template('metrics_plots.html', user_id=user_id)
         message = 'There are not any metrics yet!'
         return render_template('metrics_plots.html', message=message)
