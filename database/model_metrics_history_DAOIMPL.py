@@ -125,9 +125,29 @@ def get_all_metrics_history_for_all_selected_models_for_user_sorted_by_model(use
         conn.close()
         cur.close()
 
+def get_most_recent_mmh_for_model(model_id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT MONTH(timestamp) AS month, DAY(timestamp) AS day FROM model_metrics_history
+                WHERE model_id = %s
+                ORDER BY timestamp DESC
+                LIMIT 1'''
+    vals = [model_id]
+    try:
+        cur.execute(sql)
+        results = cur.fetchone()
+        if results:
+            return results[0]
+        return []
+    except Exception as e:
+        print(f"Error fetching last trained date for model {model_id}: {e}")
+    finally:
+        cur.close()
+        conn.close()
+    
 
 def get_last_trained_dates():
-    conn = dcu.get_db_connection()  # Replace with your actual DB connection function
+    conn = dcu.get_db_connection()  
     cur = conn.cursor()
     sql = '''SELECT models.user_id,MAX(model_metrics_history.timestamp) AS last_trained
                 FROM model_metrics_history
