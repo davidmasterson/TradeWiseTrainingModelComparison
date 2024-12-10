@@ -60,15 +60,15 @@ os.makedirs(log_dir, exist_ok=True)  # Create the directory if it doesn't exist
 log_file = os.path.join(log_dir, "app.log")
 
 # Set up logging
-# logging.basicConfig(
-#     filename='app.log',
-#     level=logging.INFO,
-#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-#     datefmt='%Y-%m-%d %H:%M:%S'
-# )
-# # Attach logging to Flask's logger and configure it to log to the console as well
-# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-# app.logger.setLevel(logging.INFO)  # Logs errors only
+logging.basicConfig(
+    filename='app.log',
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+# Attach logging to Flask's logger and configure it to log to the console as well
+app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+app.logger.setLevel(logging.INFO)  # Logs errors only
 
 
 #Set up Google OAuth2.0
@@ -1367,88 +1367,99 @@ def upload_script():
 from sector_finder import get_stock_company_name
 @app.route('/finnews_sentiment', methods=['GET', 'POST'])
 def finnews_fetcher():
-    if request.method == 'POST':
-        
-        # use stock symbol to get company name and append company name to required_keywords list
-        stock_symbol = request.form['stock_symbol'] if request.form['stock_symbol'] else None
-        # split required kew list by comma
-        date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
-        return redirect(url_for('finnews_results', date_requirement=date_requirement, stock_symbol=stock_symbol))
-    return render_template('finnews_sentiment_fetcher.html')
+    if user.User.check_logged_in():
+
+        if request.method == 'POST':
+            
+            # use stock symbol to get company name and append company name to required_keywords list
+            stock_symbol = request.form['stock_symbol'] if request.form['stock_symbol'] else None
+            # split required kew list by comma
+            date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
+            return redirect(url_for('finnews_results', date_requirement=date_requirement, stock_symbol=stock_symbol))
+        return render_template('finnews_sentiment_fetcher.html')
+    return redirect(url_for('home'))
 
 @app.route('/finnews_results')
 def finnews_results():
-    user_id = user.User.get_id()
-    import ast
-    from MachineLearningModels import manual_alg_requisition_script
+    if user.User.check_logged_in():
 
-    # Initialize variables
-    headlines = []
-    article_texts = []
-    urls = []
-    stock_symbol = request.args.get('stock_symbol') if request.args.get('stock_symbol') else []
-    date_requirement = request.args.get('date_requirement')
-    date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
-    
-    # Initial search to get the first batch of links
-    response_text = scraper.search(date_object,stock_symbol,user_id)
-    response_json = json.loads(response_text)
-    articles = response_json.get("news", [])
-    if not response_text:
-        return render_template('finnews_results.html', articles=[])
-    for article in articles:
-        headline = article.get("headline", "No headline available")
-        summary = article.get("summary", "No summary available")
-        url = article.get("url", "No url available")
-        headlines.append(headline)
-        article_texts.append(summary)
-        urls.append(url)
-    sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
-    sa_neu, sa_pos, sa_neg = Selenium.selenium_file.normalize_and_percentage(sa_neu, sa_pos, sa_neg)
-    
-    headline_url_pairs = zip(headlines, urls)
-    date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
-    new_date_format = date_format.strftime("%B %d %Y")
-    # Process links and scrape articles
-    return render_template('finnews_results.html',stock_symbol=stock_symbol,new_date_format=new_date_format, 
-                           headline_url_pairs=headline_url_pairs, sa_neu=sa_neu, sa_pos=sa_pos, sa_neg=sa_neg)
+        user_id = user.User.get_id()
+        import ast
+        from MachineLearningModels import manual_alg_requisition_script
+
+        # Initialize variables
+        headlines = []
+        article_texts = []
+        urls = []
+        stock_symbol = request.args.get('stock_symbol') if request.args.get('stock_symbol') else []
+        date_requirement = request.args.get('date_requirement')
+        date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
+        
+        # Initial search to get the first batch of links
+        response_text = scraper.search(date_object,stock_symbol,user_id)
+        response_json = json.loads(response_text)
+        articles = response_json.get("news", [])
+        if not response_text:
+            return render_template('finnews_results.html', articles=[])
+        for article in articles:
+            headline = article.get("headline", "No headline available")
+            summary = article.get("summary", "No summary available")
+            url = article.get("url", "No url available")
+            headlines.append(headline)
+            article_texts.append(summary)
+            urls.append(url)
+        sa_neu, sa_pos, sa_neg = manual_alg_requisition_script.process_phrase_for_sentiment(article_texts)
+        sa_neu, sa_pos, sa_neg = Selenium.selenium_file.normalize_and_percentage(sa_neu, sa_pos, sa_neg)
+        
+        headline_url_pairs = zip(headlines, urls)
+        date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
+        new_date_format = date_format.strftime("%B %d %Y")
+        # Process links and scrape articles
+        return render_template('finnews_results.html',stock_symbol=stock_symbol,new_date_format=new_date_format, 
+                            headline_url_pairs=headline_url_pairs, sa_neu=sa_neu, sa_pos=sa_pos, sa_neg=sa_neg)
+    return redirect(url_for('home'))
     
 @app.route('/political_sentiment', methods=['GET', 'POST'])
 def political_fetcher():
-    if request.method == 'POST':
-        
-        # use stock symbol to get company name and append company name to required_keywords list
-        # split required kew list by comma
-        date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
-        return redirect(url_for('political_results', date_requirement=date_requirement))
-    return render_template('political_sentiment_fetcher.html')
+    if user.User.check_logged_in():
+
+        if request.method == 'POST':
+            
+            # use stock symbol to get company name and append company name to required_keywords list
+            # split required kew list by comma
+            date_requirement = request.form['date_selector'] if request.form['date_selector'] else None
+            return redirect(url_for('political_results', date_requirement=date_requirement))
+        return render_template('political_sentiment_fetcher.html')
+    return redirect(url_for('home'))
 
 @app.route('/political_results')
 def political_results():
-    user_id = user.User.get_id()
-    import ast
-    from Selenium import selenium_file
-    from MachineLearningModels import manual_alg_requisition_script
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        import ast
+        from Selenium import selenium_file
+        from MachineLearningModels import manual_alg_requisition_script
 
-    # Initialize variables
-    hyperlinks = []
-    
-    
-    date_requirement = request.args.get('date_requirement')
-    date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
-    
-    # Initial search to get the first batch of links
-    selenium_return = selenium_file.get_historical_political_sentiment_scores(date_object)
-    date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
-    new_date_format = date_format.strftime("%B %d %Y")
-    articles = selenium_return[1]
-    new_date_format = new_date_format
-    pol_neu = selenium_return[0][0]
-    pol_pos = selenium_return[0][1]
-    pol_neg = selenium_return[0][2]
-    pol_neu, pol_pos, pol_neg = Selenium.selenium_file.normalize_and_percentage(pol_neu, pol_pos, pol_neg)
-    return render_template('political_results.html', articles=articles, new_date_format=new_date_format,
-                           pol_neu = pol_neu,pol_pos = pol_pos,pol_neg = pol_neg)
+        # Initialize variables
+        hyperlinks = []
+        
+        
+        date_requirement = request.args.get('date_requirement')
+        date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
+        
+        # Initial search to get the first batch of links
+        selenium_return = selenium_file.get_historical_political_sentiment_scores(date_object)
+        date_format = datetime.strptime(date_requirement,"%Y-%m-%d")
+        new_date_format = date_format.strftime("%B %d %Y")
+        articles = selenium_return[1]
+        new_date_format = new_date_format
+        pol_neu = selenium_return[0][0]
+        pol_pos = selenium_return[0][1]
+        pol_neg = selenium_return[0][2]
+        pol_neu, pol_pos, pol_neg = Selenium.selenium_file.normalize_and_percentage(pol_neu, pol_pos, pol_neg)
+        return render_template('political_results.html', articles=articles, new_date_format=new_date_format,
+                            pol_neu = pol_neu,pol_pos = pol_pos,pol_neg = pol_neg)
+    return redirect(url_for('home'))
 
 @app.route('/display_profile', methods=['GET'])
 def show_profile():
