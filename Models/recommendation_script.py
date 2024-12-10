@@ -3,6 +3,7 @@ import pickle
 import tempfile
 import os
 import subprocess
+import logging
 
 class RecommendationScript:
     
@@ -42,10 +43,15 @@ class RecommendationScript:
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
                                 tempfile_path1,
                                 str(user_id), tempfile_path2, dataset_id], 
-                                capture_output=True,
-                                text=True,
-                                env=env  # Pass the modified environmen
-                            )
+                                stdout=subprocess.PIPE,  # Capture standard output
+                                stderr=subprocess.PIPE,  # Capture standard error
+                                text=False,  # Prevent automatic decoding
+                                env=env ) # Pass the modified environmen
+        
+        if result.returncode != 0:
+            logging.error(f"Subprocess failed with return code {result.returncode} and error: {result.stderr.decode('utf-8', errors='replace')}")
+            raise RuntimeError("Subprocess execution failed.")
+                            
         # Read the contents of the file and pass them to pickle.loads
         with open(tempfile_path2, 'rb') as bin_reader:
             loaded_data = pickle.loads(bin_reader.read())  # Correct usage
