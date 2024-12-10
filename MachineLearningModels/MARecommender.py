@@ -263,7 +263,7 @@ def preprocess_and_train(user_id, output_file_path, dataset_id):
        
 
     except Exception as e:
-        logging.error(f"Error during preprocessing and training: {e}")
+        logging.exception(f"Error during preprocessing and training: {e}")
         return None
 
 
