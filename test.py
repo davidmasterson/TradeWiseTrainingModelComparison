@@ -48,43 +48,43 @@ import pickle
 
 
 '''Insert transaction that didn't get inserted by socket'''
-# from datetime import datetime
-# from datetime import date
-# '''------------- Change these parameters only---------------'''
-# symbol = 'GTI'
-# qty = 9
-# ppps = 2.95
-# total_buy = ppps * qty
-# user_id = 3
-# '''--------------------------------------------------------------'''
-# dp = date(2024,11,26)
-# pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
-# ds = None
-# spps = None
-# tsp = None
-# sstring = None
+from datetime import datetime
+from datetime import date
+'''------------- Change these parameters only---------------'''
+symbol = 'WFC.PRA'
+qty = 96
+ppps = 20.71
+total_buy = ppps * qty
+user_id = 1
+'''--------------------------------------------------------------'''
+dp = date(2024,11,22)
+pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
+ds = None
+spps = None
+tsp = None
+sstring = None
 
-# from database import pending_orders_DAOIMPL
-# pending_orders_DAOIMPL.insert_pending_order(pstring,user_id,'buy',pstring)
-# new_transaction = transaction.transaction(symbol, dp,ppps,qty,total_buy,pstring,user_id,ds,spps,tsp,sstring,expected = (total_buy * .03),proi=None,
-#                                           actual=None,tp1 = ppps + (ppps * .03), sop = ppps - (ppps * .01), result = None, processed = 0)
-# pending = pending_orders_DAOIMPL.get_pending_buy_orders_by_user_id_and_client_order_id(user_id,new_transaction.pstring )
-# transactions_DAOIMPL.insert_transaction(new_transaction,pending)
+from database import pending_orders_DAOIMPL
+pending_orders_DAOIMPL.insert_pending_order(pstring,user_id,'buy',pstring)
+new_transaction = transaction.transaction(symbol, dp,ppps,qty,total_buy,pstring,user_id,ds,spps,tsp,sstring,expected = (total_buy * .03),proi=None,
+                                          actual=None,tp1 = ppps + (ppps * .03), sop = ppps - (ppps * .01), result = None, processed = 0)
+pending = pending_orders_DAOIMPL.get_pending_buy_orders_by_user_id_and_client_order_id(user_id,new_transaction.pstring )
+transactions_DAOIMPL.insert_transaction(new_transaction,pending)
 
 
 # '''Close out a transaction that was not closed automatically by the system'''
-# # from datetime import datetime, date
-# symbol = 'CAPL'
+# from datetime import datetime, date
+# symbol = 'VFC'
 # user_id = 1
-# transaction_id = 156
-# filled_avg_price = 21.31
-# filled_qty = 98
-# total_purchase = 1996.26
-# client_order_id = 'a216d910-e215-46bf-a23b-01eef19dc5f4'
-# purchase_string = 'a216d910-e215-46bf-a23b-01eef19dc5f4'
+# transaction_id = 157
+# filled_avg_price = 20.43
+# filled_qty = 97
+# total_purchase = 2001.11
+# client_order_id = '2024-11-27 23:51:00.999531-VFC-2024-11-27-20.63-97-2001.11'
+# purchase_string = '2024-11-27 23:51:00.999531-VFC-2024-11-27-20.63-97-2001.11'
 # pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
 # pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# ds = date(2024,11,22)
+# ds = date(2024,11,28)
 
 # # ----------------------------------------------
 # tsp = filled_qty * filled_avg_price
@@ -602,3 +602,10 @@ import pickle
 # pp_bin = ppscript
 # pp = pickle.loads(pp_bin)
 # print(pp)
+
+# user_id = 7
+# conn = alpaca_request_methods.create_alpaca_api('stocksbot1')
+# orders = conn.list_orders('closed', after=date(2024,12,6).strftime('%Y-%m-%d'), until=date.today().strftime('%Y-%m-%d'))
+# with open('order_checks.txt', 'w') as order_writer:
+#     order_writer.write(str(f"{orders}"))
+#     order_writer.close()
