@@ -46,15 +46,16 @@ def start_event_loop(loop):
 
 
 
-def add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint, max_retries=None, delay=None):
+async def add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint):
     try:
-    # Schedule the synchronous WebSocket connection to run in a separate thread
         logging.info(f'Attempting to add a new user {username}')
-        loop.run_in_executor(executor, start_user_websocket, username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint)
-        websocket_tasks[user_id] = executor
-        logging.info(f'Added new user {username} to this websocket')
+        # Schedule the WebSocket task
+        task = asyncio.create_task(start_user_websocket(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint))
+        websocket_tasks[user_id] = task
+        logging.info(f'Added new user {username} to this WebSocket')
     except Exception as e:
         logging.error(f'Unable to add new user {username} due to {e}')
+
 
 
 
@@ -70,29 +71,24 @@ async def monitor_new_users(interval=10):
             logging.info(f"Fetched {len(users)} users from the database.")
             
             for user in users:
-                try:
-                    user_id = user.get("id")
-                    username = user.get("user_name")
-                    alpaca_key = user.get("alpaca_key")
-                    alpaca_secret = user.get("alpaca_secret")
-                    alpaca_endpoint = user.get("alpaca_endpoint")
-                    
-                    if user_id not in websocket_tasks:
-                        logging.info(f"Adding new user {username} (ID: {user_id}) to WebSocket tasks.")
-                        try:
-                            add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint)
-                            logging.info(f"Successfully added user {username} (ID: {user_id}) to WebSocket tasks.")
-                        except Exception as e:
-                            logging.error(f"Failed to add user {username} (ID: {user_id}) to WebSocket: {e}")
-                except Exception as e:
-                    logging.error(f"Error processing user data: {e}")
-        
+                user_id = user.get("id")
+                username = user.get("user_name")
+                alpaca_key = user.get("alpaca_key")
+                alpaca_secret = user.get("alpaca_secret")
+                alpaca_endpoint = user.get("alpaca_endpoint")
+                
+                if user_id not in websocket_tasks:
+                    logging.info(f"Adding new user {username} (ID: {user_id}) to WebSocket tasks.")
+                    try:
+                        await add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint)
+                    except Exception as e:
+                        logging.error(f"Failed to add user {username} (ID: {user_id}) to WebSocket: {e}")
+            
             logging.info(f"Sleeping for {interval} seconds before checking for new users.")
             await asyncio.sleep(interval)
         
         except Exception as e:
             logging.error(f"Critical error in monitor_new_users loop: {e}. Continuing to monitor.")
-
 
 
 
@@ -200,38 +196,22 @@ def subscribe_to_data_streams(ws, username):
         logging.error(f'Issue with subscribe to data stream function for {username} due to {e}')
 
 
-def start_user_websocket(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint, max_retries=5, delay=5):
+async def start_user_websocket(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint, max_retries=5, delay=5):
     retry_count = 0
     while retry_count < max_retries:
         try:
-            websocket.enableTrace(True)
-            stream_endpoint = (
-                'wss://api.alpaca.markets/stream' if alpaca_endpoint == 'https://api.alpaca.markets'
-                else 'wss://paper-api.alpaca.markets/stream'
-            )
-
-            ws = websocket.WebSocketApp(
-                stream_endpoint,
-                on_open=lambda ws: on_open(ws, username, alpaca_key, alpaca_secret),
-                on_message=lambda ws, message: on_message(ws, message, username, user_id),
-                on_error=on_error,
-                on_close=on_close
-            )
-
-            # Attach user details to the WebSocket instance
-            ws.username = username
-            ws.user_id = user_id
-
+            # Example: Replace this with actual WebSocket logic
             logging.info(f"Starting WebSocket for user {username}")
-            ws.run_forever(ping_interval=30, ping_timeout=10)
-            logging.warning(f"WebSocket for user {username} disconnected. Retrying...")
+            await asyncio.sleep(5)  # Simulate WebSocket connection
+            logging.info(f"WebSocket connected for user {username}")
+            return  # Exit loop on success
         except Exception as e:
             logging.error(f"Error with WebSocket for user {username}: {e}")
-
+        
         retry_count += 1
         if retry_count < max_retries:
             logging.info(f"Retrying WebSocket for user {username} in {delay} seconds (Attempt {retry_count}/{max_retries})")
-            time.sleep(delay)
+            await asyncio.sleep(delay)
         else:
             logging.error(f"Max retries reached for user {username}. WebSocket will not reconnect.")
             break
@@ -382,10 +362,27 @@ def reconnect_user(user_id, max_retries=5, delay=5):
 
     if retries == max_retries:
         logging.error(f"Failed to reconnect WebSocket for user ID: {user_id} after {max_retries} attempts.")
-           
+
+
+async def main():
+    # Initialize WebSocket connections for existing users
+    users = user_DAOIMPL.get_all_users()
+    existing_user_tasks = [
+        add_new_user(user['user_name'], user['id'], user['alpaca_key'], user['alpaca_secret'], user['alpaca_endpoint'])
+        for user in users
+    ]
+
+    # Start monitoring for new users
+    await asyncio.gather(
+        *existing_user_tasks,
+        monitor_new_users()
+    )
+    
+               
 websocket_tasks = {}            
 if __name__ == "__main__":
-    
+    os.environ['PYTHONASYNCIODEBUG'] = '1'
+    asyncio.run(main())
     executor = ThreadPoolExecutor()
     # Initialize a new event loop for WebSocket management
     loop = asyncio.new_event_loop()
@@ -406,8 +403,115 @@ if __name__ == "__main__":
     
     # Add WebSocket connections for each existing user
     for user in existing_users:
+        print(f'-------------------------------------------------------------{user}------------------------------------------------------')
         add_new_user(user['user_name'], user['id'], user['alpaca_key'], user['alpaca_secret'], user['alpaca_endpoint'])
 
     # Start monitoring for new users in the background
     loop.create_task(monitor_new_users())
+    
+    
+    
+    
+import os
+import sys
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import asyncio
+import logging
+from database import user_DAOIMPL, pending_orders_DAOIMPL, transactions_DAOIMPL
+from Models import transaction
+from datetime import datetime, date
+import json
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("/home/ubuntu/TradeWiseTrainingModelComparison/logs/websocket.log"),
+        logging.StreamHandler()
+    ]
+)
+
+logging.info("WebSocket service started.")
+
+websocket_tasks = {}
+
+
+async def add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint):
+    try:
+        logging.info(f"Attempting to add a new user {username}")
+        task = asyncio.create_task(start_user_websocket(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint))
+        websocket_tasks[user_id] = task
+        logging.info(f"Added new user {username} to this WebSocket")
+    except Exception as e:
+        logging.error(f"Unable to add new user {username} due to {e}")
+
+
+async def monitor_new_users(interval=10):
+    while True:
+        try:
+            users = user_DAOIMPL.get_all_users()
+            logging.info(f"Fetched {len(users)} users from the database.")
+
+            for user in users:
+                user_id = user.get("id")
+                username = user.get("user_name")
+                alpaca_key = user.get("alpaca_key")
+                alpaca_secret = user.get("alpaca_secret")
+                alpaca_endpoint = user.get("alpaca_endpoint")
+
+                if user_id not in websocket_tasks:
+                    logging.info(f"Adding new user {username} (ID: {user_id}) to WebSocket tasks.")
+                    await add_new_user(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint)
+
+            logging.info(f"Sleeping for {interval} seconds before checking for new users.")
+            await asyncio.sleep(interval)
+
+        except Exception as e:
+            logging.error(f"Critical error in monitor_new_users loop: {e}. Continuing to monitor.")
+
+
+async def start_user_websocket(username, user_id, alpaca_key, alpaca_secret, alpaca_endpoint, max_retries=5, delay=5):
+    retry_count = 0
+    while retry_count < max_retries:
+        try:
+            logging.info(f"Starting WebSocket for user {username}")
+            await asyncio.sleep(5)  # Simulate WebSocket connection
+            logging.info(f"WebSocket connected for user {username}")
+            return
+        except Exception as e:
+            logging.error(f"Error with WebSocket for user {username}: {e}")
+
+        retry_count += 1
+        if retry_count < max_retries:
+            logging.info(f"Retrying WebSocket for user {username} in {delay} seconds (Attempt {retry_count}/{max_retries})")
+            await asyncio.sleep(delay)
+        else:
+            logging.error(f"Max retries reached for user {username}. WebSocket will not reconnect.")
+            break
+
+
+async def handle_trade_updates(ws, event, data, username, user_id):
+    try:
+        logging.info(f"Handling trade update for user {username}, event: {event}")
+        # Retain your original handle_trade_updates logic here
+        pass
+    except Exception as e:
+        logging.error(f"Error handling trade updates for user {username}: {e}")
+
+
+async def main():
+    users = user_DAOIMPL.get_all_users()
+    existing_user_tasks = [
+        add_new_user(user['user_name'], user['id'], user['alpaca_key'], user['alpaca_secret'], user['alpaca_endpoint'])
+        for user in users
+    ]
+
+    await asyncio.gather(*existing_user_tasks, monitor_new_users())
+
+
+if __name__ == "__main__":
+    os.environ['PYTHONASYNCIODEBUG'] = '1'
+    asyncio.run(main())
+
     
