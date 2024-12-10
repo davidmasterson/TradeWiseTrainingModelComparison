@@ -47,8 +47,7 @@ def train_model(ppscript_id):
                 'model_binary': pickle.dumps(model_binary).hex(),  #Serialize the model as a hex string
                 'y_pred': y_pred.tolist(),  
                 'y_test': y_test.tolist(),
-                'columns': columns
-                 
+                'columns': columns    
             }
             # Print serialized JSON to stdout
             print(json.dumps(output))

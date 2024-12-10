@@ -1,13 +1,13 @@
 # lstm_training.py
+import os
 import sys
-import pickle
-import numpy as np
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from database import models_DAOIMPL, model_metrics_history_DAOIMPL
-from Models import model, model_metrics_history
-from datetime import datetime
+import pickle
+from database import preprocessing_scripts_DAOIMPL
+import logging
+import json
 
 # Load preprocessed data
 def load_preprocessed_data():
@@ -28,65 +28,65 @@ def create_lstm_model(input_shape):
     return model
 
 # Train and evaluate LSTM model
-def train_model(preprocessed_data, model_name, user_id):
+def train_model(ppscript_id):
+    """
+    Train a Random Forest model using preprocessed data and return the trained model binary and predictions.
+    """
     try:
-        # Load preprocessed data
-        preprocessed_data = load_preprocessed_data()
+        # Fetch preprocessed data
+        ppdata_bin = preprocessing_scripts_DAOIMPL.get_preprocessed_data_by_preprocessing_script_id(ppscript_id)
+        preprocessed_data = pickle.loads(ppdata_bin)
+        logging.info("Preprocessed data loaded successfully.")
+    except Exception as e:
+        logging.error(f"Failed to load preprocessed data: {e}")
+        return None, None, f"Failed to load preprocessed data: {e}"
+
+    try:
+        # Extract preprocessed data
         X_train = preprocessed_data['X_train']
         X_test = preprocessed_data['X_test']
         y_train = preprocessed_data['y_train']
         y_test = preprocessed_data['y_test']
-        scaler = preprocessed_data['scaler']
+        columns = preprocessed_data['columns']
+    
 
-        # Create and train LSTM model
+         # Train the Random Forest model
+        logging.info("Initializing Random Forest model for training.")
         lstm_model = create_lstm_model(X_train.shape)
         lstm_model.fit(X_train, y_train, epochs=20, batch_size=32)
 
         # Get predictions
         y_pred = lstm_model.predict(X_test)
+        
 
-        # Convert predictions for evaluation
-        y_pred_binary = (y_pred >= y_test.mean()).astype(int)
-        y_test_binary = (y_test >= y_test.mean()).astype(int)
+        # # Convert predictions for evaluation
+        # y_pred_binary = (y_pred >= y_test.mean()).astype(int)
+        # y_test_binary = (y_test >= y_test.mean()).astype(int)
 
-        # Calculate metrics
-        accuracy = accuracy_score(y_test_binary, y_pred_binary)
-        precision = precision_score(y_test_binary, y_pred_binary)
-        recall = recall_score(y_test_binary, y_pred_binary)
-        f1 = f1_score(y_test_binary, y_pred_binary)
-
+        
         # Prepare standardized output
         model_binary = pickle.dumps(lstm_model)
-        metrics = {
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1': f1
-        }
-        top_features_json = '{}'  # No feature importances for LSTM, so we set it as an empty JSON string
-
-        # Insert model and metrics into the database
-        new_model = model.Model(model_name, "Base metrics LSTM model", model_binary, user_id, selected=1)
-        model_exists = models_DAOIMPL.get_model_from_db_by_model_name_and_user_id(model_name, user_id)
-        model_id = models_DAOIMPL.update_model_for_user(new_model, int(model_exists[0])) if model_exists else models_DAOIMPL.insert_model_into_models_for_user(new_model)
-        
-        # Insert model metrics into the database
-        new_history = model_metrics_history.Model_Metrics_History(
-            model_id, metrics['accuracy'], metrics['precision'], metrics['recall'], metrics['f1'], top_features_json, datetime.now()
-        )
-        model_metrics_history_DAOIMPL.insert_metrics_history(new_history)
-        print("Model training and metrics storage complete.")
+        try:
+            
+            output = {
+                'model_binary': pickle.dumps(model_binary).hex(),  #Serialize the model as a hex string
+                'y_pred': y_pred.tolist(),  
+                'y_test': y_test.tolist(),
+                'columns': columns
+                 
+            }
+            # Print serialized JSON to stdout
+            print(json.dumps(output))
+        except Exception as e:
+            error_message = {"error": f"Failed to serialize output: {str(e)}"}
+            print(json.dumps(error_message))
+            sys.exit(1)  # Non-zero exit code to indicate failure
     except Exception as e:
         logging.error(f"Error during model saving or metric calculation: {e}")
         raise
     
 
 # Main execution block
-if __name__ == "__main__":
-    model_name = 'LSTM'
-    if len(sys.argv) > 1:
-        user_id = int(sys.argv[1])  # Convert argument to integer
-    else:
-        raise ValueError("User ID not provided. Please pass the user ID as a command-line argument.")
-
-    train_model(model_name, user_id)
+if __name__ == '__main__':
+    ppscript_id = int(sys.argv[1])
+    train_model(ppscript_id)
