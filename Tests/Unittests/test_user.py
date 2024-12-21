@@ -1,11 +1,8 @@
 import unittest
-from unittest.mock import patch, MagicMock
-from database import roles_DAOIMPL
-from flask import session
-from Models.user import User  
-from flask import session
+from unittest.mock import patch
+from Models import user 
 import bcrypt
-import flask
+from database import roles_DAOIMPL
 
 
 class TestUser(unittest.TestCase):
@@ -15,7 +12,7 @@ class TestUser(unittest.TestCase):
         """Test that check_logged_in returns True when user is logged in."""
         mock_session.get.return_value = True
 
-        result = User.check_logged_in()
+        result = user.User.check_logged_in()
 
         self.assertTrue(result)
         mock_session.get.assert_called_once_with('logged_in')
@@ -25,7 +22,7 @@ class TestUser(unittest.TestCase):
         """Test that check_logged_in returns False when user is not logged in."""
         mock_session.get.return_value = False
 
-        result = User.check_logged_in()
+        result = user.User.check_logged_in()
 
         self.assertFalse(result)
         mock_session.get.assert_called_once_with('logged_in')
@@ -33,21 +30,21 @@ class TestUser(unittest.TestCase):
     def test_hash_password(self):
         """Test that hash_password hashes the password correctly."""
         password = "securepassword123"
-        hashed_password = User.hash_password(password)
+        hashed_password = user.User.hash_password(password)
 
         self.assertIsInstance(hashed_password, bytes)
         self.assertTrue(bcrypt.checkpw(password.encode('utf-8'), hashed_password))
 
     @patch("flask.session")
-    @patch("roles_DAOIMPL.get_user_role_by_user_id")
-    @patch("User.check_logged_in")
+    @patch("database.roles_DAOIMPL.get_user_role_by_user_id")
+    @patch("Models.user.User.check_logged_in")
     def test_get_current_user_role(self, mock_check_logged_in, mock_get_user_role, mock_session):
         """Test that get_current_user_role returns the correct role for a logged-in user."""
         mock_check_logged_in.return_value = True
         mock_session.get.return_value = 1
         mock_get_user_role.return_value = "admin"
 
-        result = User.get_current_user_role()
+        result = user.User.get_current_user_role()
 
         self.assertEqual(result, "admin")
         mock_check_logged_in.assert_called_once()
@@ -55,25 +52,25 @@ class TestUser(unittest.TestCase):
         mock_get_user_role.assert_called_once_with(1)
 
     @patch("flask.session")
-    @patch("User.check_logged_in")
+    @patch("Models.user.User.check_logged_in")
     def test_get_id(self, mock_check_logged_in, mock_session):
         """Test that get_id returns the user ID when logged in."""
         mock_check_logged_in.return_value = True
         mock_session.get.return_value = 1
 
-        result = User.get_id()
+        result = user.User.get_id()
 
         self.assertEqual(result, 1)
         mock_check_logged_in.assert_called_once()
         mock_session.get.assert_called_once_with('user_id')
 
     @patch("flask.session")
-    @patch("User.check_logged_in")
+    @patch("Models.user.User.check_logged_in")
     def test_get_id_not_logged_in(self, mock_check_logged_in, mock_session):
         """Test that get_id returns None when user is not logged in."""
         mock_check_logged_in.return_value = False
 
-        result = User.get_id()
+        result = user.User.get_id()
 
         self.assertIsNone(result)
         mock_check_logged_in.assert_called_once()

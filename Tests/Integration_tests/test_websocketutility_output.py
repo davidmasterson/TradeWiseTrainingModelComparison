@@ -1,19 +1,18 @@
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
-from datetime import datetime, timedelta
+
 from WebsocketUtility.websocket_runner import (
     add_new_user,
     monitor_new_users,
     on_message_async,
     start_user_websocket,
     reconnect_user,
-    websocket_tasks,
     start_event_loop
 )  
 import asyncio
-from concurrent.futures import Executor
-from database import user_DAOIMPL
-import json, logging, websocket, alpaca_request_methods, threading
+
+
+import json,threading
 
 
 class TestWebSocketScript(unittest.TestCase):

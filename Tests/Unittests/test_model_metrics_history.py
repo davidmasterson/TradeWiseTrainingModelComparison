@@ -48,16 +48,16 @@ class TestModelMetricsHistory(unittest.TestCase):
     def test_get_most_recent_metric(self):
         """Test the get_most_recent_metric method."""
         metrics = [
-            [1, 0.95, 0.92, 0.93, 0.915, '["feature1", "feature2", "feature3"]', datetime(2024, 12, 5, 12, 0, 0)],
-            [2, 0.90, 0.88, 0.89, 0.885, '["feature4", "feature5", "feature6"]', datetime(2024, 12, 6, 14, 30, 0)],
-            [3, 0.85, 0.80, 0.82, 0.81, '["feature7", "feature8", "feature9"]', datetime(2024, 12, 4, 9, 15, 0)],
+            [1, 2, 0.95, 0.92, 0.93, 0.915, '["feature1", "feature2", "feature3"]', datetime(2024, 12, 5, 12, 0, 0)],
+            [2, 5, 0.90, 0.88, 0.89, 0.885, '["feature4", "feature5", "feature6"]', datetime(2024, 12, 6, 14, 30, 0)],
+            [3, 6, 0.85, 0.80, 0.82, 0.81, '["feature7", "feature8", "feature9"]', datetime(2024, 12, 4, 9, 15, 0)],
         ]
 
         most_recent = Model_Metrics_History.get_most_recent_metric(metrics)
 
         # Check that the most recent metric is returned
         self.assertEqual(most_recent[0], 2)  # model_id of the most recent metric
-        self.assertEqual(most_recent[1], 0.90)  # accuracy of the most recent metric
+        self.assertEqual(most_recent[2], 0.90)  # accuracy of the most recent metric
         self.assertEqual(most_recent[7], datetime(2024, 12, 6, 14, 30, 0))  # timestamp of the most recent metric
 
     def test_get_most_recent_metric_empty(self):
@@ -69,7 +69,7 @@ class TestModelMetricsHistory(unittest.TestCase):
     def test_get_most_recent_metric_single_entry(self):
         """Test get_most_recent_metric with a single entry."""
         metrics = [
-            [1, 0.95, 0.92, 0.93, 0.915, '["feature1", "feature2", "feature3"]', datetime(2024, 12, 5, 12, 0, 0)],
+            [1, 6, 0.95, 0.92, 0.93, 0.915, '["feature1", "feature2", "feature3"]', datetime(2024, 12, 5, 12, 0, 0)],
         ]
         most_recent = Model_Metrics_History.get_most_recent_metric(metrics)
         self.assertEqual(most_recent[0], 1)  # model_id of the only metric
