@@ -1,3 +1,4 @@
+
 {
     "configurations": [
         {
@@ -17,7 +18,7 @@
             ],
             "jinja": true,
             "autoStartBrowser": false,
-            "python": "${command:python.interpreterPath}"  // Check this path if needed
+            "python": "/home/ubuntu/miniconda3/envs/tf-env/bin/python3"  // Check this path if needed
         }
     ]
 }
