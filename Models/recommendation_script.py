@@ -15,7 +15,7 @@ class RecommendationScript:
         self.updated = updated
         
         
-    def retrainer_for_recommender(recommendation_script_id, project_root, user_id, dataset_id):
+    def retrainer_for_recommender(recommendation_script_id, project_root, user_id, dataset_id, model_id):
         #get preprocess script and convert from binary Save to temp file location.
         recommender_script_list = recommendation_scripts_DAOIMPL.get_recommendation_script_by_script_id(recommendation_script_id)
         recommender_script_bin = recommender_script_list[0][3]
@@ -42,7 +42,7 @@ class RecommendationScript:
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
                                 tempfile_path1,
-                                str(user_id), tempfile_path2, dataset_id], 
+                                str(user_id), tempfile_path2, dataset_id, model_id], 
                                 stdout=subprocess.PIPE,  # Capture standard output
                                 stderr=subprocess.PIPE,  # Capture standard error
                                 text=False,  # Prevent automatic decoding

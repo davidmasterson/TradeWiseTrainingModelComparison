@@ -94,7 +94,7 @@ class Preprocessing_Script:
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
-                                 tempfile_path1, 
+                                 '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/Manual_Algorithm12day_preprocessing_script.py', 
                                  str(dataset_id), 
                                  str(user_id), tempfile_path2,str(preprocessing_script_id),model_name], 
                                 capture_output=True,
@@ -118,8 +118,10 @@ class Preprocessing_Script:
             ppdata = pickle.dumps(preprocessing_object)
             preprocessing_scripts_DAOIMPL.update_preprocessed_data_for_user(preprocessing_script_id, ppdata)
             logging.info("Saved preprocessed data successfully.")
-        
+        except Exception as e:
+            logging.exception(f'Can not get pp object or dataset_object due to {e}')
         #get most recent model_metrics_history
+        try:
             mr_mmh = model_metrics_history_DAOIMPL.get_most_recent_mmh_for_model(model_id)
             month = int(mr_mmh[0])
             day = int(mr_mmh[1])
@@ -131,7 +133,9 @@ class Preprocessing_Script:
                     preprocess_writer.close()
                     preprocess_ouptut_writer.close()
                     return
-            
+        except:
+            pass
+        try:
             # Save finalized dataset
             final_df_bin = pickle.dumps(dataset_object)
             dsobject = dataset_DAOIMPL.get_dataset_object_by_id(dataset_id)
@@ -169,7 +173,7 @@ class Preprocessing_Script:
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
-                                 tempfile_path1, 
+                                 '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/MARecommender.py', 
                                  str(dataset_id), 
                                  str(user_id), model_name,str(preprocessing_script_id)], 
                                 capture_output=True,
