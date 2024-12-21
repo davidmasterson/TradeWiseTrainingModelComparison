@@ -35,27 +35,30 @@ class TrainingScript:
                                  capture_output=True,
                                  text=True,
                                  env=env)
+        
         training_writer.close()
         
         # Check if the script ran successfully
         if result.returncode == 0:
+            # Parse the JSON output
+            output = json.loads(result.stdout)
+            # Deserialize the model_binary
+            model_binary = pickle.loads(bytes.fromhex(output['model_binary']))
+
             try:
-                # Parse the JSON output
-                output = json.loads(result.stdout)
-
-                # Deserialize the model_binary
-                model_binary = pickle.loads(bytes.fromhex(output['model_binary']))
-
                 # Retrieve predictions
                 y_pred = output['y_pred']
                 y_test = output['y_test']
-                columns = output['columns']
-                
-                
-
-                
+                columns = output['columns']    
             except Exception as e:
                 print(f"Error deserializing output: {e}")
+            try:
+                 # Retrieve predictions
+                y_pred = output['y_pred']
+                y_test = output['y_test']
+            except:
+                pass
+                
         else:
             print(f"Training script failed: {result.stderr}")
         
