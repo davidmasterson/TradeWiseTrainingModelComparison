@@ -8,7 +8,7 @@ def create_models_preprocessing_scripts_table(user_id):
     cur.execute('''DROP TABLE IF EXISTS models_preprocessing_scripts''')
     conn.commit()
     sql = '''CREATE TABLE models_preprocessing_scripts(
-            model_id INT PRIMARY KEY,
+            model_id INT PRIMARY KEY AUTO_INCREMENT,
             preprocessing_script_id INT PRIMARY KEY,
             FOREIGN KEY (model_id) REFERENCES models(id),
             FOREIGN KEY (preprocessing_script_id) REFERENCES preprocessing_scripts(id))'''
