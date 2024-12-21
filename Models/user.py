@@ -1,7 +1,7 @@
 
 import bcrypt
 import logging
-from database import user_DAOIMPL, roles_DAOIMPL
+from database import  roles_DAOIMPL
 from flask import session
 
 
