@@ -1,7 +1,7 @@
 from database import database_connection_utility as dcu, transaction_model_status_DAOIMPL
 import logging 
 from datetime import datetime
-import tensorflow as tf
+
 from Models import user
 
 
@@ -45,10 +45,6 @@ def load_model_from_db(model_id):
     # Save the binary model to a temporary file
     with open("temp_model.h5", "wb") as temp_file:
         temp_file.write(model_binary)
-    
-    # Load the model from the temporary file
-    model = tf.keras.models.load_model("temp_model.h5")
-    return model
 
 def get_model_from_db_by_model_name_and_user_id(model_name, user_id):
     conn = dcu.get_db_connection()
