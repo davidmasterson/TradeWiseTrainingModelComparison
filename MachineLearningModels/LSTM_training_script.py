@@ -2,8 +2,9 @@
 import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow import keras
+from keras.layers import LSTM, Dense, Dropout
+from keras.models import Sequential
 import pickle
 from database import preprocessing_scripts_DAOIMPL
 import logging
@@ -30,7 +31,7 @@ def create_lstm_model(input_shape):
 # Train and evaluate LSTM model
 def train_model(ppscript_id):
     """
-    Train a Random Forest model using preprocessed data and return the trained model binary and predictions.
+    Train a model using preprocessed data and return the trained model binary and predictions.
     """
     try:
         # Fetch preprocessed data
@@ -40,18 +41,17 @@ def train_model(ppscript_id):
     except Exception as e:
         logging.error(f"Failed to load preprocessed data: {e}")
         return None, None, f"Failed to load preprocessed data: {e}"
-
-    try:
-        # Extract preprocessed data
+    
+    try:    
         X_train = preprocessed_data['X_train']
         X_test = preprocessed_data['X_test']
         y_train = preprocessed_data['y_train']
         y_test = preprocessed_data['y_test']
-        columns = preprocessed_data['columns']
+        
     
 
-         # Train the Random Forest model
-        logging.info("Initializing Random Forest model for training.")
+         # Train the Long Short Term Memory model
+        logging.info("Initializing Long Short Term Memory model for training.")
         lstm_model = create_lstm_model(X_train.shape)
         lstm_model.fit(X_train, y_train, epochs=20, batch_size=32)
 
@@ -71,9 +71,7 @@ def train_model(ppscript_id):
             output = {
                 'model_binary': pickle.dumps(model_binary).hex(),  #Serialize the model as a hex string
                 'y_pred': y_pred.tolist(),  
-                'y_test': y_test.tolist(),
-                'columns': columns
-                 
+                'y_test': y_test.tolist(),    
             }
             # Print serialized JSON to stdout
             print(json.dumps(output))

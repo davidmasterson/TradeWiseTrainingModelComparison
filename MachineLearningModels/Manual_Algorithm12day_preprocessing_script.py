@@ -313,9 +313,17 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 old_df = pickle.loads(old_ds)
             else:
                 old_df = pd.DataFrame()
+                
             df_final = old_df
             
+            df_final[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df_final.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
             
+            df_final['pol_neu_open'], df_final['pol_pos_open'], df_final['pol_neg_open'] = zip(*df_final['dp'].apply(calculate_historical_political_climate))
+            df_final['check5con'] = df_final[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
+            
+            df_final['pol_neu_close'], df_final['pol_pos_close'], df_final['pol_neg_close'] = zip(*df_final['ds'].apply(calculate_historical_political_climate))
+            df_final[['sa_neu_close', 'sa_pos_close', 'sa_neg_close']] = df_final.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['ds'])), axis=1)
+            # Date-based feature engineering
             
             df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
 
@@ -328,7 +336,7 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
             
             new_dataset = df_final.copy()
             
-            df_final.drop(['sector', 'symbol'], axis=1, inplace=True)
+            df_final.drop(['sector', 'symbol', 'dp', 'ds', 'Momentum', 'RSI', 'SMA', 'EMA', 'actual'], axis=1, inplace=True)
             logging.info("Encoded categorical features.")
 
             # Splitting features and target

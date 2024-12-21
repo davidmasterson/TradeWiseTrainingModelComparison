@@ -86,6 +86,14 @@ def preprocess_data(output_path, dataset_id, user_id, model_name, script_id):
             'structure': 'train_test_split',
             'columns':columns
         }
+        
+        logging.info("Preprocessing complete. Packaged data for modeling.")
+
+            
+        output_data = {
+            "preprocessing_object": preprocessed_data,
+            "dataset": new_dataset
+        }   
 
         # Ensure output directory exists
         preprocessed_bin = pickle.dumps(preprocessed_data)

@@ -277,7 +277,7 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
             df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
             target_column = 3  # Column index for the target variable
             time_steps = 60  # Define the number of time steps
-            df['hit_tp1'] = df.apply()
+            df['hit_tp1'] = df.apply(calculate_target)
             # Prepare the input data (X) and target variable (y)
             X, y, scaler = prepare_data(df, target_column, time_steps)
             # Split data into training and testing sets
@@ -325,7 +325,7 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 old_df = pickle.loads(old_ds)
             else:
                 old_df = pd.DataFrame()
-            df_final = pd.concat([df, old_df], ignore_index=True)
+            df_final = old_df
             
             
             
@@ -345,34 +345,44 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
 
 
             # Convert columns to numeric as needed
-            df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
-            target_column = 3  # Column index for the target variable
+            # df_final = df_final.apply(pd.to_numeric, errors='coerce').fillna(0)
+            target_column = 27 # Column index for the target variable
             time_steps = 60  # Define the number of time steps
-            df['hit_tp1'] = df.apply()
+            df_final['hit_tp1'] = df_final.apply(calculate_target)
             # Prepare the input data (X) and target variable (y)
-            X, y, scaler = prepare_data(df, target_column, time_steps)
+            X, y, scaler = prepare_data(df_final, target_column, time_steps)
             # Split data into training and testing sets
             train_size = int(0.8 * len(X))
             X_train, X_test = X[:train_size], X[train_size:]
             y_train, y_test = y[:train_size], y[train_size:]
             
-            # Ensure feature names are consistent during scaling
+           # Flatten the time steps and features for scaling
+            n_samples, n_time_steps, n_features = X_train.shape
+            X_train_reshaped = X_train.reshape(-1, n_features)
+            X_test_reshaped = X_test.reshape(-1, n_features)
+
+            # Create a scaler instance and fit_transform the training data
             scaler = MinMaxScaler(feature_range=(0, 1))
-            X_train_scaled = scaler.fit_transform(X_train)
-            X_test_scaled = scaler.transform(X_test)
+            X_train_scaled = scaler.fit_transform(X_train_reshaped)
+
+            # Transform the testing data
+            X_test_scaled = scaler.transform(X_test_reshaped)
+
+            # Reshape the scaled data back to 3D
+            X_train_scaled = X_train_scaled.reshape(n_samples, n_time_steps, n_features)
+            X_test_scaled = X_test_scaled.reshape(X_test.shape[0], n_time_steps, n_features)
             # Convert scaled data back to DataFrame to preserve column names
-            X_train_df = pd.DataFrame(X_train_scaled, columns=X.columns)
-            X_test_df = pd.DataFrame(X_test_scaled, columns=X.columns)
+            
             
             # Package preprocessed data
             preprocessed_data = {
-                'X_train': X_train_df,          # Scaled training data as DataFrame
-                'X_test': X_test_df,            # Scaled testing data as DataFrame
-                'y_train': y_train.reset_index(drop=True),  # Training labels
-                'y_test': y_test.reset_index(drop=True),    # Testing labels
+                'X_train': X_train_scaled,          # Scaled training data as DataFrame
+                'X_test': X_test_scaled,            # Scaled testing data as DataFrame
+                'y_train': y_train,  # Training labels
+                'y_test': y_test,    # Testing labels
                 'scaler': scaler,               # Scaler used for preprocessing
                 'structure': 'train_test_split', # Metadata for structure description
-                'columns' : X_train_df.columns.to_list()  # Ouput the column names for feature importance call.
+                
             }
             logging.info("Preprocessing complete. Packaged data for modeling.")
             
@@ -380,8 +390,6 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 "preprocessing_object": preprocessed_data,
                 "dataset": new_dataset
             }   
-            for transaction in transactions:
-                handle_transaction_status(transaction[0], user_id, model_name, required_models)
             # Serialize the combined object using pickle
             try:
                 output_data_bin = pickle.dumps(output_data)

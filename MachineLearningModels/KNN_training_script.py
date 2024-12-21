@@ -30,7 +30,7 @@ def train_model(ppscript_id):
         X_test = preprocessed_data['X_test']
         y_train = preprocessed_data['y_train']
         y_test = preprocessed_data['y_test']
-        columns = preprocessed_data['columns']
+        
         
         # Initialize and train KNN model
         knn_model = KNeighborsClassifier(n_neighbors=5)
@@ -47,7 +47,7 @@ def train_model(ppscript_id):
                 'model_binary': pickle.dumps(model_binary).hex(),  #Serialize the model as a hex string
                 'y_pred': y_pred.tolist(),  
                 'y_test': y_test.tolist(),
-                'columns': columns    
+                    
             }
             # Print serialized JSON to stdout
             print(json.dumps(output))

@@ -9,14 +9,16 @@ import pickle
 from MachineLearningModels import manual_alg_requisition_script
 import logging
 from sector_finder import get_stock_sector
-from database import  trade_settings_DAOIMPL, dataset_DAOIMPL
+from database import  trade_settings_DAOIMPL, dataset_DAOIMPL, models_DAOIMPL
 import concurrent.futures
-from database import models_DAOIMPL
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sector_finder import get_stock_sector
-
+from datetime import datetime
+from HistoricalFetcherAndScraper import scraper
+from Selenium import selenium_file
+    
 
 logging.basicConfig(filename='/home/ubuntu/TradeWiseTrainingModelComparison/app_debug.log', 
                     level=logging.INFO, 
@@ -70,8 +72,7 @@ def calculate_third_check(symbol):
         return 0
     
 def calculate_historical_sentiment(symbol, date_requirement):
-    from datetime import datetime
-    from HistoricalFetcherAndScraper import scraper
+    
     import json
     article_texts = []
     try:
@@ -93,8 +94,7 @@ def calculate_historical_sentiment(symbol, date_requirement):
         return 0, 0, 0
     
 def calculate_historical_political_climate(date_requirement):
-    from Selenium import selenium_file
-    from datetime import datetime
+    
     date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
     selenium_return = selenium_file.get_historical_political_sentiment_scores(date_requirement)
     try:
@@ -137,13 +137,14 @@ def parallel_apply_single_arg(symbols, func, max_workers=20):
 ''' ---------------------------END PREPROCESSING HELPER FUNCTIONS-------------------------------------------------------------------'''
 
 
-
-
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-def preprocess_and_train(user_id, output_file_path, dataset_id):
+def preprocess_and_train(user_id, output_file_path, dataset_id, model_id):
     try:
+        model_id = int(model_id)
+        prebuilt_model = models_DAOIMPL.get_models_for_user_by_model_id(model_id)
+        prebuilt_model_bin = prebuilt_model[3]
+        prebuilt_model_bin = pickle.loads(prebuilt_model_bin)
+        
+        
         # Load trade settings and dataset
         pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
@@ -224,18 +225,10 @@ def preprocess_and_train(user_id, output_file_path, dataset_id):
         X_train, X_test, y_train, y_test = train_test_split(X_known_scaled, y_known, test_size=0.2, random_state=42)
 
         print(np.bincount(y_train))
-        # Train the model
-        model = RandomForestClassifier()
-        model.fit(X_train, y_train)
-
-        # Evaluate the model
-       # Evaluate the model on the test data
-        accuracy = model.score(X_test, y_test)
-        print(f"Model accuracy: {accuracy}")
 
         # Predict future values for the data where the target is unknown
-        predictions = model.predict(X_unknown_scaled)
-        probabilities = model.predict_proba(X_unknown_scaled)[:, 1]  # Get probabilities for the positive class
+        predictions = prebuilt_model_bin.predict(X_unknown_scaled)
+        probabilities = prebuilt_model_bin.predict_proba(X_unknown_scaled)[:, 1]  # Get probabilities for the positive class
         # Add predictions and probabilities to DataFrame
         df.loc[unknown_indices, 'Prediction'] = predictions
         df.loc[unknown_indices, 'Probability'] = probabilities
@@ -248,7 +241,7 @@ def preprocess_and_train(user_id, output_file_path, dataset_id):
         trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)  # example threshold, set as needed
         confidence_threshold = trade_settings[5]
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
-                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5 and con >= confidence_threshold)]
+                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5)]
 
 
         
@@ -274,4 +267,5 @@ if __name__ == "__main__":
     user_id = sys.argv[1]  
     tempfile_path2 = sys.argv[2]
     dataset_id = sys.argv[3]
-    preprocess_and_train(user_id,tempfile_path2,dataset_id)
+    model_id = sys.argv[4]
+    preprocess_and_train(user_id,tempfile_path2,dataset_id, model_id)
