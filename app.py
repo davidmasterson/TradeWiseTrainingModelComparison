@@ -1,7 +1,7 @@
 import sys
 from flask import Flask, render_template, request, jsonify, Response, redirect, url_for, flash
 import logging
-from Hypothetical_Predictor import CSV_Writer, predict_with_pre_trained_model, stock_data_fetcher
+from Hypothetical_Predictor import CSV_Writer
 import Selenium.selenium_file
 import alpaca_request_methods
 import model_trainer_predictor_methods
@@ -12,7 +12,7 @@ import Hypothetical_Predictor
 import subprocess
 from database import (metrics_DAOIMPL, manual_metrics_DAOIMPL,  transactions_DAOIMPL, user_preferences_DAOIMPL, preprocessing_scripts_DAOIMPL, 
                       model_metrics_history_DAOIMPL, models_DAOIMPL, training_scripts_DAOIMPL, dataset_DAOIMPL, recommendation_scripts_DAOIMPL,
-                      transaction_model_status_DAOIMPL)
+                      transaction_model_status_DAOIMPL, daily_balance_DAOIMPL)
 from flask_wtf.csrf import CSRFProtect
 from flask_login import LoginManager
 import threading
@@ -60,18 +60,18 @@ os.makedirs(log_dir, exist_ok=True)  # Create the directory if it doesn't exist
 log_file = os.path.join(log_dir, "app.log")
 
 # Set up logging
-logging.basicConfig(
-    filename='app.log',
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-# Attach logging to Flask's logger and configure it to log to the console as well
-app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
-app.logger.setLevel(logging.INFO)  # Logs errors only
+# logging.basicConfig(
+#     filename='app.log',
+#     level=logging.INFO,
+#     format='%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+#     datefmt='%Y-%m-%d %H:%M:%S'
+# )
+# # Attach logging to Flask's logger and configure it to log to the console as well
+# app.logger.addHandler(logging.StreamHandler(sys.stdout))  # Outputs logs to console
+# app.logger.setLevel(logging.INFO)  # Logs errors only
 
 
-#Set up Google OAuth2.0
+# #Set up Google OAuth2.0
 oauth = OAuth(app)
 oauth.register(
     name='google',
@@ -360,6 +360,7 @@ def user_profile():
         conn = alpaca_request_methods.create_alpaca_api(session.get('user_name'))
         account = conn.get_account()
         metric = metrics_DAOIMPL.get_last_metric_for_user(user_id)
+        open_pos = transactions_DAOIMPL.get_open_transactions_for_user(user_id)
         if metric:
             profit = metric[6]
             profit = float(profit) if profit else 0
@@ -368,11 +369,63 @@ def user_profile():
             total_profit = profit + loss
         else:
             total_profit = 0.00
+            
+        # Modify current positions with new current price data and p and l
+        if open_pos:
+            positions_list = []
+            for pos in open_pos:
+                current_price = alpaca_request_methods.get_symbol_current_price(pos[1])
+                pandl = round(float(current_price * int(pos[4])) - float(pos[5]),2)
+                yesterday_close = alpaca_request_methods.get_symbol_previous_close(pos[1])
+                positions_list.append({
+                    'id': pos[0],
+                    'symbol': pos[1],
+                    'date_purchased': pos[2],
+                    'pricepershare' : round(pos[3],2),
+                    'qty' : pos[4],
+                    'total_purchase': round(pos[5],2),
+                    'expected': round(pos[11],2),
+                    'tp1': round(pos[14],2),
+                    'sop': round(pos[15],2),
+                    'sector': pos[19],
+                    'current_price' : round(current_price,2),
+                    'current_pl' : pandl,
+                    'yesterdays_close': yesterday_close
+                })
+                
         
         equity = float(account.equity)
         cash = float(account.cash)
-        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=total_profit)
+        print([close['yesterdays_close'] for close in positions_list], [close['pricepershare'] for close in positions_list])
+        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=total_profit,
+                               open_pos = positions_list)
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
+
+@app.route('/sell_position', methods=['POST'])
+def sell_position():
+    if session.get('logged_in'):
+        user_id = user.User.get_id()
+        user_obj = user_DAOIMPL.get_user_by_user_id(user_id)
+        username = user_obj[4]
+        symbol = request.form.get('trans_symbol')
+        current_price = request.form.get('trans_price')
+        current_price = round(float(current_price),2)
+        quantity = request.form.get('trans_qty')
+        quantity = int(quantity)
+        if not all([user_id, symbol, current_price, quantity]):
+            flash("Missing required form data", "error")
+            return redirect(url_for('user_profile'))
+            
+        order_dict = {
+            'symbol': symbol,
+            'qty': quantity,
+            'side': 'sell',
+            'type': 'limit',
+            'tif': 'day',
+        }
+        message = order_methods.submit_limit_order(username,order_dict )
+        flash(message)  
+        return redirect(url_for('user_profile'))
 
 @app.route('/update_profile', methods=['POST'])
 def update_profile():
@@ -735,6 +788,44 @@ def delete_model():
 
 # ------------------------------------------------------------END MODEL --------------------------------------------------------------------------
 
+@app.route('/index_comparisons', methods=['GET'])
+def index_comparisons():
+    from YahooFinance import yahoo_finance_api_methods
+    if user.User.check_logged_in():
+        user_id = user.User.get_id()
+        balances = daily_balance_DAOIMPL.get_daily_balances_for_user(user_id)
+        if balances:
+            s_p_index_values = []
+            vanguard_index_values = []
+            dates = [x[1] for x in balances]
+            daily_balances = [x[2] for x in balances]
+            for i in dates:
+                s_p_index_values.append(yahoo_finance_api_methods.get_s_and_p_value_on_specific_date(i))
+                vanguard_index_values.append(yahoo_finance_api_methods.get_vanguard_value_on_specific_date(i))
+            
+            # function to normalize for overlay
+            def normalize_values(base, start_value, end_value):
+                return round((end_value/start_value) * base, 2) 
+            my_norm = []
+            sp_norm = []
+            vang_norm = []
+            dates = [x.strftime("%Y-%m-%d") for x in dates]
+            # get normalized values for indexes and my balance values
+            for x in range(0,len(daily_balances)):
+                my_norm.append(normalize_values(100,daily_balances[0], daily_balances[x]))
+                sp_norm.append(normalize_values(100, s_p_index_values[0], s_p_index_values[x]))
+                vang_norm.append(normalize_values(100, vanguard_index_values[0], vanguard_index_values[x]))
+        else:
+            dates, my_norm, sp_norm, vang_norm = None, None, None, None
+        sp_value_now = yahoo_finance_api_methods.get_open_and_close_for_s_and_p_value_now()
+        nyse_value_now = yahoo_finance_api_methods.get_open_and_close_for_NYSE_value_now()
+        nasdaq_value_now = yahoo_finance_api_methods.get_open_and_close_for_NASDAQ_value_now()
+        return render_template('index_comparisons.html', my_norm=my_norm, dates=dates, sp_norm=sp_norm, 
+                               vang_norm=vang_norm,sp_value_now=sp_value_now, 
+                               nyse_value_now=nyse_value_now,nasdaq_value_now=nasdaq_value_now)
+    return redirect(url_for('home'))
+
+
 from flask import request, redirect, url_for, flash, render_template
 import pickle
 import os
@@ -961,25 +1052,11 @@ def pending_orders():
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    probs = model_trainer_predictor_methods.stock_predictor_using_pretrained_model()
+    user_id = user.User.get_id()
+    probs = model_trainer_predictor_methods.stock_predictor_using_pretrained_model(user_id)
     return render_template('stock_predictions.html', probs=probs)
 
 
-@app.route('/process_symbols', methods=['POST']) 
-def process_symbols():
-    file_path = 'path/to/your/file.txt'
-
-    if os.path.exists(file_path):
-        print("The file exists.")
-    else:
-        print("The file does not exist.")
-    symbols = request.form.getlist('symbols[]')
-    CSV_Writer.CSV_Writer.write_temporary_csv(symbols)
-    stock_data_fetcher.fetch_stock_data()
-    
-    subprocess.run(['python3', 'Hypothetical_Predictor/pre_processing.py'])
-    probs = Hypothetical_Predictor.predict_with_pre_trained_model.stock_predictor_using_pretrained_model()
-    return render_template('stock_predictions.html', probs=probs)
 
 
 
@@ -1143,6 +1220,7 @@ def purchaser_page():
             #get form data from frontend
             dataset_id = request.form.get('dataset_data')
             recommendation_script_id = request.form.get('recommender_data')
+            model_id = request.form.get('model_id')
             training_script = request.form.get('training_script')
             recommendation_count = request.form.get('recommendation_count')
             recommendation_count = int(recommendation_count)
@@ -1174,7 +1252,7 @@ def purchaser_page():
             new_list = list(map(lambda x: x[0], assets_list))
             
             progression_DAOIMPL.update_progression_text('Getting recommendations based on most recent trained model',user_id, progress_now[0])
-            orders = recommender.get_model_recommendations_for_recommender(new_list, recommendation_script_id, dataset_id, user_id, max_total_spend,recommendation_count, 20)
+            orders = recommender.get_model_recommendations_for_recommender(new_list, recommendation_script_id, dataset_id, user_id, max_total_spend,recommendation_count,model_id, 20)
             symbols = [item['Symbol'] for item in orders]
             sectors = [item['Sector'] for item in orders]
             
@@ -1191,7 +1269,7 @@ def purchaser_page():
         orders = recommended_DAOIMPL.get_recommended_for_user(user_id)
         logging.info(orders)
         recommendations_scripts = recommendation_scripts_DAOIMPL.get_recommendation_scripts_for_user(user_id)
-        trainers = training_scripts_DAOIMPL.get_all_training_scripts_for_user(user_id)
+        models = models_DAOIMPL.get_models_for_user_by_user_id(user_id)
         datasets = dataset_DAOIMPL.get_datasets_by_user_id(user_id)
         for order in orders:
             recommendations.append( {
@@ -1202,7 +1280,9 @@ def purchaser_page():
                 'sector': order[5]  
             })
         
-        return render_template('purchaser.html', datasets=datasets, recommendations=recommendations, user_cash=cash, recommendations_scripts=recommendations_scripts, trainers=trainers, max_total_spend=max_total_spend
+        return render_template('purchaser.html', datasets=datasets, recommendations=recommendations, user_cash=cash, 
+                               recommendations_scripts=recommendations_scripts,  
+                               max_total_spend=max_total_spend, models=models
                                )
     return redirect(url_for('home'))
     
