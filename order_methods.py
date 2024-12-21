@@ -15,8 +15,11 @@ def submit_limit_order(username, incoming_order):
         conn = alpaca_request_methods.create_alpaca_api(username)
         user_id = session.get('user_id')
         user_cash = float(conn.get_account().cash)
-        total_cost_for_purchase = incoming_order['qty'] * this_limit_price
-        if total_cost_for_purchase < user_cash:
+        if incoming_order['side'] == 'buy':
+            total_cost_for_purchase = incoming_order['qty'] * this_limit_price
+            if total_cost_for_purchase > user_cash:
+                message = f"Order (for {incoming_order['qty']} shares of {incoming_order['symbol']} at ${this_limit_price}) : not submitted because it would exceed the available trade account cash."
+                return message
             order = conn.submit_order(
                 symbol=incoming_order['symbol'],  # Example stock symbol
                 qty=incoming_order['qty'],  # Quantity of shares to buy
@@ -24,15 +27,28 @@ def submit_limit_order(username, incoming_order):
                 type=incoming_order['type'],
                 limit_price= this_limit_price,# Order type: "market" or "limit"
                 time_in_force=incoming_order['tif'],  # day
-                client_order_id=f"{datetime.now()}{incoming_order['symbol']}{incoming_order['qty']} {incoming_order['limit_price']}/{user_id}"
+                client_order_id=f"{datetime.now()}{incoming_order['symbol']}{incoming_order['qty']} {this_limit_price}/{user_id}"
             )
             coid = order.id
             logging.info(f"{incoming_order['side']} Order submitted: {incoming_order}, for user {username} order_id {order}")
             pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
             message = f"Successfully placed an order for {incoming_order['qty']} shares of {incoming_order['symbol']} at ${incoming_order['limit_price']}!"
+            return message
         else:
-            message = f"Order (for {incoming_order['qty']} shares of {incoming_order['symbol']} at ${incoming_order['limit_price']}) : not submitted because it would exceed the available trade account cash."
-        return message
+            order = conn.submit_order(
+            symbol=incoming_order['symbol'],  # Example stock symbol
+            qty=incoming_order['qty'],  # Quantity of shares to buy
+            side=incoming_order['side'],  # "buy" or "sell"
+            type=incoming_order['type'],
+            limit_price= this_limit_price,# Order type: "market" or "limit"
+            time_in_force=incoming_order['tif'],  # day
+            client_order_id=f"{datetime.now()}{incoming_order['symbol']}{incoming_order['qty']} {this_limit_price}/{user_id}"
+            )
+            coid = order.id
+            logging.info(f"{incoming_order['side']} Order submitted: {incoming_order}, for user {username} order_id {order}")
+            pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'buy', coid)
+            message = f"Successfully placed an order for {incoming_order['qty']} shares of {incoming_order['symbol']} at ${this_limit_price}!"
+            return message
     except Exception as e:
         logging.info(f"Error placing {incoming_order['side']} order: for user {username} due to {e}")
  
