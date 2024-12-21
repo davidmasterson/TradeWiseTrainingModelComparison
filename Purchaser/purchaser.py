@@ -33,7 +33,7 @@ def generate_recommendations_task(user_id):
     assets_list = ast.literal_eval(assets_list)
     
     
-    symbols_to_purchase = recommender.get_model_recommendation(assets_list)
+    symbols_to_purchase = recommender.get_model_recommendations_for_recommender(assets_list)
     get_and_set_progress(90)
     scores = score_based_purchaser.process_symbols_for_purchase(symbols_to_purchase,max_total_spend)
     final_scores = []
