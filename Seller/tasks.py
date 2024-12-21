@@ -4,9 +4,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import os
 os.environ["PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION"] = "python"
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from database import transactions_DAOIMPL, database_connection_utility, pending_orders_DAOIMPL, user_DAOIMPL
+from database import transactions_DAOIMPL, database_connection_utility, pending_orders_DAOIMPL, user_DAOIMPL, daily_balance_DAOIMPL
+from Models import daily_balance
 import alpaca_request_methods
 import order_methods
 import time
@@ -14,11 +15,25 @@ import time
 '''Script for running websocket for all users in the background'''
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def insert_daily_balance_at_start_trading_day(username, user_id):
+    alpaca_user_account = alpaca_request_methods.create_alpaca_api(username).get_account()
+    new_db = daily_balance.DailyBalance(date.today(), round(float(alpaca_user_account.equity),2),user_id)
+    daily_balance_DAOIMPL.insert_balance(new_db)
+
+def update_daily_balance_at_end_trading_day(username, user_id):
+    alpaca_user_account = alpaca_request_methods.create_alpaca_api(username).get_account()
+    open_bal = daily_balance_DAOIMPL.get_daily_balances_for_user_by_date(user_id, date.today().strftime("%Y-%m-%d"))
+    if open_bal:
+        open_bal = open_bal[0]
+    daily_balance_DAOIMPL.update_balance(round(float(alpaca_user_account.equity),2),open_bal[0])
+
 def check_positions_for_user(username, user_id):
     connection = alpaca_request_methods.create_alpaca_api(username)
+    hour_and_min = datetime.now().strftime("%H:%M")
+    if hour_and_min == "9:30":
+        insert_daily_balance_at_start_trading_day(username,user_id)
     db_conn = database_connection_utility.get_db_connection()
     logging.info(f'{datetime.now()}: Started sell loop for user {username}')
-    
     try:
         while True:
             # Get current time in UTC and convert to EST
@@ -63,9 +78,10 @@ def check_positions_for_user(username, user_id):
     except Exception as e:
         logging.error(f"Exception encountered for user {username}: {e}")
 
-    finally:   
+    finally:
+        update_daily_balance_at_end_trading_day(username, user_id)
         db_conn.close()
-        logging.info(f"End of day: All open orders canceled and pending orders truncated for user {username}.")
+        logging.info(f"End of day: All open orders canceled and pending orders truncated for user and daily balance updated {username}.")
         
 
 def monitor_all_users():
