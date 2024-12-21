@@ -32,11 +32,11 @@
             
                 <!-- Dropdown for Training Script Selection -->
                 <div class="training_script_data_container">
-                    <label for="training_script">Select Training Script:</label>
-                    <select name="training_script" id="training_script" required>
-                        <option value="">Choose Training Script</option>
-                        {% for script in trainers %}
-                        <option value="{{ script[0] }}">{{ script[1] }} - {{ script[5] }}</option>
+                    <label for="model_id">Select Recommendations Model:</label>
+                    <select name="model_id" id="model_id" required>
+                        <option value="">Choose Recommendations Model</option>
+                        {% for model in models %}
+                        <option value="{{ model[0] }}">{{ model[1] }} - {{ model[2] }}</option>
                         {% endfor %}
                     </select>
                 </div>
