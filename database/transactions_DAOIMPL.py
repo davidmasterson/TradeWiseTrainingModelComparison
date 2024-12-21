@@ -303,7 +303,7 @@ def get_open_transactions_for_user(user_id):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''SELECT * FROM transactions
-                WHERE ds=%s
+                WHERE ds is %s
                 AND user_id = %s
                 '''
     vals = [None, user_id]
