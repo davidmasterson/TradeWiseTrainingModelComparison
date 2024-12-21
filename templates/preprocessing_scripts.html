@@ -48,7 +48,7 @@
                     <p class="card-text"><small class="text-muted">Uploaded on: {{ script[4] }}</small></p>
                     <form action="{{ url_for('delete_ppscript') }}" method="POST" onsubmit="return confirmDelete()">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        <input type="hidden" name="ppscrpt_id"   value="{{script[0]}}"/>
+                        <input type="hidden" name="ppscript_id"   value="{{script[0]}}"/>
                         <button type="submit"  class="btn btn-danger">Delete</button>
                     </form>
                 </div>
