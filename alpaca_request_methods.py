@@ -1,22 +1,15 @@
-from datetime import datetime, timedelta, date
+from datetime import  timedelta, date
 import pandas as pd
 import os
 import alpaca_trade_api as tradeapi
 from alpaca_trade_api import Stream
 from dotenv import load_dotenv
-import MachineLearningModels.manual_alg_requisition_script
-from database import transactions_DAOIMPL, user_DAOIMPL, pending_orders_DAOIMPL
-import app
-import sector_finder
+
+from database import transactions_DAOIMPL, user_DAOIMPL
+
 import logging
-import time
-from Models import transaction
-from flask import session
-import order_methods
-import asyncio
-import websocket
-import json
-import MachineLearningModels
+
+
 
 
 alpaca_api_datastream = "wss://paper-api.alpaca.markets/stream"
@@ -142,6 +135,18 @@ def get_symbol_current_price(symbol):
         return []
     finally:
         conn.close()
+        
+def get_symbol_previous_close(symbol):
+    try:
+        start = date.today() - timedelta(days=1)
+        startstring = start.strftime("%Y-%m-%dT15:59:00Z")
+        endstring = start.strftime("%Y-%m-%dT16:00:00Z")
+        conn = get_alpaca_connection()
+        asset = conn.get_bars(symbol,'1Min',startstring,endstring)
+        return float(asset[0].c)
+    except Exception as e:
+        print(f'Unable to get previous days close due to {e}')
+        return 0.00
         
 def connect_to_user_alpaca_account(user_name):
     this_user = user_DAOIMPL.get_user_by_username(user_name)[0]
