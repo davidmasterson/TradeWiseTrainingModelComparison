@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% block content %}
+    <div class="container">
+    <!-- Table for displaying current values -->
+    <table style="width:100%; margin-bottom: 20px; text-align: center;">
+        <tr>
+            <th>S&P 500 Now</th>
+            <th>NYSE Now</th>
+            <th>NASDAQ Now</th>
+        </tr>
+        <tr>
+            {%if sp_value_now[1] > sp_value_now[0] %}
+                <td id="sp500_now" style="color: green;"><h2>${{ "{:,.2f}".format(sp_value_now[1]) }}</h2></td>
+            {% else %}
+                <td id="sp500_now" style="color: red;"><h2>${{ "{:,.2f}".format(sp_value_now[1]) }}</h2></td>
+            {% endif %}
+
+            {% if nyse_value_now[1] > nyse_value_now[0]  %}
+                <td id="nyse_now" style="color: green;"><h2>${{ "{:,.2f}".format(nyse_value_now[1]) }}</h2></td>
+            {% else %}
+                <td id="nyse_now" style="color: red;"><h2>${{ "{:,.2f}".format(nyse_value_now[1]) }}</h2></td>
+            {% endif %}
+
+            {%if nasdaq_value_now[1] > nasdaq_value_now[0] %}
+                <td id="nasdaq_now" style="color: green;"><h2>${{ "{:,.2f}".format(nasdaq_value_now[1]) }}</h2></td>
+            {% else %}
+                <td id="nasdaq_now" style="color: red;"><h2>${{ "{:,.2f}".format(nasdaq_value_now[1]) }}</h2></td>
+            {% endif %}
+        </tr>
+    </table>
+
+    <!-- Container for the S&P 500 vs Portfolio chart -->
+    <div>
+        <canvas id="spPortfolioChart"></canvas>
+    </div>
+
+    <!-- Container for the Vanguard vs Portfolio chart -->
+    <div>
+        <canvas id="vgPortfolioChart"></canvas>
+    </div>
+    </div>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+            
+        }
+    
+        table {
+            width: 100%;
+            margin-bottom: 20px;
+            border-collapse: collapse;
+        }
+    
+        th, td {
+            text-align: center;
+            padding: 12px;
+            border-bottom: 1px solid #ccc;
+        }
+    
+        th {
+            background-color: #004466;
+            color: white;
+        }
+    
+        td {
+            font-size: 16px;
+        }
+    
+        canvas {
+            padding: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin: 20px;
+        }
+    
+        .container {
+            margin: 20px;
+            padding: 20px;
+            width: 100%;
+        }
+
+        .content {
+            display: flex;
+            flex-direction: row-reverse;
+            align-content: center;
+            justify-content: center;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.23.0/dist/date-fns.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@1.1.0/dist/chartjs-adapter-date-fns.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+
+    const ctx = document.getElementById("spPortfolioChart").getContext("2d");
+    const lineChart = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: {{ dates | safe }},
+            
+            
+            datasets: [
+                { 
+                    label: "SP Overlay",
+                    data: {{ sp_norm | safe}},
+                    fill: false,
+                    backgroundColor: "pink",
+                    lineTension: .5,
+                    borderColor: "rgb(255,154,23)",
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    
+                    
+                    
+                    
+                },
+                
+                { 
+                    label: "My Overlay",
+                    data: {{ my_norm | safe}},
+                    fill: false,
+                    backgroundColor: "yellow",
+                    lineTension: .5,
+                    borderColor: "rgb(0,0,0)",
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                },
+            
+                        
+                
+            ]
+        },
+        options: {
+            responsive: true,
+            elements: {
+                showLines: false,
+                line: {
+                    tension: 0,
+                },
+      
+            }
+        },
+        // plugins: [canvasBackgroundColor]
+    }
+    
+    );
+    
+</script>
+
+<script>
+    const ctx2 = document.getElementById("vgPortfolioChart").getContext("2d");
+    const lineChart2 = new Chart(ctx2, {
+        type: "line",
+        data: {
+            labels: {{ dates | safe }},
+            
+            
+            datasets: [
+                { 
+                    label: "Vanguard Overlay",
+                    data: {{ vang_norm | safe}},
+                    fill: false,
+                    backgroundColor: "rgb(255, 227, 23)",
+                    lineTension: .5,
+                    borderColor: "rgb(255,227,23)",
+                    pointRadius: 0,
+                    borderWidth: 2,
+                },
+                { 
+                    label: "My Overlay",
+                    data: {{ my_norm | safe}},
+                    fill: false,
+                    backgroundColor: "black",
+                    lineTension: .5,
+                    borderColor: "rgb(0,0,0)",
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                },
+        
+            ]
+        },
+        options: {
+            responsive: true,
+            elements: {
+                showLines: false,
+                line: {
+                    tension: 0
+                }
+            }
+        },
+        // plugins: [canvasBackgroundColor]
+    }
+    
+    );
+    
+</script>
+{% endblock %}

@@ -89,6 +89,69 @@
             </div>
         </div>
     </div>
+    <div class = "open-positions-container">
+        <h3> Open Transactions</h3>
+        <table class="table open-positions-table">
+            <thead>
+                <tr>
+                    <th>Symbol</th>
+                    <th>Date Purchased</th>
+                    <th>Price/Share</th>
+                    <th>Quantity</th>
+                    <th>Total Purchase</th>
+                    <th>Expected Return</th>
+                    <th>TP1</th>
+                    <th>SOP</th>
+                    <th>Sector</th>
+                    <th></th>
+                    <th>Yesterdays Close</th>
+                    <th>Current Price</th>
+                    <th>P&L</th>
+                    <th>Early Close Out</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pos in open_pos %}
+                <tr>
+                    <td>{{ pos.symbol }}</td>
+                    <td>{{ pos.date_purchased }}</td>
+                    <td>{{ pos.pricepershare }}</td>
+                    <td>{{ pos.qty }}</td>
+                    <td>{{ pos.total_purchase }}</td>
+                    <td>{{ pos.expected }}</td>
+                    <td>{{ pos.tp1 }}</td>
+                    <td>{{ pos.sop }}</td>
+                    <td>{{ pos.sector }}</td>
+                    <td></td>
+                    <td>{{ pos.yesterdays_close }}</td>
+                    {% if pos.yesterdays_price == 'N/A' %}
+                        <td style="color: green;">{{ pos.current_price }}</td>  
+                    {% else %}
+                        {% if pos.current_price > pos.yesterdays_close %}
+                            <td style="color: green;">{{ pos.current_price }}</td>
+                        {% else %}
+                            <td style="color: red;">{{ pos.current_price }}</td>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if pos.current_pl > 0 %}
+                        <td style="color: green;">{{ pos.current_pl }}</td>
+                    {% else %}
+                        <td style="color: red;">{{ pos.current_pl }}</td>
+                    {% endif %}
+                    <td><form class="limit_sell_form" action="{{ url_for('sell_position') }}" method='POST'>
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name ="trans_id" value="{{pos.id}}">
+                        <input type="hidden" name ="trans_symbol" value="{{pos.symbol}}">
+                        <input type="hidden" name ="trans_qty" value="{{pos.qty}}">
+                        <input type="hidden" name ="trans_price" value="{{pos.current_price}}">
+                        <button type="submit" class="btn btn-primary">Sell Early</button>
+                    </form></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 
@@ -101,7 +164,7 @@
         flex-grow: 1;
         padding: 40px;
         background-color: #f4f5f7;
-        margin-left: 250px; /* Adjust margin to match sidebar width */
+        max-width: 100%;
     }
 
     .profile-header {
