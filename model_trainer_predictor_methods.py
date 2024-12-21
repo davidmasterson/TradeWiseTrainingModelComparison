@@ -16,10 +16,8 @@ def model_trainer(user_id):
     percent = 100
     logging.info('Emitted 100%')
 
-def stock_predictor_using_pretrained_model():
+def stock_predictor_using_pretrained_model(user_id):
     percent = 0
-
-    user_id = session.get('user_id')
     subprocess.run(['python3', 'Future_Predictor/future_predictor.py',str(user_id)])
     percent = 5
     
@@ -82,8 +80,11 @@ def stock_predictor_using_pretrained_model():
                               purchase_date_encoded,sell_date_encoded,purchase_day,
                               purchase_month,purchase_year,sell_day,sell_month,sell_year,
                               hit_take_profit_predicted])
+            try: 
+                percent = 50 + int((count / total_lines) * 50)
+            except:
+                return []
             
-            percent = 50 + int((count / total_lines) * 50)
             
             
             count += 1
