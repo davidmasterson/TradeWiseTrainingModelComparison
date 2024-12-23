@@ -72,13 +72,15 @@ def calculate_third_check(symbol):
         return 0
     
 def calculate_historical_sentiment(symbol, date_requirement):
-    
+    from datetime import datetime
+    from HistoricalFetcherAndScraper import scraper
     import json
     article_texts = []
     try:
-        date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
+        if not isinstance(date_requirement, datetime):
+            date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
         
-        response_text = scraper.search(date_object,symbol,user_id)
+        response_text = scraper.search(date_requirement,symbol,user_id)
         response_json = json.loads(response_text)
         articles = response_json.get("news", [])
         if not response_text:
@@ -94,16 +96,23 @@ def calculate_historical_sentiment(symbol, date_requirement):
         return 0, 0, 0
     
 def calculate_historical_political_climate(date_requirement):
+    from Selenium import selenium_file
+    from datetime import datetime
+
+    # Ensure date_requirement is a datetime object (if it's not already)
+    if not isinstance(date_requirement, datetime):
+        date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
     
-    date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
+    # Get sentiment scores using Selenium
     selenium_return = selenium_file.get_historical_political_sentiment_scores(date_requirement)
+    
     try:
-        if selenium_return:
-            pol_neu, pol_pos, pol_neg = selenium_return[0][0], selenium_return[0][1], selenium_return[0][2]
-    except:
-        pol_neu, pol_pos, pol_neg = selenium_return[0], selenium_return[1], selenium_return[2]
+        # Assuming selenium_return is a tuple like (pol_neu, pol_pos, pol_neg) in a list
+        pol_neu, pol_pos, pol_neg = selenium_return[0]
         return pol_neu, pol_pos, pol_neg
-    else:
+    except Exception as e:
+        # Log or handle the error appropriately
+        print(f"Error processing sentiment scores: {e}")
         return 0, 0, 0
     
 def get_stock_sector_for_df_symbol(symbol):
@@ -178,35 +187,37 @@ def preprocess_and_train(user_id, output_file_path, dataset_id, model_id):
         df['sell_month'] = df['ds'].dt.month
         df['sell_year'] = df['ds'].dt.year
         logging.info("Processed dates and confidence scores.")
-        df['sa_neu_close'], df['sa_pos_close'], df['sa_neg_close'] = 0, 0, 0
-        df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = 0, 0, 0
+        df['sa_neu_close'], df['sa_pos_close'], df['sa_neg_close'] = df['sa_neu_open'], df['sa_pos_open'], df['sa_neg_open']
+        df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open']
         df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
 
         # Drop unnecessary columns
+        df.drop(['id','pstring', 'spps', 'tsp', 'sstring', 
+                'result', 'user_id', 'processed', 
+                'proi'], axis=1, inplace=True)
+        
 
         # Combine with additional dataset
         finalized_dataset_data = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
+        logging.info("Unnecessary columns dropped.")
         if finalized_dataset_data:
             finalized_dataset_data = pickle.loads(finalized_dataset_data)
-            df = pd.concat([df, finalized_dataset_data], axis=0).drop_duplicates()
+            df_final = pd.concat([df, finalized_dataset_data], axis=0).drop_duplicates()
             logging.info("Combined with finalized dataset.")
 
-        drop_columns = ['id', 'pstring', 'spps', 'tsp', 'sstring', 'expected', 
-                        'result', 'user_id', 'processed', 'dp', 'confidence', 
-                        'ds', 'actual', 'proi']
-        df = df.drop(columns=drop_columns, errors='ignore')
-        logging.info("Unnecessary columns dropped.")
+        
+        
         # Encode categorical features and normalize data
         label_encoder = LabelEncoder()
-        df['symbol_encoded'] = label_encoder.fit_transform(df['symbol'])
-        df['sector_encoded'] = label_encoder.fit_transform(df['sector'])
-        symbol_backup = df['symbol']
-        sector_backup = df['sector']
-        df.drop(['symbol', 'sector'], axis=1, inplace=True)
+        df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
+        df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
+        symbol_backup = df_final['symbol']
+        sector_backup = df_final['sector']
+        df_final.drop(['dp', 'ds', 'symbol', 'sector', 'actual'], axis=1, inplace=True)
 
         # Now I need to split the train, test, prediction sets
-        X = df.drop('hit_tp1', axis=1)  # Features for entire dataset
-        y = df['hit_tp1']               # Target for entire dataset
+        X = df_final.drop('hit_tp1', axis=1)  # Features for entire dataset
+        y = df_final['hit_tp1']               # Target for entire dataset
 
         # Scaling features (if needed)
         scaler = MinMaxScaler()
@@ -230,14 +241,14 @@ def preprocess_and_train(user_id, output_file_path, dataset_id, model_id):
         predictions = prebuilt_model_bin.predict(X_unknown_scaled)
         probabilities = prebuilt_model_bin.predict_proba(X_unknown_scaled)[:, 1]  # Get probabilities for the positive class
         # Add predictions and probabilities to DataFrame
-        df.loc[unknown_indices, 'Prediction'] = predictions
-        df.loc[unknown_indices, 'Probability'] = probabilities
+        df_final.loc[unknown_indices, 'Prediction'] = predictions
+        df_final.loc[unknown_indices, 'Probability'] = probabilities
 
-        df['symbol'] = symbol_backup
-        df['sector'] = sector_backup
-        symbols = df['symbol'].tolist()
-        sectors = df['sector'].tolist()
-        confidence_scores = df['check5con'].tolist()
+        df_final['symbol'] = symbol_backup
+        df_final['sector'] = sector_backup
+        symbols = df_final['symbol'].tolist()
+        sectors = df_final['sector'].tolist()
+        confidence_scores = df_final['check5con'].tolist()
         trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)  # example threshold, set as needed
         confidence_threshold = trade_settings[5]
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
