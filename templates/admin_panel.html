@@ -1,21 +1,82 @@
-<!-- admin_panel.html -->
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>Admin Panel</h1>
-<p>{{ message }}</p>
+<div class="admin-panel">
+    <h1>Admin Panel</h1>
+    <p>{{ message }}</p>
 
-<!-- Button to view all users -->
-<a href="{{ url_for('admin_users') }}"><button>View All Users</button></a>
+    <div class="buttons">
+        <!-- Button to view all users -->
+        <a href="{{ url_for('admin_users') }}"><button class="btn">View All Users</button></a>
 
-<!-- Button to manage roles -->
-<a href="{{ url_for('assign_roles') }}"><button>Manage Roles</button></a>
+        <!-- Button to manage roles -->
+        <a href="{{ url_for('assign_roles') }}"><button class="btn">Manage Roles</button></a>
+    </div>
 
-<a href="{{ url_for('all_metrics_view') }}"><button>View Financial Metrics of all Users</button></a>
-
-<div> Total Profits: {{total_profit}} </div>
-<div> Total Losses: {{total_loss}}</div>
-<div> Total Number of Users: {{total_number_of_users}} </div>
-
-
+    <div class="stats">
+        <div class="stat-item">Total Profits: <span>${{ "{:,.2f}".format(total_profit) }}</span></div>
+        <div class="stat-item">Total Losses: <span>${{ "{:,.2f}".format(total_loss) }}</span></div>
+        <div class="stat-item">Total Number of Users: <span>{{ total_number_of_users }}</span></div>
+        <div class="stat-item">Total Users Investment Real Cash: <span>${{ "{:,.2f}".format(total_investment_cash) }}</span></div>
+        <div class="stat-item">Total Users Investment Practice: <span>${{ "{:,.2f}".format(total_investment_practice) }}</span></div>
+    </div>
+</div>
+<style>
+    .admin-panel {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .admin-panel h1 {
+        color: #333;
+        font-size: 24px;
+        text-align: center;
+    }
+    
+    .admin-panel p {
+        text-align: center;
+        color: #666;
+    }
+    
+    .buttons {
+        display: flex;
+        justify-content: space-around;
+        margin-top: 20px;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        background-color: #0056b3;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    
+    .btn:hover {
+        background-color: #004494;
+    }
+    
+    .stats {
+        margin-top: 30px;
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+    }
+    
+    .stat-item {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 10px;
+    }
+    
+    .stat-item span {
+        font-weight: bold;
+    }
+</style>    
 {% endblock %}
