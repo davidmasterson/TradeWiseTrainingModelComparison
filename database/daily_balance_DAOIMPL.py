@@ -109,3 +109,44 @@ def update_balance(balance_amount:float, id:int):
     finally:
         cur.close()
         conn.close()
+        
+def get_first_balance_for_all_users():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            SELECT user_id, MIN(date) AS first_date, balance
+            FROM daily_balances
+            GROUP BY user_id
+            '''
+    try:
+        cur.execute(sql)
+        first_balances = cur.fetchall()
+        return first_balances
+    except Exception as e:
+        logging.exception(f'{datetime.now()}: Unable to get first balances for all users: {e}')
+        return None
+    finally:
+        cur.close()
+        conn.close()
+        
+def get_first_balance_for_specific_endpoint(alpaca_endpoint:str):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''
+            SELECT db.user_id, MIN(db.date) AS first_date, db.closing_balance
+            FROM daily_balances db
+            JOIN users u ON db.user_id = u.id
+            WHERE u.alpaca_endpoint = %s
+            GROUP BY db.user_id
+            '''
+    vals = [alpaca_endpoint]
+    try:
+        cur.execute(sql, vals)
+        first_balances = cur.fetchall()
+        return first_balances
+    except Exception as e:
+        logging.exception(f'{datetime.now()}: Unable to get first balances for users with specific endpoint {alpaca_endpoint}: {e}')
+        return None
+    finally:
+        cur.close()
+        conn.close()
