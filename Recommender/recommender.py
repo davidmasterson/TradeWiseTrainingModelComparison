@@ -100,7 +100,7 @@ def get_model_recommendations_for_recommender(new_list,recommendations_script_id
         prog_text = progression_DAOIMPL.get_progression_text_by_user(user_id)
         if prog_text:
             progression_DAOIMPL.update_progression_text(f'''An error has occured, please contact support with the following info
-                                                        {user_id}, {datetime.now()}, {e}''', )
+                                                        {user_id}, {datetime.now()}, {e}''',user_id, prog_text[0] )
 
 
 
