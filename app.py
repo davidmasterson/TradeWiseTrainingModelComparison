@@ -482,68 +482,31 @@ def update_trade_settings():
 # -------------------------------------------------------ADMINISTRATION USER MANAGEMENT ----------------------------------------------------------------------
 @app.route('/admin_panel', methods = ['GET'])
 def admin_panel():
-    if not user_role.UserRole.check_if_admin():
+    user_id = user.User.get_id()
+    if not user_role.UserRole.check_if_admin(user_id):
         abort(403) #not authorized
     message = 'This is a protected admin-only area. Your actions are being logged.'
-    total_profit = metrics_DAOIMPL.get_all_profits_for_all_users()
-    total_loss = metrics_DAOIMPL.get_all_loss_for_all_users()
+    total_profit = round(metrics_DAOIMPL.get_all_profits_for_all_users(),2)
+    total_loss = round(metrics_DAOIMPL.get_all_loss_for_all_users(),2)
     total_number_of_users = user_DAOIMPL.get_total_number_of_users()
+    total_investment_cash = sum([round(float(bal[2]),2) for bal in daily_balance_DAOIMPL.get_first_balance_for_specific_endpoint('https://api.alpaca.markets')])
+    total_investment_practice = sum([round(float(bal[2]),2) for bal in daily_balance_DAOIMPL.get_first_balance_for_specific_endpoint('https://paper-api.alpaca.markets')])
     return render_template('admin_panel.html', message=message, total_profit=total_profit, total_loss=total_loss,
-                           total_number_of_users=total_number_of_users)
+                           total_number_of_users=total_number_of_users, total_investment_cash=total_investment_cash,
+                           total_investment_practice = total_investment_practice)
 
 @app.route('/admin/users', methods=['GET'])
 def admin_users():
     id = user.User.get_id()
-    if not user_role.UserRole.check_if_admin():
+    if not user_role.UserRole.check_if_admin(id):
         abort(403) #deny access
     users = roles_DAOIMPL.get_all_users_and_roles(id) #get all users from database
     return render_template('admin_users.html', users=users)
 
-@app.route('/admin/all_tester_user_metrics', methods = ['GET'])
-def all_metrics_view():
-    id = user.User.get_id()
-    if not user_role.UserRole.check_if_admin():
-        abort(403) #deny access
-    last_trained = model_metrics_history_DAOIMPL.get_last_trained_dates()
-    user_1_date =    last_trained[0][1]
-    ud1 = user_1_date.strftime('%B %d %Y')
-    user_2_date =    last_trained[1][1]
-    ud2 = user_2_date.strftime('%B %d %Y')
-    user_3_date = last_trained[2][1]
-    ud3 = user_3_date.strftime('%B %d %Y')
-    user_4_date = last_trained[3][1]
-    ud4 = user_4_date.strftime('%B %d %Y')
-    user_5_date = last_trained[4][1]
-    ud5 = user_5_date.strftime('%B %d %Y')
-    user_6_date = last_trained[5][1]
-    ud6 = user_6_date.strftime('%B %d %Y')
-    last_trained_dict = {
-        1 : ud1,
-        2 : ud2,
-        3 : ud3,
-        4 : ud4,
-        5 : ud5,
-        6 : ud6
-    }
-    user_trade_settings = {}
-    trade_settings = trade_settings_DAOIMPL.get_trade_settings_for_test_users()
-    for setting in trade_settings:
-        user_trade_settings[setting[1] ]= {       
-                'user_id': setting[1],
-                'min_price':setting[2],
-                'max_price':setting[3],
-                'risk_tolerance':setting[4],
-                'confidence_threshold':setting[5],
-                'min_total':setting[6],
-                'max_total':setting[7]
-            
-        }
-        
-    return render_template('all_tester_metrics.html', last_trained=last_trained_dict, user_trade_settings=user_trade_settings)   
-
 @app.route('/admin/assign_role', methods=['POST'])
 def assign_role():
-    if not user_role.UserRole.check_if_admin():
+    user_id = user.User.get_id()
+    if not user_role.UserRole.check_if_admin(user_id):
         abort(403) # deny access
     user_id = request.form['user_id']
     new_role = request.form['role']
@@ -554,6 +517,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash
 
 @app.route('/edit_user/<int:user_id>', methods=['GET', 'POST'])
 def edit_user(user_id):
+    if not user_role.UserRole.check_if_admin(user_id):
+        abort(403)
     if request.method == 'POST':
         # Handle the form submission
         first = request.form['first']
@@ -604,6 +569,8 @@ def delete_user():
 @app.route('/admin/assign_roles', methods=['GET', 'POST'])
 def assign_roles():
     requestor_id = user.User.get_id()
+    if not user_role.UserRole.check_if_admin(requestor_id):
+        abort(403)
     if request.method == 'POST':
         user_ids = request.form.getlist('user_ids[]')  # Gets list of user IDs
         roles = request.form.getlist('roles[]')
@@ -617,12 +584,12 @@ def assign_roles():
                 flash(f'Unable to update role to {role} for user {user_id}', 'error')              
         return redirect(url_for('assign_roles'))
         
-
     users = roles_DAOIMPL.get_all_users_and_roles(requestor_id)
     roles = roles_DAOIMPL.get_all_roles(requestor_id)
     if roles:
         print(roles)
     return render_template('assign_roles.html', users=users, roles=roles)
+   
 
 def update_user_role(user_id, role):
     try:
@@ -715,7 +682,6 @@ def upload_models():
                 dataset = int(dataset)
                 tscript = int(tscript)
             
-            transaction_id = transaction.transaction.create_a_base_no_loss_or_gain_transaction(user_id)
             # Save model without binary model to database.
             new_model = model.Model(model_name, model_description, model_data = None, user_id=user_id, selected=0)
             model_id = models_DAOIMPL.insert_model_into_models_for_user(new_model)
