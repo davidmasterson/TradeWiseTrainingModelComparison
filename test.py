@@ -51,13 +51,13 @@ import pickle
 # from datetime import datetime
 # from datetime import date
 # '''------------- Change these parameters only---------------'''
-# symbol = 'FRSH'
-# qty = 64
-# ppps = 15.40
+# symbol = 'QXO'
+# qty = 66
+# ppps = 15.14
 # total_buy = ppps * qty
 # user_id = 2
 # '''--------------------------------------------------------------'''
-# dp = date(2024,12,19)
+# dp = date(2024,12,23)
 # pstring = f'{datetime.now()}-{symbol}-{dp}-{ppps}-{qty}-{total_buy}'
 # ds = None
 # spps = None
@@ -74,17 +74,17 @@ import pickle
 
 # '''Close out a transaction that was not closed automatically by the system'''
 # from datetime import datetime, date
-# symbol = 'BASE'
+# symbol = 'SOFI'
 # user_id = 2
-# transaction_id = 341
-# filled_avg_price = 15.29
-# filled_qty = 19
-# total_purchase = 294.05
-# client_order_id = '2024-12-18 19:14:41.699776-BASE-2024-12-18-15.48-19-294.12'
-# purchase_string = '2024-12-18 19:14:41.699776-BASE-2024-12-18-15.48-19-294.12'
+# transaction_id = 346
+# filled_avg_price = 15.73
+# filled_qty = 65
+# total_purchase = 992.55
+# client_order_id = '2024-12-19 12:24:15.109016-SOFI-2024-12-18-15.27-65-992.55'
+# purchase_string = '2024-12-19 12:24:15.109016-SOFI-2024-12-18-15.27-65-992.55'
 # pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
 # pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# ds = date(2024,12,19)
+# ds = date(2024,12,23)
 
 # # ----------------------------------------------
 # tsp = filled_qty * filled_avg_price
@@ -103,10 +103,8 @@ import pickle
 # sstring = f"{client_order_id}~sell({datetime.now()})"
 # logging.info({sstring})
 # logging.info({transaction_id})
-# pol_neu_close, pol_pos_close, pol_neg_close = MachineLearningModels.manual_alg_requisition_script.process_daily_political_sentiment()
-
-# info = MachineLearningModels.manual_alg_requisition_script.request_articles(symbol)
-# sa_neu_close, sa_pos_close, sa_neg_close = MachineLearningModels.manual_alg_requisition_script.process_phrase_for_sentiment(info)
+# pol_neu_close, pol_pos_close, pol_neg_close = 0,0,0
+# sa_neu_close, sa_pos_close, sa_neg_close = 0,0,0
 
 # values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]
 # logging.info(f' Updating transaction Symbol:{symbol} Transaction ID:{transaction_id}')
@@ -615,3 +613,8 @@ import pickle
 
 
 
+# ppobj = preprocessing_scripts_DAOIMPL.get_preprocessed_script_object_by_script_id(26)
+# ppobjectbin = ppobj[6]
+
+# ppobject = pickle.loads(ppobjectbin)
+# print(ppobject['columns'])
