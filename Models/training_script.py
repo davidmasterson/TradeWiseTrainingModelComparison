@@ -52,6 +52,7 @@ class TrainingScript:
                 columns = output['columns']    
             except Exception as e:
                 print(f"Error deserializing output: {e}")
+                pass
             try:
                  # Retrieve predictions
                 y_pred = output['y_pred']
