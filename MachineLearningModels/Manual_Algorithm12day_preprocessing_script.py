@@ -72,16 +72,7 @@ def calculate_third_check(symbol):
     except:
         return 0
     
-def calculate_sentiment(symbol):
-    try:
-        info = manual_alg_requisition_script.request_articles(symbol)
-        avg_neu, avg_pos, avg_neg = manual_alg_requisition_script.process_phrase_for_sentiment(info)
-        logging.info(f'Sentiment is {avg_neu, avg_pos, avg_neg}')
-        
-        return avg_neu, avg_pos, avg_neg  
-    except Exception as e:
-        logging.error(f'Error calculating sentiment: {e}')
-        return 0, 0, 0
+
 
 def calculate_historical_sentiment(symbol, date_requirement):
     from datetime import datetime
@@ -89,7 +80,8 @@ def calculate_historical_sentiment(symbol, date_requirement):
     import json
     article_texts = []
     try:
-        # date_object = datetime.strptime(date_requirement, '%Y-%m-%d').date()
+        if not isinstance(date_requirement, datetime):
+            date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
         
         response_text = scraper.search(date_requirement,symbol,user_id)
         response_json = json.loads(response_text)
@@ -109,15 +101,24 @@ def calculate_historical_sentiment(symbol, date_requirement):
 def calculate_historical_political_climate(date_requirement):
     from Selenium import selenium_file
     from datetime import datetime
-    # date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
+
+    # Ensure date_requirement is a datetime object (if it's not already)
+    if not isinstance(date_requirement, datetime):
+        try:
+            date_requirement = datetime.strptime(date_requirement, '%Y-%m-%d')
+        except:
+            date_requirement = str(date_requirement)
+    
+    # Get sentiment scores using Selenium
     selenium_return = selenium_file.get_historical_political_sentiment_scores(date_requirement)
+    
     try:
-        if selenium_return:
-            pol_neu, pol_pos, pol_neg = selenium_return[0][0], selenium_return[0][1], selenium_return[0][2]
-    except:
-        pol_neu, pol_pos, pol_neg = selenium_return[0], selenium_return[1], selenium_return[2]
+        # Assuming selenium_return is a tuple like (pol_neu, pol_pos, pol_neg) in a list
+        pol_neu, pol_pos, pol_neg = selenium_return[0]
         return pol_neu, pol_pos, pol_neg
-    else:
+    except Exception as e:
+        # Log or handle the error appropriately
+        print(f"Error processing sentiment scores: {e}")
         return 0, 0, 0
        
 def parallel_apply_single_arg(symbols, func, max_workers=20):
@@ -141,14 +142,35 @@ def parallel_apply_multiple_args(args_list, func, max_workers=20):
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         return list(executor.map(lambda args: func(*args), zip(*args_list)))
 
+
+
+
 '''------------------------------------------------------------------------------------------------------------------------------'''    
-def preprocess_first_dataframe_with_unprocessed(user_id, required_models):
+
+def handle_transaction_status(transaction_id, user_id, model_name, required_models):
+    try:
+        transaction_model_status_DAOIMPL.mark_transaction_processed(transaction_id, model_name, user_id)
+    except Exception as e:
+        logging.error(f"Error marking transaction {transaction_id} as processed: {e}")
+    if transaction_model_status_DAOIMPL.check_all_models_processed(transaction_id, user_id, required_models):
+        transactions_DAOIMPL.update_processed_status_after_training(transaction_id, user_id)
+        logging.info(f"Transaction {transaction_id} fully processed.")
+    else:
+        logging.info(f"Transaction {transaction_id} pending for other models.")
+
+
+
+''' ------------------------------------------------Process discovery of unprocessed transactions -----------------------------------'''
+def preprocess_first_dataframe_with_unprocessed(user_id, required_models, model_name):
     try:
         # Fetch and create DataFrame
         
         try:
             required_models = [mod[0] for mod in models_DAOIMPL.get_selected_model_names_for_user(user_id)]
-            transactions = transaction_model_status_DAOIMPL.get_transactions_needing_processing(user_id, required_models)
+            # Get unprocessed transaction for current user
+            transactions = transaction_model_status_DAOIMPL.reselect_model_actions(model_name, user_id)
+            
+            
         except Exception as e:
             logging.error(f"Error fetching transactions for user {user_id}: {e}")
             return None
@@ -167,36 +189,33 @@ def preprocess_first_dataframe_with_unprocessed(user_id, required_models):
     except Exception as e:
         logging.error(f"Error in first dataset preprocessing: {e}")
         return None
+''' ------------------------------------------------------------End processing of unprocessed transactions ------------------------------'''
 
-def handle_transaction_status(transaction_id, user_id, model_name, required_models):
-    try:
-        transaction_model_status_DAOIMPL.mark_transaction_processed(transaction_id, model_name, user_id)
-    except Exception as e:
-        logging.error(f"Error marking transaction {transaction_id} as processed: {e}")
-    if transaction_model_status_DAOIMPL.check_all_models_processed(transaction_id, user_id, required_models):
-        transactions_DAOIMPL.update_processed_status_after_training(transaction_id, user_id)
-        logging.info(f"Transaction {transaction_id} fully processed.")
-    else:
-        logging.info(f"Transaction {transaction_id} pending for other models.")
+
+
 # Main preprocessing function
 def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_id, model_name):
     
+    # Convert int parmeters 
     user_id = int(user_id)
     dataset_id = int(dataset_id)
     script_id = int(script_id)
+    
     if not model_name:
         logging.error("Model name is required but not provided.")
         return None
+    # Get a list of all models required to process the transactions if any are unprocessed
     required_models = models_DAOIMPL.get_selected_model_names_for_user(user_id)
+    
+    ''' --------------------------------------- Collect any unprocessed transactions from database and convert to dataframe -------------------------'''
     try:
-        df1 = preprocess_first_dataframe_with_unprocessed(user_id, required_models) 
+        df1 = preprocess_first_dataframe_with_unprocessed(user_id, required_models, model_name) 
         if df1 is not None:
             df = df1[0] 
             transactions = df1[1]
+            '''-------------------------------------------------End transaction processing -------------------------------------------------------'''
         
-        
-            
-            # Parallel processing for technical indicators
+            ''' ---------------------------------------Calculations of Manual Algorithm Checks ------------------------------------------------------'''
             logging.info("Starting parallel processing for check1sl.")
             df['check1sl'] = parallel_apply_single_arg(df['symbol'], calculate_first_check)
             logging.info("Starting parallel processing for check2rev.")
@@ -204,17 +223,23 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
             logging.info("Starting parallel processing for check3fib.")
             df['check3fib'] = parallel_apply_single_arg(df['symbol'], calculate_third_check)
             logging.info("Calculated slopes, reversals, and fibs.")
-            # Calculate final confidence score
-            logging.info("Calculated confidence scores.")
-            df = df.dropna()
-            df[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
-            
-            df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = zip(*df['dp'].apply(calculate_historical_political_climate))
             df['check5con'] = df[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
+            ''' -----------------------------------------End Calculation of Manual Algorithm Checks ---------------------------------------------------'''
             
-            df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = zip(*df['ds'].apply(calculate_historical_political_climate))
+            # Drop rows containing NAN values
+            df = df.dropna()
+            
+            ''' ----------------------------------------------Sentiment Analysis based on DP and SA based on DS ---------------------------------------'''
+            df[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
+            pol_neu_open, pol_pos_open, pol_neg_open = calculate_historical_political_climate(df.loc[0, 'dp'])
+            df['pol_neu_open'], df['pol_pos_open'], df['pol_neg_open'] = pol_neu_open, pol_pos_open, pol_neg_open
             df[['sa_neu_close', 'sa_pos_close', 'sa_neg_close']] = df.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['ds'])), axis=1)
-            # Date-based feature engineering
+            pol_neu_close, pol_pos_close, pol_neg_close = calculate_historical_political_climate(df.loc[0, 'ds'])
+            df['pol_neu_close'], df['pol_pos_close'], df['pol_neg_close'] = pol_neu_close, pol_pos_close, pol_neg_close
+            ''' --------------------------------------------------------End Political Climate based on DS ----------------------------------------------'''
+            logging.info("Calculated confidence scores.")
+            
+            ''' ------------------------------------------------------Create date month, day year catagories -------------------------------------------'''
             df['dp'] = pd.to_datetime(df['dp'])
             df['purchase_day'] = df['dp'].dt.day
             df['purchase_month'] = df['dp'].dt.month
@@ -224,58 +249,57 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
             df['sell_month'] = df['ds'].dt.month
             df['sell_year'] = df['ds'].dt.year
             logging.info("Performed date-based feature engineering.")
+            ''' ------------------------------------------------------end Create date month, day, year catagories -------------------------------------'''
             
             # Add target column
             df['hit_tp1'] = df.apply(calculate_target, axis=1)
             # Drop unnecessary columns
             drop_columns = [
                 'id', 'pstring', 'spps', 'tsp', 'sstring', 'expected', 
-                'result', 'user_id', 'processed', 'dp', 'confidence', 
-                'ds', 'actual', 'proi'
+                'result', 'user_id', 'processed', 'confidence', 
+                'proi'
             ]
             df = df.drop(columns=drop_columns, errors='ignore')
             logging.info(f"Dropped unnecessary columns: {drop_columns}.")
-            # Combine Datasets Now
+            
+            ''' --------------------------------------Combine new transactions DataFrame with Stored DataFrame Blob from Database ---------------------'''
             old_ds = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
             if old_ds:
                 old_df = pickle.loads(old_ds)
             else:
                 old_df = pd.DataFrame()
             df_final = pd.concat([df, old_df], ignore_index=True)
+            ''' -------------------------------------------------End Cobmining of DataFrames ----------------------------------------------------------'''
             
-            
-            
+            # Remove column ^Unnamed if found in dataframe combination
             df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
-
-            
-            
             # Encoding categorical features
             label_encoder = LabelEncoder()
             df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
             df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
-            
-            new_dataset = df_final.copy()
-            
-            df_final.drop(['sector', 'symbol'], axis=1, inplace=True)
             logging.info("Encoded categorical features.")
-
+            
+            
+            ''' -------*********Create a copy of the dataset to store that still contains the columns (sector, symbol, ds, dp, and actual)********** -------'''
+            new_dataset = df_final.copy()
+            ''' ----------------------------------------------------End Create Copy for storage ------------------------------------------------------------'''
+            
+            # Drop columns not needed for calculating preprocessed data parameters
+            df_final.drop(['sector', 'symbol', 'ds', 'dp', 'actual'], axis=1, inplace=True)
             # Splitting features and target
             X = df_final.drop(['hit_tp1'], axis=1)  # All features for scaling
             y = df_final['hit_tp1']  # Target variable
-
             # Train-test split for modeling
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
             # Ensure feature names are consistent during scaling
             scaler = MinMaxScaler(feature_range=(0, 1))
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
-
             # Convert scaled data back to DataFrame to preserve column names
             X_train_df = pd.DataFrame(X_train_scaled, columns=X.columns)
             X_test_df = pd.DataFrame(X_test_scaled, columns=X.columns)
 
-            # Package preprocessed data
+            ''' ------------------------------------------- Create Preprocessed data object and output data object ---------------------------------------'''
             preprocessed_data = {
                 'X_train': X_train_df,          # Scaled training data as DataFrame
                 'X_test': X_test_df,            # Scaled testing data as DataFrame
@@ -285,21 +309,23 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 'structure': 'train_test_split', # Metadata for structure description
                 'columns' : X_train_df.columns.to_list()  # Ouput the column names for feature importance call.
             }
-
             logging.info("Preprocessing complete. Packaged data for modeling.")
-
-            
+            # Create an output object that will be writtend to output path and retrieved after closing out of the subprocess
             output_data = {
                 "preprocessing_object": preprocessed_data,
                 "dataset": new_dataset
             }   
-# ------------------------------------OUTPUT = Dict{ Dict, Dataframe} to standard out--------------------------------------
-            
-            
-            
+
+            ''' ------------------------- Handle transactions that were output from the intial call of getting new unprocessed transactions -------------'''
             for transaction in transactions:
                 handle_transaction_status(transaction[0], user_id, model_name, required_models)
-            # Serialize the combined object using pickle
+            ''' ------------------------------------------------- Finish handling of transaction modifications ------------------------------------------'''
+            
+            ''' -------------------------------------------1. Use pickle to serialize the output data object containing -----------------------------------
+                                                              the preprocessed data object and the dataset object. 
+                                                           2. Write the pickle serialized output data binary  to 
+                                                              the output data path which is a temporary location path
+            '''
             try:
                 output_data_bin = pickle.dumps(output_data)
                 
@@ -307,54 +333,56 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                     bin_writer.write(output_data_bin)
             except IOError as e:
                 print(f"Error writing to file: {e}")
+            ''' ----------------------------------------------------End Serialization of Output Data object ---------------------------------------------'''
+        
+        
+        # ------------------------------------------------------ Alternate option when no new transactions exist -----------------------------------------
         else:
+            
             old_ds = dataset_DAOIMPL.get_dataset_data_by_id(dataset_id)
-            if old_ds:
-                old_df = pickle.loads(old_ds)
-            else:
-                old_df = pd.DataFrame()
-                
+            if not old_ds:
+                return
+            old_df = pickle.loads(old_ds)  
             df_final = old_df
+            from sector_finder import get_stock_sector
+            # Temporarily getting sentiment for pol open, sa open, pol close, and sa close.
+            # Drop rows containing NAN values
             
-            df_final[['sa_neu_open', 'sa_pos_open', 'sa_neg_open']] = df_final.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['dp'])), axis=1)
             
-            df_final['pol_neu_open'], df_final['pol_pos_open'], df_final['pol_neg_open'] = zip(*df_final['dp'].apply(calculate_historical_political_climate))
-            df_final['check5con'] = df_final[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
             
-            df_final['pol_neu_close'], df_final['pol_pos_close'], df_final['pol_neg_close'] = zip(*df_final['ds'].apply(calculate_historical_political_climate))
-            df_final[['sa_neu_close', 'sa_pos_close', 'sa_neg_close']] = df_final.apply(lambda row: pd.Series(calculate_historical_sentiment(row['symbol'], row['ds'])), axis=1)
-            # Date-based feature engineering
             
-            df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
-
-            
+            # '''--------------------------------TEMPORARY --------------------------------------------------------------------'''
+            # df_final['check1sl'] = parallel_apply_single_arg(df_final['symbol'], calculate_first_check)
+            # df_final['check2rev'] = parallel_apply_single_arg(df_final['symbol'], calculate_second_check)
+            # df_final['check3fib'] = parallel_apply_single_arg(df_final['symbol'], calculate_third_check)
+            # df_final['check5con'] = df_final[['check1sl', 'check2rev', 'check3fib']].sum(axis=1)
+            # df_final.drop(['id'], axis=1, inplace=True)
+            # try:
+            #     df_final = df_final.loc[:, ~df_final.columns.str.contains('^Unnamed')]
+            # except:
+            #     pass
+            # ''' -------------------------------------------------------------------------------------------------------------'''
             
             # Encoding categorical features
             label_encoder = LabelEncoder()
             df_final['symbol_encoded'] = label_encoder.fit_transform(df_final['symbol'])
             df_final['sector_encoded'] = label_encoder.fit_transform(df_final['sector'])
-            
+            # df_final.to_csv('Ithinkthisisthefinalone.csv')
             new_dataset = df_final.copy()
-            
-            df_final.drop(['sector', 'symbol', 'dp', 'ds', 'Momentum', 'RSI', 'SMA', 'EMA', 'actual'], axis=1, inplace=True)
+            df_final.drop(['sector', 'symbol', 'dp', 'ds', 'actual'], axis=1, inplace=True)
             logging.info("Encoded categorical features.")
-
             # Splitting features and target
             X = df_final.drop(['hit_tp1'], axis=1)  # All features for scaling
             y = df_final['hit_tp1']  # Target variable
-
             # Train-test split for modeling
             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
             # Ensure feature names are consistent during scaling
             scaler = MinMaxScaler(feature_range=(0, 1))
             X_train_scaled = scaler.fit_transform(X_train)
             X_test_scaled = scaler.transform(X_test)
-
             # Convert scaled data back to DataFrame to preserve column names
             X_train_df = pd.DataFrame(X_train_scaled, columns=X.columns)
             X_test_df = pd.DataFrame(X_test_scaled, columns=X.columns)
-
             # Package preprocessed data
             preprocessed_data = {
                 'X_train': X_train_df,          # Scaled training data as DataFrame
@@ -365,16 +393,11 @@ def preprocess_data(output_path, dataset_id, user_id, output_data_path, script_i
                 'structure': 'train_test_split', # Metadata for structure description
                 'columns' : X_train_df.columns.to_list()  # Ouput the column names for feature importance call.
             }
-
             logging.info("Preprocessing complete. Packaged data for modeling.")
-
-            
             output_data = {
                 "preprocessing_object": preprocessed_data,
                 "dataset": new_dataset
             }   
-# ------------------------------------OUTPUT = Dict{ Dict, Dataframe} to standard out--------------------------------------
-            
             # Serialize the combined object using pickle
             try:
                 output_data_bin = pickle.dumps(output_data)
