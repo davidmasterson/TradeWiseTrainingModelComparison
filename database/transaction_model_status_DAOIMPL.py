@@ -1,5 +1,6 @@
 from database import database_connection_utility as dcu
 import logging
+from database import transactions_DAOIMPL
 
 
 # CREATE TABLE transaction_model_status (
@@ -46,12 +47,17 @@ def check_all_models_processed(transaction_id, user_id, required_models):
 
         # Map results to a dictionary for easy lookup
         processed_models = {row[0]: row[1] for row in results}
+        print(f"Processed Models: {processed_models}")
 
         # Check if all required models have processed
         for model in required_models:
+            model = model[0]
+            print(f"Checking model: {model}")
             if processed_models.get(model) != 1:  # Model not processed or missing
+                print(f"Model {model} not processed or missing.")
                 return False
 
+        print("All required models are processed.")
         return True
     except Exception as e:
         logging.error(f"Unable to check if all models {required_models} have processed "
@@ -68,7 +74,7 @@ def check_all_models_processed(transaction_id, user_id, required_models):
         except Exception as e:
             logging.warning(f"Error closing connection: {e}")
 
-def mark_transaction_processed(transaction_id, model_name, user_id):
+def mark_transaction_processed(transaction_id:int, model_name:str, user_id:int) -> None:
     """
     Mark a transaction as processed by a specific model for a given user.
 
@@ -252,6 +258,7 @@ def reselect_model_actions(model_name, user_id):
 
         conn.commit()
         print(f"Successfully updated transaction_model_status for model '{model_name}'.")
+        return transactions_DAOIMPL.get_all_closed_unprocessed_transactions_for_user(user_id)
     except Exception as e:
         print(f"Error reselecting model: {e}")
     finally:
