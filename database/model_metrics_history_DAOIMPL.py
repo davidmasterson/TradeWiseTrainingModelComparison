@@ -134,7 +134,7 @@ def get_most_recent_mmh_for_model(model_id):
                 LIMIT 1'''
     vals = [model_id]
     try:
-        cur.execute(sql)
+        cur.execute(sql, vals)
         results = cur.fetchone()
         if results:
             return results[0]
