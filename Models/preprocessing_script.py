@@ -173,7 +173,7 @@ class Preprocessing_Script:
         env["PYTHONPATH"] = f"{project_root}:{env.get('PYTHONPATH', '')}"
         # Run preprocessing subprocess to output the preprocessed data
         result = subprocess.run(['/home/ubuntu/miniconda3/envs/tf-env/bin/python3.9', 
-                                 '/home/ubuntu/TradeWiseTrainingModelComparison/MachineLearningModels/MARecommender.py', 
+                                 tempfile_path1, 
                                  str(dataset_id), 
                                  str(user_id), model_name,str(preprocessing_script_id)], 
                                 capture_output=True,
