@@ -15,9 +15,9 @@ from datetime import date, timedelta, datetime
 
 def search(date_requirement, symbol, user_id):
     import requests
-    start = datetime.strptime(date_requirement.strftime("%Y-%m-%d"), "%Y-%M-%d") - timedelta(days=3) 
-    start = start.strftime("%Y-%M-%d")
-    end = date_requirement
+    start = datetime.strptime(date_requirement.strftime("%Y-%m-%d"), "%Y-%m-%d") - timedelta(days=3) 
+    start = start.strftime("%Y-%m-%d")
+    end = date_requirement.strftime("%Y-%m-%d")
     
     url = f"https://data.alpaca.markets/v1beta1/news?start={start}&end={end}&sort=desc&symbols={symbol}&limit=10"
     user = user_DAOIMPL.get_user_by_user_id(user_id)
