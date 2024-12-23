@@ -8,8 +8,7 @@ class UserRole:
         self.role_id = role_id
         
         
-    def check_if_admin(self):
-        user_id = self.user_id
+    def check_if_admin(user_id):
         user_role = roles_DAOIMPL.get_user_role_by_user_id(user_id)
         if user_role == 'admin':
             return True
