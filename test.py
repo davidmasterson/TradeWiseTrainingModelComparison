@@ -73,43 +73,43 @@ import pickle
 
 
 # '''Close out a transaction that was not closed automatically by the system'''
-# from datetime import datetime, date
-# symbol = 'SOFI'
-# user_id = 2
-# transaction_id = 346
-# filled_avg_price = 15.73
-# filled_qty = 65
-# total_purchase = 992.55
-# client_order_id = '2024-12-19 12:24:15.109016-SOFI-2024-12-18-15.27-65-992.55'
-# purchase_string = '2024-12-19 12:24:15.109016-SOFI-2024-12-18-15.27-65-992.55'
-# pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
-# pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
-# ds = date(2024,12,23)
+from datetime import datetime, date
+symbol = 'QXO'
+user_id = 2
+transaction_id = 389
+filled_avg_price = 15.63
+filled_qty = 66
+total_purchase = 999.24
+client_order_id = '2024-12-23 13:41:57.148889-QXO-2024-12-23-15.14-66-999.24'
+purchase_string = '2024-12-23 13:41:57.148889-QXO-2024-12-23-15.14-66-999.24'
+pending_orders_DAOIMPL.insert_pending_order(client_order_id, user_id, 'sell', purchase_string)
+pending_order = pending_orders_DAOIMPL.get_pending_sell_orders_by_user_id_and_client_order_id(user_id, client_order_id)
+ds = date(2024,12,24)
 
-# # ----------------------------------------------
-# tsp = filled_qty * filled_avg_price
-# logging.info({ds})
-# spps = filled_avg_price
-# logging.info({filled_avg_price})
-# tsp = filled_avg_price * filled_qty
-# logging.info({tsp})
-# logging.info({total_purchase})
-# actual = tsp - total_purchase
-# logging.info({actual})
-# proi = round(actual / total_purchase, 2)
-# logging.info({proi})
-# result = 'loss' if actual <= 0 else 'profit'
-# logging.info({result})
-# sstring = f"{client_order_id}~sell({datetime.now()})"
-# logging.info({sstring})
-# logging.info({transaction_id})
-# pol_neu_close, pol_pos_close, pol_neg_close = 0,0,0
-# sa_neu_close, sa_pos_close, sa_neg_close = 0,0,0
+# ----------------------------------------------
+tsp = filled_qty * filled_avg_price
+logging.info({ds})
+spps = filled_avg_price
+logging.info({filled_avg_price})
+tsp = filled_avg_price * filled_qty
+logging.info({tsp})
+logging.info({total_purchase})
+actual = tsp - total_purchase
+logging.info({actual})
+proi = round(actual / total_purchase, 2)
+logging.info({proi})
+result = 'loss' if actual <= 0 else 'profit'
+logging.info({result})
+sstring = f"{client_order_id}~sell({datetime.now()})"
+logging.info({sstring})
+logging.info({transaction_id})
+pol_neu_close, pol_pos_close, pol_neg_close = 0,0,0
+sa_neu_close, sa_pos_close, sa_neg_close = 0,0,0
 
-# values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]
-# logging.info(f' Updating transaction Symbol:{symbol} Transaction ID:{transaction_id}')
-# transactions_DAOIMPL.update_transaction(transaction_id, values)
-# pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0], pending_order[3], pending_order[2])
+values = [ds, spps, tsp, sstring, proi, actual, result,pol_neu_close,pol_pos_close,pol_neg_close,sa_neu_close,sa_pos_close,sa_neg_close ]
+logging.info(f' Updating transaction Symbol:{symbol} Transaction ID:{transaction_id}')
+transactions_DAOIMPL.update_transaction(transaction_id, values)
+pending_orders_DAOIMPL.delete_pending_order_after_fill(pending_order[0], pending_order[3], pending_order[2])
 
 
 
@@ -618,3 +618,5 @@ import pickle
 
 # ppobject = pickle.loads(ppobjectbin)
 # print(ppobject['columns'])
+
+
