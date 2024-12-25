@@ -30,6 +30,7 @@ import cProfile
 from collections import defaultdict
 from HistoricalFetcherAndScraper import scraper
 import time
+from YahooFinance import yahoo_finance_api_methods
 
 
 app = Flask(__name__)
@@ -394,11 +395,39 @@ def user_profile():
                 })
                 
         
+        balances = daily_balance_DAOIMPL.get_daily_balances_for_user(user_id)
+        if balances:
+            s_p_index_values = []
+            vanguard_index_values = []
+            dates = [x[1] for x in balances]
+            daily_balances = [x[2] for x in balances]
+            for i in dates:
+                s_p_index_values.append(yahoo_finance_api_methods.get_s_and_p_value_on_specific_date(i))
+                vanguard_index_values.append(yahoo_finance_api_methods.get_vanguard_value_on_specific_date(i))
+            
+            # function to normalize for overlay
+            def normalize_values(base, start_value, end_value):
+                return round((end_value/start_value) * base, 2) 
+            my_norm = []
+            sp_norm = []
+            vang_norm = []
+            dates = [x.strftime("%Y-%m-%d") for x in dates]
+            # get normalized values for indexes and my balance values
+            for x in range(0,len(daily_balances)):
+                my_norm.append(normalize_values(100,daily_balances[0], daily_balances[x]))
+                sp_norm.append(normalize_values(100, s_p_index_values[0], s_p_index_values[x]))
+                vang_norm.append(normalize_values(100, vanguard_index_values[0], vanguard_index_values[x]))
+        else:
+            dates, my_norm, sp_norm, vang_norm = None, None, None, None
         equity = float(account.equity)
         cash = float(account.cash)
+        sp_value_now = yahoo_finance_api_methods.get_open_and_close_for_s_and_p_value_now()
+        nyse_value_now = yahoo_finance_api_methods.get_open_and_close_for_NYSE_value_now()
+        nasdaq_value_now = yahoo_finance_api_methods.get_open_and_close_for_NASDAQ_value_now()
         print([close['yesterdays_close'] for close in positions_list], [close['pricepershare'] for close in positions_list])
-        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=total_profit,
-                               open_pos = positions_list)
+        return render_template('user_profile_page.html', last_5=last_5, user=user, equity=equity, cash=cash, profit_loss=round(total_profit,2),
+                               open_pos = positions_list, sp_value_now=sp_value_now, nyse_value_now=nyse_value_now,nasdaq_value_now=nasdaq_value_now,
+                               dates=dates, sp_norm=sp_norm, vang_norm=vang_norm,my_norm=my_norm)
     return redirect(url_for('home'))  # Redirect to homepage if not logged in
 
 @app.route('/sell_position', methods=['POST'])
@@ -754,42 +783,42 @@ def delete_model():
 
 # ------------------------------------------------------------END MODEL --------------------------------------------------------------------------
 
-@app.route('/index_comparisons', methods=['GET'])
-def index_comparisons():
-    from YahooFinance import yahoo_finance_api_methods
-    if user.User.check_logged_in():
-        user_id = user.User.get_id()
-        balances = daily_balance_DAOIMPL.get_daily_balances_for_user(user_id)
-        if balances:
-            s_p_index_values = []
-            vanguard_index_values = []
-            dates = [x[1] for x in balances]
-            daily_balances = [x[2] for x in balances]
-            for i in dates:
-                s_p_index_values.append(yahoo_finance_api_methods.get_s_and_p_value_on_specific_date(i))
-                vanguard_index_values.append(yahoo_finance_api_methods.get_vanguard_value_on_specific_date(i))
+# @app.route('/index_comparisons', methods=['GET'])
+# def index_comparisons():
+#     from YahooFinance import yahoo_finance_api_methods
+#     if user.User.check_logged_in():
+#         user_id = user.User.get_id()
+#         balances = daily_balance_DAOIMPL.get_daily_balances_for_user(user_id)
+#         if balances:
+#             s_p_index_values = []
+#             vanguard_index_values = []
+#             dates = [x[1] for x in balances]
+#             daily_balances = [x[2] for x in balances]
+#             for i in dates:
+#                 s_p_index_values.append(yahoo_finance_api_methods.get_s_and_p_value_on_specific_date(i))
+#                 vanguard_index_values.append(yahoo_finance_api_methods.get_vanguard_value_on_specific_date(i))
             
-            # function to normalize for overlay
-            def normalize_values(base, start_value, end_value):
-                return round((end_value/start_value) * base, 2) 
-            my_norm = []
-            sp_norm = []
-            vang_norm = []
-            dates = [x.strftime("%Y-%m-%d") for x in dates]
-            # get normalized values for indexes and my balance values
-            for x in range(0,len(daily_balances)):
-                my_norm.append(normalize_values(100,daily_balances[0], daily_balances[x]))
-                sp_norm.append(normalize_values(100, s_p_index_values[0], s_p_index_values[x]))
-                vang_norm.append(normalize_values(100, vanguard_index_values[0], vanguard_index_values[x]))
-        else:
-            dates, my_norm, sp_norm, vang_norm = None, None, None, None
-        sp_value_now = yahoo_finance_api_methods.get_open_and_close_for_s_and_p_value_now()
-        nyse_value_now = yahoo_finance_api_methods.get_open_and_close_for_NYSE_value_now()
-        nasdaq_value_now = yahoo_finance_api_methods.get_open_and_close_for_NASDAQ_value_now()
-        return render_template('index_comparisons.html', my_norm=my_norm, dates=dates, sp_norm=sp_norm, 
-                               vang_norm=vang_norm,sp_value_now=sp_value_now, 
-                               nyse_value_now=nyse_value_now,nasdaq_value_now=nasdaq_value_now)
-    return redirect(url_for('home'))
+#             # function to normalize for overlay
+#             def normalize_values(base, start_value, end_value):
+#                 return round((end_value/start_value) * base, 2) 
+#             my_norm = []
+#             sp_norm = []
+#             vang_norm = []
+#             dates = [x.strftime("%Y-%m-%d") for x in dates]
+#             # get normalized values for indexes and my balance values
+#             for x in range(0,len(daily_balances)):
+#                 my_norm.append(normalize_values(100,daily_balances[0], daily_balances[x]))
+#                 sp_norm.append(normalize_values(100, s_p_index_values[0], s_p_index_values[x]))
+#                 vang_norm.append(normalize_values(100, vanguard_index_values[0], vanguard_index_values[x]))
+#         else:
+#             dates, my_norm, sp_norm, vang_norm = None, None, None, None
+#         sp_value_now = yahoo_finance_api_methods.get_open_and_close_for_s_and_p_value_now()
+#         nyse_value_now = yahoo_finance_api_methods.get_open_and_close_for_NYSE_value_now()
+#         nasdaq_value_now = yahoo_finance_api_methods.get_open_and_close_for_NASDAQ_value_now()
+#         return render_template('index_comparisons.html', my_norm=my_norm, dates=dates, sp_norm=sp_norm, 
+#                                vang_norm=vang_norm,sp_value_now=sp_value_now, 
+#                                nyse_value_now=nyse_value_now,nasdaq_value_now=nasdaq_value_now)
+#     return redirect(url_for('home'))
 
 
 from flask import request, redirect, url_for, flash, render_template
@@ -1248,7 +1277,7 @@ def purchaser_page():
         
         return render_template('purchaser.html', datasets=datasets, recommendations=recommendations, user_cash=cash, 
                                recommendations_scripts=recommendations_scripts,  
-                               max_total_spend=max_total_spend, models=models
+                               max_total_spend=max_total_spend, models=models, user_id=user_id
                                )
     return redirect(url_for('home'))
     
