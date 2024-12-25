@@ -1333,9 +1333,36 @@ def purchase_stock():
     return redirect(url_for('home'))
 
 
+@app.route('/edit_script/<int:script_id>', methods=['GET'])
+def edit_preprocessing_script(script_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('home'))
+    user_id = session['user_id']
+    script = preprocessing_scripts_DAOIMPL.get_preprocessing_script_for_editing(script_id,user_id)
+    if script:
+        # Convert BLOB data to string assuming it's UTF-8 encoded text
+        script_code = pickle.loads(script[2])
+        return render_template('edit_script.html', script_id=script[0], script_name=script[1], script_code=script_code)
+    else:
+        return 'Script not found', 404   
     
-    
-
+@app.route('/update_preprocessing_script/<int:script_id>', methods=['POST'])
+def update_preprocessing_script(script_id):
+    if not session.get('logged_in'):
+        return redirect(url_for('home'))
+    script_name = request.form['script_name']
+    script_code = request.form['script_code']
+    script_code = pickle.dumps(script_code)
+    user_id = session['user_id']
+    updated_at = datetime.now()
+    try:
+        old_pp = preprocessing_scripts_DAOIMPL.get_preprocessed_script_by_id(script_id)
+        new_pp = preprocessing_script.Preprocessing_Script(script_name,old_pp[2],script_code,updated_at,user_id,old_pp[6])
+        preprocessing_scripts_DAOIMPL.update_preprocessing_script_for_user(user_id, new_pp)
+        flash(f'Successfully updated preprocessing script {script_name}', 'success')
+    except:
+        flash(f'Unable to update preprocessing script {script_name}', 'danger')
+    return redirect(url_for('upload_preprocessing_scripts'))
         
        
 @app.route('/progress', methods=['GET'])
