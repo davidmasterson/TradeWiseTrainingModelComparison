@@ -57,6 +57,7 @@ def check_positions_for_user(username, user_id):
                     transact = transactions_DAOIMPL.get_open_transactions_for_user_by_symbol_with_db_conn(pos.symbol, user_id, db_conn)
                     if transact:
                         for trans in transact:
+                            id = int(trans[0])
                             tp1 = float(trans[14])
                             sop = float(trans[15])
                             qty = int(trans[4])
@@ -64,7 +65,7 @@ def check_positions_for_user(username, user_id):
                             logging.info(f'Position: {pos.symbol}, Price: {pos.current_price}, Take Profit: {tp1}, Stop Out: {sop}')
                             
                             if float(pos.current_price) >= tp1 or float(pos.current_price) <= sop:
-                                order_methods.place_sell_order(pos.symbol, qty, round(float(pos.current_price), 2), username, buy_string, user_id)
+                                order_methods.place_sell_order(pos.symbol, qty, round(float(pos.current_price), 2), username, buy_string, user_id, id)
                 logging.info(f'{datetime.now()}: Finished running seller loop for {username}')
             else:
                 logging.info(f"No open positions found for user {username}.")
