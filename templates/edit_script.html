@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="script-edit-container">
+    <form action="{{ url_for('update_preprocessing_script', script_id=script_id) }}" method="post" class="script-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        
+        <div class="form-group">
+            <label for="script_name">Script Name:</label>
+            <input type="text" id="script_name" name="script_name" value="{{ script_name }}" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="script_code">Script Code:</label>
+            <textarea id="script_code" name="script_code" class="form-control" rows="10">{{ script_code }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .script-edit-container {
+        max-width: 960px; /* Increased width for better layout */
+        margin: 40px auto; /* More margin for better centering */
+        padding: 20px;
+        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .script-form {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    label {
+        font-weight: bold;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .form-control {
+        width: 100%; /* Ensures the input takes full width of the container */
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    #script_code {
+        height: 1000px; /* Increased height */
+        font-family: 'Courier New', Courier, monospace; /* Monospace font for better code readability */
+        font-size: 14px; /* Larger font size for visibility */
+    }
+    
+    
+
+    .btn {
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+    }
+
+    .btn:hover {
+        background-color: #0056b3;
+    }
+</style>
+
+{% endblock %}
