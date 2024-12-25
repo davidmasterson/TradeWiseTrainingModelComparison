@@ -252,7 +252,7 @@ def preprocess_and_train(user_id, output_file_path, dataset_id, model_id):
         trade_settings = trade_settings_DAOIMPL.get_trade_settings_by_user(user_id)  # example threshold, set as needed
         confidence_threshold = trade_settings[5]
         results = [{'Symbol': symbol, 'Prediction': pred, 'Probability': prob, 'Confidence': con, 'Sector': sector}
-                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5)]
+                   for symbol, pred, prob, con, sector in zip(symbols, predictions, probabilities, confidence_scores, sectors) if (pred == 1 and prob >= .5) and con >= confidence_threshold ]
 
 
         
