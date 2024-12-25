@@ -78,15 +78,16 @@ def get_pending_buy_orders_by_user_id_and_client_order_id(user_id, client_order_
 
 
 
-def insert_pending_order(client_order_id, user_id,side,purchase_string = None):
+def insert_pending_order(client_order_id, user_id,side,purchase_string = None, trans_id = None):
     conn = dcu.get_db_connection()
     cur = conn.cursor()
     sql = '''INSERT INTO pending_orders(
         client_order_id,
         user_id,
         side,
-        purchase_string)VALUES(%s,%s,%s,%s)'''
-    vals = [client_order_id,user_id,side, purchase_string]
+        purchase_string,
+        trans_id)VALUES(%s,%s,%s,%s,%s)'''
+    vals = [client_order_id,user_id,side, purchase_string, trans_id]
     try:
         cur.execute(sql, vals)
         conn.commit()
@@ -95,9 +96,12 @@ def insert_pending_order(client_order_id, user_id,side,purchase_string = None):
             logging.info(f"{datetime.now()}:{cur.rowcount}, record inserted pending buy order :{client_order_id}")
             return poid
         elif side == 'sell':
-            logging.info(f'{datetime.now()} pending sell order with id: {client_order_id} and purhase string {purchase_string} successfully entered.')
+            logging.info(f'{datetime.now()} pending sell order with id: {client_order_id} and purhase string {purchase_string}: for transaction: {trans_id} successfully entered.')
     except Exception as e:
-        logging.info( f'{datetime.now()}:Unable to insert pending order {client_order_id} due to : {e}')
+        if side == 'buy':
+            logging.exception( f'{datetime.now()}:Unable to insert pending order {client_order_id} due to : {e}')
+        else:
+            logging.exception( f'{datetime.now()}:Unable to insert pending sell order {client_order_id} for transaction {trans_id} due to : {e}')   
     finally:
         cur.close()
         conn.close()
@@ -120,12 +124,13 @@ def delete_pending_order_after_fill(id, side, user_id):
         cur.close()
 
 
-def truncate_pending_orders_at_eod(connection):
-    cur = connection.cursor()
+def truncate_pending_orders_at_eod():
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
     sql = '''TRUNCATE table pending_orders'''
     try:
         cur.execute(sql)
-        connection.commit()
+        conn.commit()
         logging.info(f'{datetime.now()}: Pending orders have been deleted ')
     except Exception as e:
         logging.info(f'{datetime.now()}: Unable to delete Pending orders due to {e}')

@@ -52,7 +52,7 @@ def submit_limit_order(username, incoming_order):
     except Exception as e:
         logging.info(f"Error placing {incoming_order['side']} order: for user {username} due to {e}")
  
-def place_sell_order(symbol, qty, price, username, buystring, user_id):
+def place_sell_order(symbol, qty, price, username, buystring, user_id, trans_id):
     """
     Place a sell order on Alpaca with a unique client_order_id based on transaction_id.
     """
@@ -71,7 +71,7 @@ def place_sell_order(symbol, qty, price, username, buystring, user_id):
         )
         coid = sell_order.id
         logging.info(f"Order submitted: {sell_order}, for user {username} order_id {sell_order.id}")
-        pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'sell',purchase_string=buystring )
+        pending_orders_DAOIMPL.insert_pending_order(coid,user_id,'sell',purchase_string=buystring,trans_id=trans_id)
     except Exception as e:
         print(f"{datetime.now()}: Error placing sell order for {symbol}: for user {username} due to  {e}")
        
