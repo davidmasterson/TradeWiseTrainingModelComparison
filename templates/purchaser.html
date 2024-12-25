@@ -60,7 +60,17 @@
             </form>
             <h3 >Cash Available: ${{"{:,.2f}".format(user_cash)}}</h3>
           </div>
-          <span id="progressText">Checking stocks 0 - 0 of 0</span>
+          <div class="profit_loss_sectors_container" style="display: flex;">
+              <div class="profit_sectors">
+                  <img width="500px" height="350px" src="/static/plots/model_sector_breakdown_profits_{{ user_id }}.png" alt="Trained Model Sector Breakdown Profits">
+                </div>
+                
+                <!-- Sector Breakdown Loss Plot -->
+                <div class="loss_sectors">
+                    <img width="500px" height="350px" src="/static/plots/model_sector_breakdown_loss_{{ user_id }}.png" alt="Trained Model Sector Breakdown Loss">
+                </div>
+            </div>
+            <span id="progressText">Checking stocks 0 - 0 of 0</span>
           <div class="progress" style="margin-top: 20px;">
             <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
           </div>
@@ -121,6 +131,13 @@
         {% endif %}
     </div>
     <style>
+        
+        .profit_loss_sectors_container {
+            display: flex;
+            flex-wrap: nowrap;
+            flex-direction: row;
+            justify-content: center;
+        }
         /* Tooltip container */
         .tooltip {
             position: relative;
