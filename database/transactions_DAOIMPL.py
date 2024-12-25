@@ -25,6 +25,25 @@ def get_qty_for_transaction(pstring,user_id):
         cur.close()
         conn.close()
 
+def get_transaction_by_id(id):
+    conn = dcu.get_db_connection()
+    cur = conn.cursor()
+    sql = '''SELECT * FROM transactions
+                WHERE id=%s'''
+    vals = [id]
+    try:
+        cur.execute(sql, vals)
+        trans = cur.fetchone()
+        if trans:
+            return trans[0]
+        return []
+    except Exception as e:
+        logging.info(e)
+        return []
+    finally:
+        cur.close()
+        conn.close()
+
 def get_all_transaction():
     conn = dcu.get_db_connection()
     cur = conn.cursor()
